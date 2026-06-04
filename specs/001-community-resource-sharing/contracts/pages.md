@@ -57,7 +57,7 @@ without JavaScript.
 
 | Route | Actions | Access | Behaviour |
 |-------|---------|--------|-----------|
-| `/listings/[id]/agreements/new` | `default` | owner | Choose the member (from people who messaged about this listing); amount (Gift/Trade with an amount), return date (Lend), or number of sessions (Service, default 1). Outcome follows the listing type. Updates the listing. |
+| `/listings/[id]/agreements/new` | `review`, `record` | owner | Choose the member (from people who messaged about this listing); amount (Gift/Trade with an amount), return date (Lend), or number of sessions (Service, default 1). Outcome follows the listing type. Updates the listing. |
 | `/agreements` | — | member | My history: given, received, lent, borrowed; overdue loans noted calmly. |
 | `/agreements/[id]` | `confirm`, `dispute` (other member); `returned`, `cancel` (owner; cancel only while pending) | party, mediator | Details, confirmation state, reports. |
 | `/agreements/[id]/report` | `default` | party | Describe the problem; confirm; creates report + mediation conversation with the reported member's inviter. |

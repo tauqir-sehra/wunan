@@ -5,6 +5,7 @@ import { ChangePassword, ContactDetails, Me, Summary, UpdateMe } from '@wunan/sh
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { listing, listingFlag } from '../db/schema/index.ts';
+import { countNeedingAttention } from '../modules/agreements.ts';
 import { countUnreadConversations } from '../modules/messaging.ts';
 import { createRouter } from '../app-router.ts';
 import { requireMember } from '../lib/require-member.ts';
@@ -94,7 +95,7 @@ meRoutes.openapi(
     return c.json(
       {
         unreadConversations: await countUnreadConversations(memberId),
-        agreementsNeedingAttention: 0, // Filled in with agreements (US5).
+        agreementsNeedingAttention: await countNeedingAttention(memberId),
         unseenFlags: flags?.unseen ?? 0
       },
       200

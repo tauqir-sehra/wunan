@@ -109,3 +109,19 @@ export async function createListingFor(member: TestMember, body: Record<string, 
   if (response.status !== 201) throw new Error(`Could not create listing: ${response.status} ${await response.text()}`);
   return (await response.json()) as { id: string };
 }
+
+/** The member's id, looked up through the API. */
+export async function memberIdOf(member: TestMember): Promise<string> {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/me`, { headers: { authorization: `Bearer ${token}`, ...origin } });
+  return ((await response.json()) as { id: string }).id;
+}
+
+/** `member` messages `ownerId` about a listing, as people do before agreeing. */
+export async function messageAbout(member: TestMember, ownerId: string, listingId: string) {
+  const token = await signIn(member);
+  const headers = { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin };
+  const started = await fetch(`${API_URL}/api/v1/conversations`, { method: 'POST', headers, body: JSON.stringify({ memberId: ownerId, listingId }) });
+  const { id } = (await started.json()) as { id: string };
+  await fetch(`${API_URL}/api/v1/conversations/${id}/messages`, { method: 'POST', headers, body: JSON.stringify({ body: 'Is this still available?' }) });
+}

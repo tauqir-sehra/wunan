@@ -6,6 +6,7 @@ import { auth, rewriteAuthError } from './auth.ts';
 import { sql } from './db/index.ts';
 import { ApiError, handleError } from './lib/errors.ts';
 import { log } from './lib/log.ts';
+import { agreementRoutes } from './routes/agreements.ts';
 import { conversationRoutes } from './routes/conversations.ts';
 import { invitationRoutes } from './routes/invitations.ts';
 import { listingRoutes } from './routes/listings.ts';
@@ -64,6 +65,7 @@ app.route('/api/v1', meRoutes);
 app.route('/api/v1', listingRoutes);
 app.route('/api/v1', photoRoutes);
 app.route('/api/v1', conversationRoutes);
+app.route('/api/v1', agreementRoutes);
 
 app.openAPIRegistry.registerComponent('securitySchemes', 'bearer', {
   type: 'http',

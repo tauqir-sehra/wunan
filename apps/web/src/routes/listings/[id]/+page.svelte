@@ -73,7 +73,8 @@
     <section class="grid gap-4" aria-labelledby="manage-heading">
       <h2 id="manage-heading" class="text-xl font-semibold">Manage your listing</h2>
       <div class="flex flex-wrap gap-3">
-        {#if listing.status !== 'closed'}<Button href="/listings/{listing.id}/edit">Edit</Button>{/if}
+        {#if listing.status === 'available'}<Button href="/listings/{listing.id}/agreements/new">Record an agreement</Button>{/if}
+        {#if listing.status !== 'closed'}<Button href="/listings/{listing.id}/edit" variant="outline">Edit</Button>{/if}
         {#if listing.status === 'available'}
           <form method="POST" action="?/pause"><Button type="submit" variant="outline">Pause</Button></form>
         {:else if listing.status === 'paused'}

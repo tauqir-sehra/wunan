@@ -15,6 +15,7 @@
     { href: '/listings', label: 'Find' },
     { href: '/messages', label: 'Messages' },
     { href: '/my-listings', label: 'My listings' },
+    { href: '/agreements', label: 'Agreements' },
     { href: '/settings', label: 'Settings' }
   ];
 

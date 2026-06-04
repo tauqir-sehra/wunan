@@ -89,3 +89,43 @@ export const statusText: Record<Listing['status'], string> = {
 export function when(iso: string): string {
   return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
+
+/** "Sat 10 January" for a YYYY-MM-DD date. */
+export function day(isoDate: string): string {
+  return new Date(`${isoDate}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' });
+}
+
+type AgreementLike = {
+  outcome: 'lent' | 'gifted' | 'traded' | 'provided';
+  amount: string | null;
+  sessions: number | null;
+  returnDue: string | null;
+  listing: { title: string; unit: Unit | null };
+  owner: { displayName: string };
+  otherMember: { displayName: string };
+  myRole: 'owner' | 'other' | 'mediator';
+};
+
+/** One plain sentence from the reader's side: "You gave Alex 2 kg of Rice." */
+export function agreementSentence(a: AgreementLike): string {
+  const owner = a.myRole === 'owner' ? 'You' : a.owner.displayName;
+  const other = a.myRole === 'other' ? 'you' : a.otherMember.displayName;
+  const what = a.amount ? `${quantity(a.amount, a.listing.unit)} of ${a.listing.title}` : a.listing.title;
+  switch (a.outcome) {
+    case 'lent':
+      return `${owner} lent ${other} ${a.listing.title}${a.returnDue ? `, back by ${day(a.returnDue)}` : ''}.`;
+    case 'gifted':
+      return `${owner} gave ${other} ${what}.`;
+    case 'traded':
+      return `${owner} traded ${what} with ${other}.`;
+    case 'provided':
+      return `${owner} provided ${a.sessions ?? 1} ${a.sessions === 1 || !a.sessions ? 'session' : 'sessions'} of ${a.listing.title} for ${other}.`;
+  }
+}
+
+export const confirmationText = {
+  pending: 'Waiting for an answer',
+  confirmed: 'Confirmed',
+  disputed: 'Needs a correction',
+  cancelled: 'Cancelled'
+} as const;

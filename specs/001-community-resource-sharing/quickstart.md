@@ -58,8 +58,9 @@ Use two browser windows (one private) to act as two members.
    a silent device notification arrives and opens the conversation. Turn it off → no more device
    notifications; email continues.
 6. **Record agreement (US5)**: As founder, record giving 2 kg of rice to Alex → 3 kg left. Alex confirms.
-   Record lending the drill with a return date of yesterday; run `npm run reminders:once -w apps/api` twice → exactly one reminder to
-   each member. Mark returned → drill available again. Record 1 bodywork session for Alex → "2 sessions
+   Record lending the drill (the date picker starts at today). To see a reminder, set its return date in the past
+   (`update agreement set return_due = current_date - 1` in the dev database), then run
+   `npm run reminders:once -w apps/api` twice → exactly one reminder to each member (in Mailpit, if they turned reminder emails on). Mark returned → drill available again. Record 1 bodywork session for Alex → "2 sessions
    available"; record 2 more → listing closes.
 7. **Problem (US6)**: Report a problem on the drill agreement → Alex's inviter (founder) is notified
    and a three-way conversation opens. Escalate → founders (final step); escalate no longer offered.
