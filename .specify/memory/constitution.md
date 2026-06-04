@@ -1,17 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: (unversioned template) → 1.0.0
-- Modified principles: all template placeholders replaced (initial ratification)
-  - [PRINCIPLE_1_NAME] → I. People Over Extraction
-  - [PRINCIPLE_2_NAME] → II. Simple, Intuitive Workflows
-  - [PRINCIPLE_3_NAME] → III. Security First (NON-NEGOTIABLE)
-  - [PRINCIPLE_4_NAME] → IV. Accessible by Default (WCAG 2.2 AA)
-  - [PRINCIPLE_5_NAME] → V. Calm, Neurodivergence-Friendly Design
-  - Added: VI. Readable, Simple Code
-  - Added: VII. Minimal Dependencies
-- Added sections: Quality Gates; Development Workflow
+- Version change: 1.0.0 → 1.1.0
+- Modified principles:
+  - VII. Minimal Dependencies → VII. No Unnecessary Dependencies (a modern stack is explicitly
+    allowed; dependencies need a clear benefit; check-before-adding rule unchanged)
+- Added sections: none
 - Removed sections: none
-- Follow-up TODOs: none
+- Follow-up TODOs: specs/001-community-resource-sharing/plan.md and research.md cite the old
+  "minimal" wording; regenerate with /speckit-plan
 -->
 
 # wunan Constitution
@@ -111,19 +107,22 @@ unnecessary, over-engineered abstractions.
 **Rationale**: Readable code is easier to secure, maintain, and contribute to, and keeps the
 project open to contributors of varying experience.
 
-### VII. Minimal Dependencies
+### VII. No Unnecessary Dependencies
 
-Dependencies are kept to a minimum. Every dependency is code we must trust and maintain.
+wunan uses a modern, well-supported software stack; it does not need to be technologically
+minimal. Every dependency MUST still earn its place, because each is code we must trust and
+maintain.
 
-- Before adding any new dependency, the contributor MUST check with the maintainers and justify
-  it: what it does, why the standard library or existing code is insufficient, its maintenance
-  status, license, and security history.
-- Prefer the platform's standard library and existing project dependencies.
+- A dependency is justified when it meaningfully improves security, accessibility, user
+  experience, or code readability compared with writing and maintaining the code ourselves.
+- Before adding any new dependency, the contributor MUST check with the maintainers and state:
+  what it does, why it is needed, its maintenance status, license, and security history.
+- Prefer well-established, actively maintained packages over niche or abandoned ones.
 - Dependencies MUST be pinned to exact versions and kept up to date for security fixes.
 - Unused dependencies MUST be removed.
 
-**Rationale**: Fewer dependencies mean a smaller attack surface, simpler code, and less exposure
-to supply-chain risk.
+**Rationale**: A modern stack makes wunan safer, more pleasant to use, and easier to contribute
+to. Avoiding unnecessary dependencies still limits attack surface and supply-chain risk.
 
 ## Quality Gates
 
@@ -165,4 +164,4 @@ constitution wins.
   Complexity MUST be justified. Maintainers review the constitution periodically to keep it
   accurate and useful.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-03 | **Last Amended**: 2026-06-03
+**Version**: 1.1.0 | **Ratified**: 2026-06-03 | **Last Amended**: 2026-06-03
