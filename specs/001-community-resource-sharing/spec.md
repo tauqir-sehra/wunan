@@ -267,7 +267,11 @@ a notification and can see the agreement record and open a three-way conversatio
   reveal whether an email is registered, and repeated failed attempts MUST be slowed down.
 - **FR-001b**: A new member's email address MUST be confirmed through a link sent to it before their
   account is active, so password resets always reach them. An account not confirmed within 7 days
-  MUST be deleted, and its invitation can be used again (by the same email or another).
+  MUST be deleted, and its invitation can be used again (by the same email or another). While
+  waiting, the person MUST be able to ask for the confirmation email again, and MUST be able to
+  start over from the invitation link (e.g., to fix a mistyped email), which replaces the
+  unconfirmed account. Signing in with the right password before confirming MUST say that the email
+  still needs confirming and offer to send the link again.
 - **FR-002**: Members MUST be able to create single-use invitation links that expire after 14 days and
   can be cancelled before use.
 - **FR-003**: Every member profile MUST show the member's display name, who invited them (linked),

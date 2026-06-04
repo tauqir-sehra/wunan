@@ -22,9 +22,13 @@ is generated from the code at `GET /api/v1/openapi.json`; this file is the human
 
 ## Authentication (Better Auth, `/api/auth`)
 
+Better Auth's own errors are rewritten into the error shape above with plain-language messages, so
+every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_NOT_VERIFIED` →
+`email_not_confirmed`).
+
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `POST /api/auth/sign-in/email` | public | `{ email, password }` → session + token in `set-auth-token` header. One generic error for any failure. Rate-limited. |
+| `POST /api/auth/sign-in/email` | public | `{ email, password }` → session + token in `set-auth-token` header. One generic error for any failure, except a correct password on an unconfirmed account → `403 email_not_confirmed` ("Please open the confirmation link we emailed you."). Rate-limited. |
 | `POST /api/auth/sign-out` | member | Revokes the session. |
 | `POST /api/auth/forget-password` | public | `{ email, redirectTo }` → always the same success response. |
 | `POST /api/auth/reset-password` | public | `{ token, newPassword }`; single-use, 1-hour token. |
@@ -35,9 +39,10 @@ is generated from the code at `GET /api/v1/openapi.json`; this file is the human
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /invitations/{token}` | public | `{ valid: true, inviterName }` or `404 invitation_not_valid` (used, expired, cancelled, or unknown; same response). |
-| `POST /invitations/{token}/accept` | public | `{ email, displayName, password, emailNotifications }` → deletes any unconfirmed account for that email whose hold has passed, creates an unverified account, reserves the invitation for 7 days, sends a confirmation email; returns `202 { status: "check_your_email" }`. `409 email_taken` if the email belongs to a confirmed account or one still within its hold. |
+| `GET /invitations/{token}` | public | `{ valid: true, inviterName }` (also while waiting for confirmation, so sign-up can start over) or `404 invitation_not_valid` (used, expired, cancelled, or unknown; same response). |
+| `POST /invitations/{token}/accept` | public | `{ email, displayName, password, emailNotifications }` → deletes any unconfirmed account for that email whose hold has passed, and any earlier unconfirmed account on this invitation, creates an unverified account, reserves the invitation for 7 days, sends a confirmation email; returns `202 { status: "check_your_email" }`. `409 email_taken` if the email belongs to a confirmed account or one still within its hold. Rate-limited: 5 attempts per invitation per day and 10 per IP address per hour (`429 slow_down`). |
 | `POST /invitations/confirm` | public | `{ token }` from the confirmation email → verifies the email, marks the invitation used, returns a session token. Expired or used → `404 confirmation_not_valid`. |
+| `POST /invitations/resend-confirmation` | public | `{ email }` → sends a fresh confirmation link if that email has an unconfirmed account within its hold; the hold is not extended. Always `202` with the same response. Rate-limited (3 per hour per email). |
 | `POST /invitations` | member | Creates an invitation; returns `{ id, link, expiresAt }`. The raw link is returned only here. |
 | `GET /me/invitations` | member | My invitations and statuses. |
 | `POST /invitations/{id}/cancel` | inviter | Cancels an unused invitation. |

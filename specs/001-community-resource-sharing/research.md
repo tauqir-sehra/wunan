@@ -87,8 +87,10 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 - **Email confirmation** (FR-001b): Better Auth's `requireEmailVerification` blocks sign-in until
   the confirmation link is opened; its verification token lasts 7 days, matching the invitation
   hold. Unconfirmed accounts are deleted when the hold passes (§11).
-- **No email enumeration**: sign-in returns one generic error; password reset always returns the same
-  response.
+- **No email enumeration**: sign-in returns one generic error; password reset and resending the
+  confirmation always return the same response. The one exception is a correct password on an
+  unconfirmed account, which says "Please open the confirmation link we emailed you." and offers to send it again
+  (constitution II). It reveals nothing to someone who doesn't know the password.
 - **Rationale**: Constitution III forbids hand-rolled authentication. Bearer tokens are the standard
   for mobile clients, and using them for the web server too means the API has a single, simple auth
   path and needs no cookie or CSRF handling. SvelteKit's built-in origin check protects the web
@@ -200,6 +202,15 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 - **Network**: one public HTTPS entry point (Caddy). `/api/*` routes to the API (for future mobile
   clients), everything else to the web app. The web app reaches the API over the internal Docker
   network.
+- **Visitor address for rate limits**: every web request reaches the API from the web server, so
+  per-IP limits would otherwise be shared by the whole community. Caddy sets `X-Forwarded-For` to the
+  visitor's address (it ignores any value sent by the visitor). The web app reads it with
+  adapter-node's `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`, and forwards it to the API in
+  `X-Forwarded-For`. The API uses the right-most `X-Forwarded-For` entry as the visitor's address,
+  for Better Auth (`advanced.ipAddress.ipAddressHeaders`) and for `checkRateLimit`, falling back to
+  the connection address when the header is missing (local development). This is safe
+  only because the API is reachable solely through Caddy and the web app on the internal Docker
+  network: the API port is never published.
 - **At rest**: the database volume, photos volume, and backups MUST be on encrypted storage (e.g.,
   LUKS full-disk encryption or the hosting provider's encrypted volumes). Backups are encrypted before
   leaving the server (e.g., with `age` or `gpg`). Members' private contact details (`share_phone`,

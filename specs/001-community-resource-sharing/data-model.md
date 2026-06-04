@@ -59,8 +59,9 @@ Deleted when the member turns device notifications off on that device, when a pu
 | expires_at | timestamptz | `created_at` + 14 days (FR-002) |
 | used_by_id | FK → member, nullable | |
 
-Starting to join requires `status = unused` (or `pending_confirmation` past `reserved_until`) and
-`expires_at` in the future; it creates an unverified account and sends a confirmation email. Opening
+Starting to join requires `status = unused` or `pending_confirmation`, and `expires_at` in the
+future. Starting again on a `pending_confirmation` invitation (e.g., to fix a mistyped email)
+deletes the earlier unconfirmed account and starts a new 7-day hold; it creates an unverified account and sends a confirmation email. Opening
 the confirmation link verifies the email and marks the invitation `used`, in one transaction.
 Joining with an email that belongs to a confirmed account is refused.
 

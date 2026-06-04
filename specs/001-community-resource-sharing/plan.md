@@ -47,7 +47,7 @@ flow works without JavaScript (live messages and device notifications excepted);
 services or tracking; WCAG 2.2 AA in light and dark themes; calm design; sleek, minimal visual style;
 English only
 
-**Scale/Scope**: One community per installation, up to ~5,000 members; ~45 API endpoints
+**Scale/Scope**: One community per installation, up to ~5,000 members; ~50 API endpoints
 ([contracts/api.md](contracts/api.md)); ~25 web routes ([contracts/pages.md](contracts/pages.md))
 
 ## Constitution Check
