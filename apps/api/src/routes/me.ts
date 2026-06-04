@@ -1,7 +1,11 @@
 // Endpoints about the signed-in member: profile, private contact details, password
 // (contracts/api.md, "Invitations and members").
 import { createRoute, z } from '@hono/zod-openapi';
-import { ChangePassword, ContactDetails, Me, UpdateMe } from '@wunan/shared';
+import { ChangePassword, ContactDetails, Me, Summary, UpdateMe } from '@wunan/shared';
+import { and, count, eq, isNull } from 'drizzle-orm';
+import { db } from '../db/index.ts';
+import { listing, listingFlag } from '../db/schema/index.ts';
+import { countUnreadConversations } from '../modules/messaging.ts';
 import { createRouter } from '../app-router.ts';
 import { requireMember } from '../lib/require-member.ts';
 import * as members from '../modules/members.ts';
@@ -69,5 +73,31 @@ meRoutes.openapi(
     const { currentPassword, newPassword } = c.req.valid('json');
     await members.changePassword(c.get('member').id, c.get('sessionToken'), currentPassword, newPassword);
     return c.body(null, 204);
+  }
+);
+
+meRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/me/summary',
+    summary: 'Quiet counts for the home page: unread conversations, agreements, new requests',
+    security,
+    responses: ok(Summary, 'Counts')
+  }),
+  async (c) => {
+    const memberId = c.get('member').id;
+    const [flags] = await db
+      .select({ unseen: count() })
+      .from(listingFlag)
+      .innerJoin(listing, eq(listing.id, listingFlag.listingId))
+      .where(and(eq(listing.ownerId, memberId), isNull(listingFlag.seenByOwnerAt)));
+    return c.json(
+      {
+        unreadConversations: await countUnreadConversations(memberId),
+        agreementsNeedingAttention: 0, // Filled in with agreements (US5).
+        unseenFlags: flags?.unseen ?? 0
+      },
+      200
+    );
   }
 );

@@ -84,3 +84,8 @@ export const statusText: Record<Listing['status'], string> = {
   paused: 'Paused',
   closed: 'Closed'
 };
+
+/** A calm, readable time: "Sat 7 Nov, 14:30". Uses the server's time zone (set TZ for the community). */
+export function when(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}

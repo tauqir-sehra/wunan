@@ -10,6 +10,9 @@ export default defineConfig({
     tailwindcss(),
     sveltekit({
       adapter: adapter(),
+      // The browser tests run their own dev server; a separate folder keeps its settings
+      // (e.g., which API to use) from overwriting those of `npm run dev` running alongside.
+      outDir: process.env.SVELTEKIT_OUT_DIR ?? '.svelte-kit',
       csp: {
         mode: 'nonce',
         directives: {

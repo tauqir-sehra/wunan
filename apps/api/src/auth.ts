@@ -21,6 +21,8 @@ import { sendEmail } from './notify/email.ts';
 
 const DAY = 60 * 60 * 24;
 const isTest = config.NODE_ENV === 'test';
+// The browser tests sign in many times from one address; see config.ts.
+const signInLimit = config.E2E_RELAXED_SIGN_IN_LIMITS ? 1000 : 10;
 
 export const auth = betterAuth({
   baseURL: config.SITE_URL,
@@ -92,7 +94,9 @@ export const auth = betterAuth({
     window: 60,
     max: isTest ? 1000 : 100,
     customRules: {
-      '/sign-in/email': { window: 10 * 60, max: 10 },
+      // Checking who is signed in needs a valid token already, and happens on every page load.
+      '/get-session': false,
+      '/sign-in/email': { window: 10 * 60, max: signInLimit },
       '/request-password-reset': { window: 60 * 60, max: 5 },
       '/reset-password': { window: 60 * 60, max: 10 }
     }

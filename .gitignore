@@ -3,6 +3,7 @@ node_modules/
 dist/
 build/
 .svelte-kit/
+.svelte-kit-e2e/
 coverage/
 
 # Local configuration and secrets (never commit these)

@@ -61,3 +61,29 @@ Caddy and the web app; `compose.yaml` (T111) must not publish the API port.
 
 **Notes for later phases**: deleting a listing's rows does not delete its photo files; account
 deletion (T108) must call `deletePhotoFiles` for the member's photos.
+
+## US4: messages, contact sharing, live stream (2026-06-04)
+
+**Scope**: `apps/api/src/modules/messaging.ts`, `modules/live.ts`, `routes/conversations.ts`,
+`routes/me.ts` (summary); `apps/web/src/routes/messages/**`, `lib/components/MessageList.svelte`,
+`lib/sign-in.ts`.
+
+**Checked**
+
+| Area | Result |
+|------|--------|
+| Participant checks | Every read, send, share, call, and live-stream request goes through `requireParticipant`; anyone else gets "not found", so conversations can't be discovered (tested, including the live stream). |
+| Contact sharing | Only details the member saved, only the ones they chose, after a review step that shows exactly what will appear; the message stores a snapshot (tested: the unchosen email never appears). Saved details stay encrypted at rest. |
+| Message content | Shown with Svelte's normal escaping (no raw HTML), so a message can't run code. Up to 4000 characters; 60 messages per member per hour (tested). |
+| Notifications | Only to members who turned them on, at most one per conversation per hour (tested); previews cut to 100 characters; members with the conversation open aren't notified. |
+| Live stream | Requires a member token and participation; the web app proxies it with the member's session, so the browser never calls the API; the stream ends when the browser leaves and closes if the member's account is deleted. One shared database connection serves every stream. |
+
+**Found and fixed**
+
+1. *A busy API could sign members out*: the web app treated any failed "who is signed in?" check
+   (for example a rate-limit answer) as "signed out" and deleted the session cookie. It now signs
+   out only on a clear "no session"; other failures show the error page and keep the cookie.
+   Better Auth's rate limit no longer applies to that check, which already needs a valid token.
+
+**Accepted for now**: there is no cap on how many live streams one member opens at once. Each
+holds one HTTP connection, not a database connection; revisit if it becomes a problem.

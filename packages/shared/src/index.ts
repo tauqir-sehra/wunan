@@ -5,3 +5,4 @@ export * from './schemas/common.ts';
 export * from './schemas/members.ts';
 export * from './schemas/listings.ts';
 export * from './schemas/search.ts';
+export * from './schemas/messaging.ts';

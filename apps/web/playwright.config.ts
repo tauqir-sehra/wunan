@@ -31,14 +31,15 @@ export default defineConfig({
         DATABASE_URL: testDatabase,
         API_PORT: String(apiPort),
         SITE_URL: WEB_URL,
-        PHOTOS_DIR: './photos-test'
+        PHOTOS_DIR: './photos-test',
+        E2E_RELAXED_SIGN_IN_LIMITS: 'true'
       }
     },
     {
       command: `npx vite dev --port ${webPort}`,
       url: WEB_URL,
       reuseExistingServer: false,
-      env: { API_INTERNAL_URL: API_URL, SITE_URL: WEB_URL }
+      env: { API_INTERNAL_URL: API_URL, SITE_URL: WEB_URL, SVELTEKIT_OUT_DIR: '.svelte-kit-e2e' }
     }
   ]
 });

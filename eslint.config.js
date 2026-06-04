@@ -11,6 +11,7 @@ export default ts.config(
       '**/dist/',
       '**/build/',
       '**/.svelte-kit/',
+      '**/.svelte-kit-e2e/',
       '**/coverage/',
       '**/test-results/',
       '**/playwright-report/',

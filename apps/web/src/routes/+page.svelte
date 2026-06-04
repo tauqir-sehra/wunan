@@ -22,6 +22,20 @@
     <p class="text-muted-foreground">What would you like to find or share today?</p>
   </div>
 
+  {#if data.summary && (data.summary.unreadConversations || data.summary.unseenFlags || data.summary.agreementsNeedingAttention)}
+    <ul class="grid gap-1 rounded-lg border bg-card p-4" aria-label="Things for you">
+      {#if data.summary.unreadConversations}
+        <li><a href="/messages">{data.summary.unreadConversations} {data.summary.unreadConversations === 1 ? 'conversation has' : 'conversations have'} new messages</a></li>
+      {/if}
+      {#if data.summary.agreementsNeedingAttention}
+        <li><a href="/agreements">{data.summary.agreementsNeedingAttention} {data.summary.agreementsNeedingAttention === 1 ? 'agreement needs' : 'agreements need'} a look</a></li>
+      {/if}
+      {#if data.summary.unseenFlags}
+        <li><a href="/my-listings">{data.summary.unseenFlags} new {data.summary.unseenFlags === 1 ? 'request' : 'requests'} about your listings</a></li>
+      {/if}
+    </ul>
+  {/if}
+
   <form method="GET" action="/listings" role="search" class="grid gap-2">
     <Label for="home-search">Search what's shared</Label>
     <div class="flex flex-wrap gap-3">

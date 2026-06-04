@@ -5,9 +5,14 @@ import { setSessionCookie } from './session.ts';
 
 type SessionResponse = { user: { id: string; name: string; isFounder?: boolean } } | null;
 
-/** Asks the API who owns the current token and records it in `locals` (null if nobody). */
+/**
+ * Asks the API who owns the current token and records it in `locals` (null if nobody).
+ * Only a clear "no session" signs the visitor out; other problems (the API busy or down) are
+ * raised as errors, so a member is never signed out by a hiccup.
+ */
 export async function loadMember(event: Pick<RequestEvent, 'locals' | 'getClientAddress'>) {
   const response = await apiFor(event).raw('/api/auth/get-session');
+  if (!response.ok && response.status !== 401) throw await toApiError(response);
   const session = response.ok ? ((await response.json()) as SessionResponse) : null;
   event.locals.member = session?.user
     ? { id: session.user.id, displayName: session.user.name, isFounder: session.user.isFounder ?? false }

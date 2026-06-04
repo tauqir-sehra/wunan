@@ -44,6 +44,11 @@
                 class="inline-flex min-h-11 items-center rounded-md px-3 text-foreground no-underline hover:bg-accent aria-[current=page]:font-semibold aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8"
               >
                 {link.label}
+                {#if link.href === '/messages' && data.summary?.unreadConversations}
+                  <span class="ml-1.5 rounded-md bg-muted px-1.5 text-sm font-medium">
+                    {data.summary.unreadConversations}<span class="sr-only"> with new messages</span>
+                  </span>
+                {/if}
               </a>
             </li>
           {/each}
