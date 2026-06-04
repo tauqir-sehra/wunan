@@ -172,7 +172,13 @@ export async function listMine(memberId: string) {
 
 export async function getAgreement(agreementId: string, memberId: string) {
   const row = await viewableAgreement(agreementId, memberId);
-  return (await describe([row], memberId))[0]!;
+  return { ...(await describe([row], memberId))[0]!, reports: await reportsFor(agreementId) };
+}
+
+// Requests for help on an agreement are listed with it (set by modules/reports.ts).
+let reportsFor: (agreementId: string) => Promise<{ id: string; status: 'open' | 'resolved'; outcomeNote: string | null }[]> = async () => [];
+export function setReportsLookup(lookup: typeof reportsFor) {
+  reportsFor = lookup;
 }
 
 /** Counts for home: agreements waiting for my answer, plus my loans past their return date. */

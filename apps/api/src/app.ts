@@ -11,6 +11,7 @@ import { conversationRoutes } from './routes/conversations.ts';
 import { invitationRoutes } from './routes/invitations.ts';
 import { listingRoutes } from './routes/listings.ts';
 import { photoRoutes } from './routes/photos.ts';
+import { reportRoutes } from './routes/reports.ts';
 import { memberRoutes } from './routes/members.ts';
 import { meRoutes } from './routes/me.ts';
 
@@ -66,6 +67,7 @@ app.route('/api/v1', listingRoutes);
 app.route('/api/v1', photoRoutes);
 app.route('/api/v1', conversationRoutes);
 app.route('/api/v1', agreementRoutes);
+app.route('/api/v1', reportRoutes);
 
 app.openAPIRegistry.registerComponent('securitySchemes', 'bearer', {
   type: 'http',

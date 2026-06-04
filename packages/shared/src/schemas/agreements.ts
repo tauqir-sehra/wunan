@@ -39,7 +39,9 @@ export const Agreement = z.object({
   createdAt: z.string(),
   myRole: z.enum(['owner', 'other', 'mediator']),
   group: AgreementGroup.nullable(),
-  overdue: z.boolean()
+  overdue: z.boolean(),
+  /** Requests for help about this agreement (only on the single-agreement endpoint). */
+  reports: z.array(z.object({ id: z.string(), status: z.enum(['open', 'resolved']), outcomeNote: z.string().nullable() })).optional()
 });
 export type Agreement = z.infer<typeof Agreement>;
 

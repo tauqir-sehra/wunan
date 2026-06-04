@@ -72,5 +72,25 @@
     {/if}
   {/if}
 
+  {#if a.reports?.length}
+    <section class="grid gap-2" aria-labelledby="help-heading">
+      <h2 id="help-heading" class="text-lg font-semibold">Asking for help</h2>
+      <ul class="grid gap-2">
+        {#each a.reports as report (report.id)}
+          <li>
+            <a href="/reports/{report.id}">{report.status === 'open' ? 'Open request for help' : 'Settled'}</a>
+            {#if report.outcomeNote}<span class="text-muted-foreground"> — {report.outcomeNote}</span>{/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  {#if a.myRole !== 'mediator' && !a.reports?.some((r) => r.status === 'open')}
+    <p class="text-muted-foreground">
+      Something went wrong? <a href="/agreements/{a.id}/report">Ask for help</a> from the invite chain.
+    </p>
+  {/if}
+
   <p><a href="/agreements">All agreements</a></p>
 </section>

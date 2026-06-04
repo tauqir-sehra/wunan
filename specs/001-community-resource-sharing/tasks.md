@@ -249,17 +249,17 @@ accessibility scans. Within each story, write the tests first and confirm they f
 
 ### Tests for User Story 6 ⚠️
 
-- [ ] T090 [P] [US6] Contract tests in `apps/api/src/routes/reports.test.ts`: only parties can report; `description` 1–2000 chars; the nearest active inviter of the reported member joins and is notified; first escalation adds the inviter's nearest active inviter, or goes straight to `founders` if that would be a founder or nobody; second escalation adds all active founders; a third → `409 already_at_founders`; resolve requires `outcomeNote` (≤1000 chars); reports never change the reported member's access
-- [ ] T091 [P] [US6] End-to-end test in `apps/web/tests/e2e/us6-problem.spec.ts` covering quickstart scenario 7 with axe scans
+- [X] T090 [P] [US6] Contract tests in `apps/api/src/routes/reports.test.ts`: only parties can report; `description` 1–2000 chars; the nearest active inviter of the reported member joins and is notified; first escalation adds the inviter's nearest active inviter, or goes straight to `founders` if that would be a founder or nobody; second escalation adds all active founders; a third → `409 already_at_founders`; resolve requires `outcomeNote` (≤1000 chars); reports never change the reported member's access
+- [X] T091 [P] [US6] End-to-end test in `apps/web/tests/e2e/us6-problem.spec.ts` covering quickstart scenario 7 with axe scans
 
 ### Implementation for User Story 6
 
-- [ ] T092 [P] [US6] Define `problem_report` in `apps/api/src/db/schema/reports.ts`: `agreement_id`, `reporter_id` ("A party to the agreement"), `reported_member_id`, `description` ("text, 1–2000 chars"), `escalation_level` ("`inviter` → `inviters_inviter` → `founders`"), `status` ("`open` → `resolved`; may stay open indefinitely"), `outcome_note` ("text, ≤1000 chars, nullable"; "Required to resolve"), `resolved_by_id`; add the foreign key from `conversation.problem_report_id`; generate the migration
-- [ ] T093 [P] [US6] Add report schemas in `packages/shared/src/schemas/reports.ts` (`CreateReport`, `ResolveReport`, `ProblemReport`)
-- [ ] T094 [US6] Implement `apps/api/src/modules/reports.ts`: `nearestActiveInviter(memberId)` (skips deleted members), `createReport` (creates report and a mediation conversation with reporter, reported member, and mediator; system message explaining what happens next; notify with `type = "report"`), `escalate` (rules above), `resolve`, `get`; no code path may change membership or access
-- [ ] T095 [US6] Add routes `POST /agreements/{id}/reports` (in `apps/api/src/routes/agreements.ts`) and `GET /reports/{id}`, `POST /reports/{id}/escalate|resolve` in `apps/api/src/routes/reports.ts`; let mediators read the agreement via `GET /agreements/{id}`
-- [ ] T096 [P] [US6] Build `apps/web/src/routes/agreements/[id]/report/` (describe the problem in plain words, review, confirm)
-- [ ] T097 [P] [US6] Build `apps/web/src/routes/reports/[id]/` (who is helping, link to the conversation, `escalate` action hidden once founders are involved, `resolve` action requiring an outcome note, calm wording that a report can stay open)
+- [X] T092 [P] [US6] Define `problem_report` in `apps/api/src/db/schema/reports.ts`: `agreement_id`, `reporter_id` ("A party to the agreement"), `reported_member_id`, `description` ("text, 1–2000 chars"), `escalation_level` ("`inviter` → `inviters_inviter` → `founders`"), `status` ("`open` → `resolved`; may stay open indefinitely"), `outcome_note` ("text, ≤1000 chars, nullable"; "Required to resolve"), `resolved_by_id`; add the foreign key from `conversation.problem_report_id`; generate the migration
+- [X] T093 [P] [US6] Add report schemas in `packages/shared/src/schemas/reports.ts` (`CreateReport`, `ResolveReport`, `ProblemReport`)
+- [X] T094 [US6] Implement `apps/api/src/modules/reports.ts`: `nearestActiveInviter(memberId)` (skips deleted members), `createReport` (creates report and a mediation conversation with reporter, reported member, and mediator; system message explaining what happens next; notify with `type = "report"`), `escalate` (rules above), `resolve`, `get`; no code path may change membership or access
+- [X] T095 [US6] Add routes `POST /agreements/{id}/reports` (in `apps/api/src/routes/agreements.ts`) and `GET /reports/{id}`, `POST /reports/{id}/escalate|resolve` in `apps/api/src/routes/reports.ts`; let mediators read the agreement via `GET /agreements/{id}`
+- [X] T096 [P] [US6] Build `apps/web/src/routes/agreements/[id]/report/` (describe the problem in plain words, review, confirm)
+- [X] T097 [P] [US6] Build `apps/web/src/routes/reports/[id]/` (who is helping, link to the conversation, `escalate` action hidden once founders are involved, `resolve` action requiring an outcome note, calm wording that a report can stay open)
 
 **Checkpoint**: All six user stories work independently; T090–T091 pass.
 

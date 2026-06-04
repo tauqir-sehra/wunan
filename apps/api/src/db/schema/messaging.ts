@@ -4,12 +4,13 @@ import { sql } from 'drizzle-orm';
 import { check, index, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { listing } from './listings.ts';
 import { member } from './members.ts';
+import { problemReport } from './reports.ts';
 
 export const conversation = pgTable('conversation', {
   id: uuid().primaryKey().defaultRandom(),
   listingId: uuid().references(() => listing.id, { onDelete: 'set null' }),
-  /** Set for mediation conversations; its foreign key is added with problem reports (US6). */
-  problemReportId: uuid(),
+  /** Set for mediation conversations (asking for help with an agreement). */
+  problemReportId: uuid().references(() => problemReport.id, { onDelete: 'cascade' }),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   /** Time of the latest message, for ordering the conversation list. */
   lastMessageAt: timestamp({ withTimezone: true }).notNull().defaultNow()

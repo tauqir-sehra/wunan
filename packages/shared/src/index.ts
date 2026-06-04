@@ -7,3 +7,4 @@ export * from './schemas/listings.ts';
 export * from './schemas/search.ts';
 export * from './schemas/messaging.ts';
 export * from './schemas/agreements.ts';
+export * from './schemas/reports.ts';
