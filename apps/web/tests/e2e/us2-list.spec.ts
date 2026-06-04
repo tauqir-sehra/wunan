@@ -150,7 +150,7 @@ test("another member's request reaches the owner and leaves the listing as it is
   await signInAs(alexPage, alex);
   await alexPage.goto(url);
   await expect(alexPage.getByRole('link', { name: 'Message about this' })).toBeVisible();
-  await alexPage.getByText('Send a request to the person who listed this').click();
+  await alexPage.getByText('Raise a conflict about this posting to the person who listed this').click();
   await alexPage.getByLabel('Your request').fill('Is this still available?');
   await alexPage.getByRole('button', { name: 'Send request' }).click();
   await expect(alexPage.getByText('Your request was sent')).toBeVisible();

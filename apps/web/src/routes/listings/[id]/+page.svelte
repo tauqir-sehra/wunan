@@ -119,8 +119,8 @@
   {:else}
     <div><Button href="/messages/start?member={listing.owner.id}&listing={listing.id}">Message about this</Button></div>
 
-    <details class="grid gap-3 rounded-lg border bg-card p-4" open={Boolean(form?.fields?.request)}>
-      <summary class="min-h-11 cursor-pointer content-center font-medium">Send a request to the person who listed this</summary>
+    <details class="grid gap-1 rounded-lg border bg-card p-4" open={Boolean(form?.fields?.request)}>
+      <summary class="min-h-11 cursor-pointer content-center font-medium">Raise a conflict about this posting to the person who listed this</summary>
       <p class="mt-2 text-muted-foreground">
         For example, to ask them to update or take down the listing. It goes only to them, and the
         listing stays as it is.
