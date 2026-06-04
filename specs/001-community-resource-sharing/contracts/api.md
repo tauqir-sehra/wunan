@@ -36,7 +36,8 @@ is generated from the code at `GET /api/v1/openapi.json`; this file is the human
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
 | `GET /invitations/{token}` | public | `{ valid: true, inviterName }` or `404 invitation_not_valid` (used, expired, cancelled, or unknown; same response). |
-| `POST /invitations/{token}/accept` | public | `{ email, displayName, password }` → creates member, marks invitation used, returns session token. `409 email_taken` if registered. |
+| `POST /invitations/{token}/accept` | public | `{ email, displayName, password, emailNotifications }` → deletes any unconfirmed account for that email whose hold has passed, creates an unverified account, reserves the invitation for 7 days, sends a confirmation email; returns `202 { status: "check_your_email" }`. `409 email_taken` if the email belongs to a confirmed account or one still within its hold. |
+| `POST /invitations/confirm` | public | `{ token }` from the confirmation email → verifies the email, marks the invitation used, returns a session token. Expired or used → `404 confirmation_not_valid`. |
 | `POST /invitations` | member | Creates an invitation; returns `{ id, link, expiresAt }`. The raw link is returned only here. |
 | `GET /me/invitations` | member | My invitations and statuses. |
 | `POST /invitations/{id}/cancel` | inviter | Cancels an unused invitation. |
@@ -49,7 +50,7 @@ is generated from the code at `GET /api/v1/openapi.json`; this file is the human
 | `POST /me/push-subscriptions` | member | `{ platform: "web", endpoint, keys: { p256dh, auth }, label }`. Other platforms reserved for future clients. |
 | `DELETE /me/push-subscriptions/{id}` | member | Removes a device. |
 | `GET /me/export` | member | ZIP per [export-format.md](export-format.md). |
-| `DELETE /me` | member | `{ password }`; response lists nothing further. Effects per research §16. |
+| `DELETE /me` | member | `{ password }` → `204 No Content`. Effects per research §16. |
 | `GET /me/summary` | member | Quiet home counts: `{ unreadConversations, agreementsNeedingAttention, unseenFlags }`. |
 
 ## Listings
@@ -60,7 +61,7 @@ is generated from the code at `GET /api/v1/openapi.json`; this file is the human
 | `POST /listings` | member | Create. Body is a discriminated union on `type` (fields per data-model). Only `type` and `title` required (plus Trade's wanted-or-open rule). |
 | `GET /listings/{id}` | member | Full listing with photos (`alt`, `url`), owner and owner's inviter. Owner also gets `flags`. |
 | `PATCH /listings/{id}` | owner | Edit fields; `type` cannot change. |
-| `POST /listings/{id}/pause`, `/resume`, `/remove` | owner | Status changes. |
+| `POST /listings/{id}/pause`, `/resume`, `/remove`, `/reopen` | owner | Status changes. `reopen` only when `closedReason = removed` (FR-013b). |
 | `POST /listings/{id}/photos` | owner | Multipart `file`, optional `alt`. ≤6 per listing, ≤10 MB, images only (`413`, `400 not_an_image`). |
 | `PATCH /listings/{id}/photos/{photoId}` | owner | `{ alt, position }`. |
 | `DELETE /listings/{id}/photos/{photoId}` | owner | Deletes the photo. |
@@ -92,6 +93,7 @@ is generated from the code at `GET /api/v1/openapi.json`; this file is the human
 | `GET /agreements/{id}` | party, mediator | Details, confirmation, reports. |
 | `POST /agreements/{id}/confirm`, `/dispute` | other member | Sets confirmation. |
 | `POST /agreements/{id}/returned` | owner | Loans only; listing becomes available. |
+| `POST /agreements/{id}/cancel` | owner | Pending only; reverses the listing effects and notifies the other member (FR-024a). |
 | `POST /agreements/{id}/reports` | party | `{ description }` → report + mediation conversation with the reported member's inviter. |
 | `GET /reports/{id}` | reporter, reported, mediators | Report, escalation level, conversation id. |
 | `POST /reports/{id}/escalate` | reporter, current mediator | Next step; `409 already_at_founders` once founders are involved. |

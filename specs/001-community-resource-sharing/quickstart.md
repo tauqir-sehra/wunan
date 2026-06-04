@@ -38,7 +38,7 @@ Expected: all pass with zero axe violations at WCAG 2.2 AA level.
 Use two browser windows (one private) to act as two members.
 
 1. **Join by invitation (US1)**: Founder → Invitations → Create → copy link. In the private window,
-   join as "Alex". Alex's profile shows "Invited by" the founder; the founder's shows "Founding
+   join as "Alex" (leave the email checkbox unticked), open the confirmation email in Mailpit, and confirm. Alex's profile shows "Invited by" the founder; the founder's shows "Founding
    member". Re-open the link → "no longer valid". Signed out, `/listings` redirects to sign-in.
    Trying to sign up directly through `/api/auth/sign-up/email` without an invite is refused.
 2. **List a resource (US2)**: As founder, create a Gift "Rice", 5 kg, area "Riverside", one phone
@@ -66,7 +66,10 @@ Use two browser windows (one private) to act as two members.
    Report can stay open; Alex's access is unchanged.
 8. **Flag (FR-013a)**: Alex flags "Rice" with a request → founder notified; listing still visible.
 9. **Export & delete (FR-032)**: Alex exports → ZIP matches [contracts/export-format.md](contracts/export-format.md).
-    Alex deletes the account → profile shows "Former member"; agreement still visible to founder.
+    Alex deletes the account → profile shows "Alex (no longer a member)"; agreement still visible to founder.
+10. **Sign-in runs out mid-form (constitution V)**: As Alex, open a conversation and type a message.
+    In the database, delete Alex's session, then press Send → the sign-in form appears on the same
+    page; after signing in, the message is sent as typed.
 
 ## API independence check
 

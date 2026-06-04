@@ -1,15 +1,3 @@
-<!--
-Sync Impact Report
-- Version change: 1.0.0 → 1.1.0
-- Modified principles:
-  - VII. Minimal Dependencies → VII. No Unnecessary Dependencies (a modern stack is explicitly
-    allowed; dependencies need a clear benefit; check-before-adding rule unchanged)
-- Added sections: none
-- Removed sections: none
-- Follow-up TODOs: specs/001-community-resource-sharing/plan.md and research.md cite the old
-  "minimal" wording; regenerate with /speckit-plan
--->
-
 # wunan Constitution
 
 ## Core Principles

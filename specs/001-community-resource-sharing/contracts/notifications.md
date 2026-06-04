@@ -1,9 +1,10 @@
 # Contract: Notifications
 
 All notifications are sent by the API (`apps/api/src/notify/`). They go out by email and, for members who turn them on, as device notifications (FR-031,
-FR-031a). Each type has separate email and device switches in `/settings/notifications`. Email is on
-by default; device notifications are off until the member turns them on, and wunan never asks for
-permission on its own.
+FR-031a). Each type has separate email and device switches in `/settings/notifications`. Both channels
+are off until the member turns them on. Email can be turned on with one
+unticked checkbox when joining, or per type in Settings; device notifications only from Settings.
+wunan never asks for browser permission on its own.
 
 Calm rules for both channels (constitution V and I):
 
@@ -17,6 +18,7 @@ Calm rules for both channels (constitution V and I):
 |------|---------|------|-----------------------------------------|-------|
 | `message` | Other participants not currently viewing the conversation | A message arrives | "New message from Sam about Drill" | The conversation |
 | `agreement` | Other member | Owner records an agreement | "Sam recorded an agreement with you" | The agreement |
+| `agreement` | Other member | Owner cancels a pending agreement (FR-024a) | "Sam cancelled an agreement with you" | The agreement |
 | `agreement` | Owner | Other member disputes it | "Alex said an agreement needs a correction" | The agreement |
 | `reminder` | Owner and borrower | Once, the day after `return_due` if not returned | "A reminder about the drill" | The agreement |
 | `report` | Reported member and current mediators | Report created or escalated | "Someone asked for help with an agreement" | The report |

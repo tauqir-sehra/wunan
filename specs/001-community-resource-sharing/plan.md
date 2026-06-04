@@ -58,9 +58,9 @@ English only
 |-----------|------|--------|
 | I. People Over Extraction | No ads, tracking, engagement metrics, or payment processing; no third-party push, font, or storage services; export and account deletion (FR-030, FR-032, FR-033) | ✅ Pass. Future Android push to prefer UnifiedPush over Firebase (research §10) |
 | II. Simple, Intuitive Workflows | One primary action per page; plain-language errors (written once in the API, shown by every client); confirm destructive actions; only type + title required for a listing | ✅ Pass |
-| III. Security First | Maintained auth library with bearer tokens; invite-only account creation; rate limits on sign-in, messages, invitations, flags; Zod validation on every API input; API has no cookies or CORS; web keeps the token in an HttpOnly cookie and uses CSP and origin checks; members-only photos with metadata stripped; hashed invite tokens; no personal data in logs; browser never calls the API directly | ✅ Pass. Research §6, §8, §14. Security review required for: auth and invitation accept, bearer handling in web, photo upload, contact sharing, live stream, push subscriptions |
+| III. Security First | Maintained auth library with bearer tokens; invite-only account creation; rate limits on sign-in, messages, invitations, flags; Zod validation on every API input; API has no cookies or CORS; web keeps the token in an HttpOnly cookie and uses CSP and origin checks; members-only photos with metadata stripped; hashed invite tokens; no personal data in logs; browser never calls the API directly | ✅ Pass. Research §6, §8, §14. Security review required before merge for: auth and invitation accept, bearer handling in web, photo upload, contact sharing, live stream, push subscriptions (checkpoint in each phase that touches them, plus a final review) |
 | IV. Accessible (WCAG 2.2 AA) | Native controls preferred; Bits UI for complex widgets; contrast-checked tokens in both themes; visible focus; 44 px targets; alt text; polite live region; automated axe + manual audit | ✅ Pass |
-| V. Calm Design | No autoplay, sound, or component animations; neutral palette; live updates only inside an open conversation; device notifications off by default, never auto-prompted, silent, rate-limited | ✅ Pass |
+| V. Calm Design | No autoplay, sound, or component animations; neutral palette; live updates only inside an open conversation; email and device notifications off by default, never auto-prompted, silent, rate-limited | ✅ Pass |
 | VI. Readable, Simple Code | Business rules in one plain module per area in the API; thin route handlers; no repository/service layers over Drizzle; web routes only call the API and render; shared schemas instead of duplicated types | ⚠️ **Justified added complexity**: a second application and an HTTP boundary. See Complexity Tracking |
 | VII. No Unnecessary Dependencies | Each dependency justified and approved in advance | ✅ Pass. Runtime and development lists in research.md approved by the project owner on 2026-06-03; any addition needs a new approval |
 
@@ -103,10 +103,10 @@ apps/api/
 ├── drizzle/                      # Generated SQL migrations (committed)
 ├── scripts/                      # create-founder.ts, seed-demo.ts (dev only)
 └── src/
-    ├── index.ts                  # Starts the server and the hourly reminder job
+    ├── index.ts                  # Starts the server and the hourly jobs (expired holds, reminders)
     ├── app.ts                    # Hono app: middleware, route mounting, OpenAPI document
     ├── auth.ts                   # Better Auth config: bearer plugin, public sign-up disabled
-    ├── db/schema.ts, db/index.ts
+    ├── db/schema/, db/index.ts   # Tables, one file per area
     ├── routes/                   # Thin handlers, one file per area (match contracts/api.md)
     │   ├── invitations.ts, members.ts, me.ts, listings.ts, photos.ts
     │   └── conversations.ts, agreements.ts, reports.ts
@@ -114,7 +114,7 @@ apps/api/
     │   ├── invitations.ts, members.ts, listings.ts, search.ts, photos.ts
     │   └── messaging.ts, live.ts, agreements.ts, reports.ts, export.ts, reminders.ts
     ├── notify/                   # index.ts (rules), email.ts, push.ts
-    └── lib/                      # errors.ts (plain-language errors), rate-limit.ts
+    └── lib/                      # errors.ts (plain-language errors), rate-limit.ts, crypto.ts
     # Tests sit next to the code: modules/*.test.ts, routes/*.test.ts
 
 apps/web/
@@ -131,6 +131,7 @@ apps/web/
     │   ├── components/*.svelte   # Steps, PhotoPicker, MessageList, ListingCard
     │   └── utils.ts              # cn() class helper
     └── routes/                   # One folder per route in contracts/pages.md
+                                  # incl. routes/help/: member help pages (constitution VI)
 ```
 
 **Structure Decision**: Two apps and one shared package in a single repository. `apps/api` owns

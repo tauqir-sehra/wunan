@@ -68,6 +68,11 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
   client authenticates the same way: `Authorization: Bearer <session token>`. Better Auth provides
   password hashing (scrypt), database sessions, single-use time-limited reset tokens, and rate
   limiting on sign-in and reset. Passwords 10–128 characters.
+- **Session length** (constitution V): sessions last 30 days and renew once a day while in use
+  (`expiresIn`, `updateAge`). If a session has expired when a web form is sent, the web app shows
+  the sign-in form on the same page with the member's input kept, then sends it after sign-in, so no
+  typed work is lost. Chosen photos cannot be carried through a sign-in, so the page asks the member
+  to choose them again rather than dropping them silently.
 - **How each client holds the token**:
   - Web: the SvelteKit server signs in through the API, then stores the session token in its own
     `HttpOnly`, `Secure`, `SameSite=Lax` cookie. The browser never sees the token, and never calls the
@@ -75,8 +80,13 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
   - Android (future): stores the token in Android's encrypted storage and sends it as a bearer
     header.
 - **Invite-only sign-up**: Better Auth's public sign-up route is disabled. Accounts are created only
-  by `POST /api/v1/invitations/{token}/accept`, which validates the invitation, creates the account
-  through Better Auth's server API, and marks the invitation used in one transaction.
+  by `POST /api/v1/invitations/{token}/accept`, which validates the invitation, creates an unconfirmed account
+  through Better Auth's server API, and holds the invitation for 7 days. `POST
+  /api/v1/invitations/confirm` (from the emailed link) verifies the email and marks the invitation
+  used in one transaction.
+- **Email confirmation** (FR-001b): Better Auth's `requireEmailVerification` blocks sign-in until
+  the confirmation link is opened; its verification token lasts 7 days, matching the invitation
+  hold. Unconfirmed accounts are deleted when the hold passes (§11).
 - **No email enumeration**: sign-in returns one generic error; password reset always returns the same
   response.
 - **Rationale**: Constitution III forbids hand-rolled authentication. Bearer tokens are the standard
@@ -131,10 +141,11 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
   That decision belongs to the Android feature; this design only reserves the `platform` field.
 - **Alternatives considered**: Third-party push services for web (send member data to a company).
 
-## 11. Return reminders (FR-025)
+## 11. Hourly jobs: return reminders (FR-025) and expired holds (FR-001b)
 
 - **Decision**: An hourly job in the API process. It takes a PostgreSQL advisory lock (so only one
-  copy runs if several API instances exist), finds loans past `return_due` with no
+  copy runs if several API instances exist), then deletes unconfirmed accounts whose 7-day
+  invitation hold has passed (freeing their invitations), and finds loans past `return_due` with no
   `reminder_sent_at`, sends reminders, and records them.
 - **Rationale**: No cron setup or queue library; idempotent by design.
 
@@ -189,6 +200,11 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 - **Network**: one public HTTPS entry point (Caddy). `/api/*` routes to the API (for future mobile
   clients), everything else to the web app. The web app reaches the API over the internal Docker
   network.
+- **At rest**: the database volume, photos volume, and backups MUST be on encrypted storage (e.g.,
+  LUKS full-disk encryption or the hosting provider's encrypted volumes). Backups are encrypted before
+  leaving the server (e.g., with `age` or `gpg`). Members' private contact details (`share_phone`,
+  `share_email`) are additionally encrypted in the database with AES-256-GCM using Node's built-in
+  `crypto`, with the key from `DATA_ENCRYPTION_KEY`. No new dependency.
 - **Secrets** come only from environment variables.
 
 ## 15. Testing
@@ -205,7 +221,8 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 - **Decision**: `GET /api/v1/me/export` returns a ZIP built with `fflate` containing
   `my-wunan-data.json`, a plain-language `README.txt`, and the member's own photos. Account deletion
   (`DELETE /api/v1/me`, password required) clears personal fields and sign-in data, deletes listings,
-  photos, push subscriptions, and contact details, and marks the member "Former member"; agreements,
+  photos, push subscriptions, and contact details, keeps only the display name (shown as "<name> (no
+  longer a member)"), and revokes sessions; agreements,
   reports, and messages stay visible to the other members involved.
 
 ## 17. Deployment for self-hosting (spec Assumptions)

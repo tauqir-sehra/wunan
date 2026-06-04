@@ -1,7 +1,7 @@
 # Data Model: Community Resource Sharing
 
 Entities from [spec.md](spec.md) Key Entities, as PostgreSQL tables defined with Drizzle in
-`apps/api/src/db/schema.ts`. Only the API reads or writes these tables; clients see them through
+`apps/api/src/db/schema/` (one file per area). Only the API reads or writes these tables; clients see them through
 [contracts/api.md](contracts/api.md). Every table has `id` (UUID, random) and `created_at` (timestamptz).
 "FK" means a foreign key. Tables owned by Better Auth (`session`, `account`, `verification`) follow
 its standard schema and are not repeated here.
@@ -11,13 +11,13 @@ its standard schema and are not repeated here.
 | Field | Type | Rules |
 |-------|------|-------|
 | email | text, unique | Required; sign-in only; never shown to other members (FR-001a) |
-| email_verified | boolean | Set true on joining via invitation link sent by email or by founder setup |
+| email_verified | boolean | Set true when the confirmation link is opened (FR-001b); founders: set by the setup command. Unverified accounts cannot sign in, and are deleted once their invitation's hold passes |
 | display_name | text, 1–60 chars | Required; shown on profile and listings |
 | bio | text, ≤500 chars | Optional |
 | invited_by_id | FK → member, nullable | Null only when `is_founder` (FR-001, FR-003) |
 | is_founder | boolean | Set only by the `create-founder` command; final mediators (FR-029a) |
-| share_phone, share_email | text, nullable | Private; revealed only via contact sharing (FR-019) |
-| deleted_at | timestamptz, nullable | Set on account deletion; personal fields cleared; shown as "Former member" |
+| share_phone, share_email | text, nullable | Private; revealed only via contact sharing (FR-019). Stored encrypted (AES-256-GCM, research §14) |
+| deleted_at | timestamptz, nullable | Set on account deletion; personal fields cleared except `display_name`; shown as "<name> (no longer a member)" |
 
 Password hashes live in Better Auth's `account` table. There is no field for removal, suspension, or
 penalty (FR-029b). Invite chain = follow `invited_by_id` until a founder.
@@ -30,7 +30,7 @@ One row per member per notification type (FR-031).
 |-------|------|-------|
 | member_id | FK → member | |
 | type | enum | `message`, `agreement`, `reminder`, `report`, `flag` |
-| email | boolean | Default true |
+| email | boolean | Default false; set from the join-form choice (FR-031) |
 | device | boolean | Default false (FR-031a) |
 
 Unique on (`member_id`, `type`).
@@ -54,12 +54,21 @@ Deleted when the member turns device notifications off on that device, when a pu
 |-------|------|-------|
 | token_hash | text, unique | SHA-256 of a 32-byte random token; the raw token is only in the link |
 | inviter_id | FK → member | Required |
-| status | enum | `unused` → `used` / `cancelled`; treated as expired when `expires_at` has passed |
+| status | enum | `unused` → `pending_confirmation` → `used`; `unused` → `cancelled`; treated as expired when `expires_at` has passed |
+| reserved_until | timestamptz, nullable | Set when sign-up starts: now + 7 days. After it passes, the unconfirmed account is deleted and a `pending_confirmation` invitation returns to `unused` |
 | expires_at | timestamptz | `created_at` + 14 days (FR-002) |
 | used_by_id | FK → member, nullable | |
 
-Joining requires `status = unused` and `expires_at` in the future, checked inside the same
-transaction that creates the member. Joining with an already-registered email is refused.
+Starting to join requires `status = unused` (or `pending_confirmation` past `reserved_until`) and
+`expires_at` in the future; it creates an unverified account and sends a confirmation email. Opening
+the confirmation link verifies the email and marks the invitation `used`, in one transaction.
+Joining with an email that belongs to a confirmed account is refused.
+
+**Expired holds**: an unconfirmed account whose hold has passed is deleted (with its notification
+preferences and sessions), and its invitation returns to `unused`. This runs before every new
+sign-up attempt, so the same email can try again straight away, and in the hourly job, so
+unconfirmed personal data is not kept. A confirmation link keeps working until `reserved_until`,
+even if the invitation's own 14-day expiry passes in the meantime.
 
 ## listing
 
@@ -84,6 +93,7 @@ transaction that creates the member. Joining with an already-registered email is
 | sessions_remaining | integer, nullable | Starts at `sessions_available`; never below 0 |
 | area | text, ≤60 chars, nullable | Approximate area only (FR-011); hint text says "not your address" |
 | status | enum | `available`, `lent_out`, `paused`, `closed` (FR-014) |
+| closed_reason | enum, nullable | `removed` (owner removed it) or `used_up` (nothing remains); set when `status = closed`. Only `removed` listings can be reopened (FR-013b) |
 | search_vector | tsvector, generated | Title (weight A) + description + wanted (weight B); GIN index |
 | updated_at | timestamptz | |
 
@@ -101,7 +111,9 @@ available ──(agreement on a listing without an amount, Gift/Trade)──▶ 
 available ──(sessions_remaining reaches 0, Service)──▶ closed
 (a Service without `sessions_available` stays available until the owner removes it)
 available ⇄ paused (owner pauses / resumes)
-any except closed ──(owner removes)──▶ closed
+any except closed ──(owner removes)──▶ closed (closed_reason = removed)
+closed (removed) ──(owner reopens)──▶ available
+(automatic closes set closed_reason = used_up)
 ```
 
 Only the owner can change a listing's content or status (FR-013a).
@@ -162,14 +174,16 @@ Index (`conversation_id`, `created_at`). Saving a message triggers `NOTIFY` for 
 | return_due | date, nullable | Required when `outcome = lent` |
 | returned_at | timestamptz, nullable | Set by owner (FR-025) |
 | reminder_sent_at | timestamptz, nullable | Guarantees one reminder |
-| confirmation | enum | `pending` → `confirmed` / `disputed` (FR-023) |
+| confirmation | enum | `pending` → `confirmed` / `disputed` / `cancelled` (FR-023, FR-024a); only the owner cancels, only while `pending` |
 | note | text, ≤500 chars | Optional |
 
 **Effects on listing** (FR-024), applied in the same transaction (row-locked listing, so two
 agreements can't over-allocate): `lent` → `lent_out`; `gifted`/`traded` with an amount →
 `remaining -= amount`, and `closed` at 0; without an amount → `closed`. `provided` →
 `sessions_remaining -= sessions`, `closed` at 0; without `sessions_available` → unchanged. Marked returned →
-`available`.
+`available`. **Cancelling** a pending agreement (FR-024a) reverses these effects in the same locked
+transaction: `remaining` / `sessions_remaining` restored, status back to `available`, `closed_reason`
+cleared.
 
 ## problem_report
 
@@ -183,6 +197,9 @@ agreements can't over-allocate): `lent` → `lent_out`; `gifted`/`traded` with a
 | status | enum | `open` → `resolved`; may stay open indefinitely |
 | outcome_note | text, ≤1000 chars, nullable | Required to resolve |
 | resolved_by_id | FK → member, nullable | |
+
+Mediators are not stored on the report: they are the participants of its mediation conversation
+(`conversation.problem_report_id`) other than the reporter and the reported member.
 
 **Escalation** (FR-029a): on creation, the reported member's nearest active inviter joins the
 mediation conversation. First escalation adds that inviter's nearest active inviter; if that would be

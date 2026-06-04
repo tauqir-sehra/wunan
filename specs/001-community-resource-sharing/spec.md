@@ -70,8 +70,9 @@ the new profile and sees the inviter's name linked.
 
 1. **Given** a member, **When** they create an invitation, **Then** they receive a personal invite
    link they can send by any means they choose.
-2. **Given** a valid unused invitation, **When** the invitee opens it and completes the short sign-up,
-   **Then** they become a member and their profile shows the inviter.
+2. **Given** a valid unused invitation, **When** the invitee completes the short sign-up, **Then**
+   wunan emails them a confirmation link, and once they open it they become a member and their
+   profile shows the inviter. The invitation stays reserved for 7 days while they confirm.
 3. **Given** a used or expired invitation, **When** someone opens it, **Then** they see a plain message
    that the invitation is no longer valid and to ask the person who sent it for a new one.
 4. **Given** any member's profile, **When** another member views it, **Then** they see the member's
@@ -231,9 +232,9 @@ a notification and can see the agreement record and open a three-way conversatio
 
 ### Edge Cases
 
-- An inviter deletes their account: their invitees keep their membership; their profiles still show the
-  original inviter (marked as "no longer a member"), and mediation for those invitees passes up to the
-  next active member in the chain.
+- An inviter deletes their account: their invitees keep their membership. Profiles and invite chains
+  still show the inviter's display name with "(no longer a member)"; all other personal data is
+  removed. Mediation for those invitees passes to the next active member in the chain.
 - The founding members have no inviter: their profiles show "Founding member".
 - A member tries to invite themselves or an existing member's email: the invitation simply works as a
   link; joining with an already-registered email is refused with a plain message.
@@ -246,6 +247,10 @@ a notification and can see the agreement record and open a three-way conversatio
   wunan only records it as text and never handles payment.
 - A member needs a unit that isn't in the list: they choose "other" and describe it in the title or
   description.
+- A member's sign-in runs out while they are filling in a form (e.g., a listing or a message): they
+  are asked to sign in again on the same page, and what they typed is kept and sent once they have
+  signed in. Chosen photos cannot be kept this way; the page says plainly that they need to be
+  chosen again. Sign-ins last 30 days and renew while the member keeps using wunan.
 - A conflict is not resolved even after reaching the founding members: the report stays open with
   no penalty to anyone; members can still close it as resolved later.
 
@@ -260,6 +265,9 @@ a notification and can see the agreement record and open a three-way conversatio
 - **FR-001a**: Members MUST sign in with email and password. Members MUST be able to reset a
   forgotten password via a single-use, time-limited link sent to their email. Sign-in errors MUST NOT
   reveal whether an email is registered, and repeated failed attempts MUST be slowed down.
+- **FR-001b**: A new member's email address MUST be confirmed through a link sent to it before their
+  account is active, so password resets always reach them. An account not confirmed within 7 days
+  MUST be deleted, and its invitation can be used again (by the same email or another).
 - **FR-002**: Members MUST be able to create single-use invitation links that expire after 14 days and
   can be cancelled before use.
 - **FR-003**: Every member profile MUST show the member's display name, who invited them (linked),
@@ -284,16 +292,20 @@ a notification and can see the agreement record and open a three-way conversatio
   number of times available (a whole number ≥ 1). When a number of times is set, the listing MUST
   show how many sessions remain and close automatically when none remain.
 - **FR-011**: Location MUST be optional, MUST be shown only at an approximate area level on listings,
-  and exact addresses MUST be shared only by the owner through direct messages.
+  and exact addresses MUST be shared only by the owner through direct messages. The area is a short
+  free-text field with the hint "Your neighbourhood, not your address"; wunan does not check what is
+  typed.
 - **FR-012**: Members MUST be able to add up to 6 photos per listing, each with an optional
   description used as alt text; location metadata MUST be removed from uploaded photos.
 - **FR-013**: Owners MUST be able to edit, pause, resume, and remove their listings.
 - **FR-013a**: Members MUST be able to flag another member's listing with a written request to its
   owner. The owner MUST be notified and shown the request and who sent it. Only the owner can edit or
   take down a listing; no other member, including founding members, can hide or remove it.
+- **FR-013b**: Owners MUST be able to reopen a listing they removed, returning it to Available (with
+  its remaining amount unchanged), unless it closed because nothing remained.
 - **FR-014**: Each listing MUST have a status: Available, Lent out (with return date), Paused, or
   Closed. Gift and Trade listings with an amount MUST show the remaining amount and close
-  automatically when it reaches zero; Service listings likewise for sessions remaining (FR-010a).
+  automatically when it reaches zero (for Service sessions, see FR-010a).
 
 **Finding**
 
@@ -325,10 +337,13 @@ a notification and can see the agreement record and open a three-way conversatio
   (default 1). The outcome (lent, gifted, traded, provided) follows the listing's offering type.
 - **FR-023**: The other member MUST be notified and able to confirm or dispute the recorded agreement.
 - **FR-024**: Recording an agreement MUST update the listing status and remaining amount automatically.
+- **FR-024a**: While an agreement is still pending (not yet confirmed or disputed), the owner MUST be
+  able to cancel it. Cancelling restores the listing's remaining amount or sessions and its previous
+  status, and tells the other member.
 - **FR-025**: For loans, the system MUST send one reminder to both members on the day after the return
   date passes, and owners MUST be able to mark the item returned.
 - **FR-026**: Each member MUST be able to see a history of their own agreements (given, received, lent,
-  borrowed).
+  borrowed, provided).
 
 **Problems & mediation**
 
@@ -349,30 +364,33 @@ a notification and can see the agreement record and open a three-way conversatio
   as view counts, likes, or rankings of members.
 - **FR-031**: Notifications MUST be limited to: new messages, agreement confirmations, return
   reminders, problem reports, and listing flags; members MUST be able to turn each type on or off.
-  Notifications are sent by email (on by default) and, optionally, as phone/device notifications,
-  which are off until the member turns them on; each channel has its own per-type switches.
+  Notifications are sent by email and, optionally, as device notifications. Both are off until the
+  member turns them on. When joining, members see one plainly explained choice, "Email me when
+  someone messages me or something needs my attention", which is unticked by default; they can
+  change it per type in Settings. Each channel has its own per-type switches.
 - **FR-031a**: Members MUST be able to add wunan to their phone's home screen and receive device
   notifications without installing anything from an app store. Turning device notifications on
   MUST be a single, plainly explained step in settings and MUST never be prompted automatically.
 - **FR-032**: Members MUST be able to export all their data (profile, listings, agreements, messages)
-  in a readable format, and delete their account.
+  in a readable format, and delete their account. Deleting an account keeps only the display name,
+  for invite chains and shared agreement history.
 - **FR-033**: wunan MUST NOT process payments; any money mentioned in a trade is free text only, and
   payment happens between members outside the app.
 - **FR-034**: All screens MUST meet WCAG 2.2 AA and the calm-design rules in the constitution.
 
 ### Key Entities
 
-- **Member**: A person in the community. Display name, optional short bio, optional photo, join date,
+- **Member**: A person in the community. Display name, optional short bio, join date,
   inviter (or "founding member"), contact details (private until shared), notification preferences.
-- **Invitation**: Created by a member for one person. Inviter, status (unused, used, expired,
+- **Invitation**: Created by a member for one person. Inviter, status (unused, waiting for email confirmation, used, expired,
   cancelled), expiry, and the member who used it.
 - **Listing**: A resource offered by a member. Owner, offering type (Lend, Gift, Trade, Service),
   title, description, amount and unit, remaining amount, maximum loan length (Lend), what's wanted in
   return and "open to offers" (Trade), session length and sessions available/remaining (Service), photos, approximate area, status.
-- **Conversation**: Messages between two members (or three, for a problem report), optionally linked
+- **Conversation**: Messages between two members (or three or more, for a problem report), optionally linked
   to a listing; includes contact-sharing events and proposed call times.
 - **Agreement**: A recorded exchange on a listing between owner and another member. Outcome type,
-  amount, agreed return date (loans), returned date, confirmation status.
+  amount, sessions (services), agreed return date (loans), returned date, confirmation status.
 - **Problem Report**: Raised on an agreement. Reporter, reported member, responsible inviter,
   description, status, escalation level (inviter, inviter's inviter, founding members), outcome note.
 - **Listing Flag**: A request from a member to a listing's owner. Listing, flagging member, request
@@ -412,7 +430,8 @@ a notification and can see the agreement record and open a three-way conversatio
 - Each community self-hosts its own installation. The person running it (the operator) has server
   experience and handles hosting, HTTPS, email sending, backups, and updates using written
   operator documentation. No hosted service is provided by the wunan project.
-- Invitations have no per-member limit initially.
+- There is no limit on how many people a member can invite in total; a generous daily limit
+  (20 new invitations per day) only guards against misuse.
 - Listings stay up until the owner closes them or the amount runs out; there is no automatic expiry.
 - The interface is in English only, written in plain language; translation support is out of scope
   and not prepared for.
