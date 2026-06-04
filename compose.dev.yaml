@@ -1,0 +1,28 @@
+# Local development services only: PostgreSQL (dev + test databases) and Mailpit (catches email).
+# The API and web app run on your machine with `npm run dev`. Not for production; see compose.yaml.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: wunan
+      POSTGRES_PASSWORD: wunan
+      POSTGRES_DB: wunan
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-dev:/var/lib/postgresql/data
+      # Creates the separate test database on first start.
+      - ./docker/create-test-db.sql:/docker-entrypoint-initdb.d/create-test-db.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wunan']
+      interval: 2s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '127.0.0.1:1025:1025' # SMTP
+      - '127.0.0.1:8025:8025' # Web inbox at http://localhost:8025
+
+volumes:
+  postgres-dev:

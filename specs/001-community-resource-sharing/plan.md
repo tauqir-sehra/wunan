@@ -20,10 +20,10 @@ with shared Zod schemas, and are self-hosted per community with Docker Compose. 
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5 (strict) on Node.js 24 LTS; Svelte 5
+**Language/Version**: TypeScript 6 (strict) on Node.js 24 LTS (the API runs `.ts` directly with Node's built-in type stripping); Svelte 5
 
 **Primary Dependencies**: API: Hono (+ Node server, Zod OpenAPI), Drizzle ORM + postgres.js,
-Better Auth (bearer tokens), Zod, sharp, nodemailer, web-push, fflate. Web: SvelteKit 2
+Better Auth (bearer tokens), Zod, sharp, nodemailer, web-push, fflate. Web: SvelteKit 3
 (adapter-node), Tailwind CSS v4, shadcn-svelte components on Bits UI, Lucide, self-hosted Inter.
 Approved by the project owner on 2026-06-03 (constitution VII); see
 [research.md](research.md#dependency-summary-for-maintainer-approval-constitution-vii).
@@ -118,7 +118,7 @@ apps/api/
     # Tests sit next to the code: modules/*.test.ts, routes/*.test.ts
 
 apps/web/
-├── Dockerfile, svelte.config.js, vite.config.ts, components.json
+├── Dockerfile, vite.config.ts (SvelteKit 3 config lives here), components.json
 ├── static/                       # manifest.webmanifest, icons
 ├── tests/e2e/                    # Playwright specs, one per user story
 └── src/

@@ -27,8 +27,11 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 
 ## 2. Runtime and versions
 
-- **Decision**: Node.js 24 LTS for both apps; TypeScript 5 (strict); PostgreSQL 17 or newer.
-  Web: SvelteKit 2 with Svelte 5 and `@sveltejs/adapter-node`.
+- **Decision**: Node.js 24 LTS for both apps; TypeScript 6 (strict); PostgreSQL 17 or newer.
+  Web: SvelteKit 3 with Svelte 5 and `@sveltejs/adapter-node`. (Changed from SvelteKit 2 on
+  2026-06-04 with the project owner's approval: two SvelteKit 2 security advisories are fixed only
+  in 3.) The API runs TypeScript directly with Node 24's built-in type stripping, so it needs no
+  build step and no `tsx`.
 - **Rationale**: Current, long-supported releases; one language and runtime across the repository.
 
 ## 3. API framework
@@ -271,10 +274,16 @@ Runtime, `apps/web`:
 | `@lucide/svelte` | Icons | Consistent icon set; tree-shaken |
 | `@fontsource-variable/inter` | Self-hosted Inter font | Sleek typography without a third-party font service (I) |
 
-Development only: `typescript`, `tsx` (run API in dev), `vite`, `tailwindcss`, `@tailwindcss/vite`,
+Development only: `typescript`, `vite`, `tailwindcss`, `@tailwindcss/vite`,
 `shadcn-svelte` (CLI via `npx`), `drizzle-kit`, `vitest`, `@playwright/test`,
 `@axe-core/playwright`, `svelte-check`, `eslint` (+ Svelte/TypeScript plugins), `prettier`
 (+ `prettier-plugin-tailwindcss`).
+
+Also development only, approved by the project owner on 2026-06-04 during setup: `@types/node`,
+`@types/nodemailer`, `@types/web-push` (type definitions), `@sveltejs/vite-plugin-svelte`
+(SvelteKit's required build plugin), `typescript-eslint`, `@eslint/js`, `eslint-plugin-svelte`,
+`globals`, `prettier-plugin-svelte` (lint/format support), and `dotenv-cli` (loads `.env` for
+scripts).
 
 All pinned to exact versions with a committed lockfile.
 

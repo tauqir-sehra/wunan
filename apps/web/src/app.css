@@ -1,0 +1,127 @@
+/*
+ * wunan's visual foundation: Tailwind CSS v4 plus calm theme tokens.
+ *
+ * Colours are a neutral stone base with one muted green accent. Every text/background pair
+ * meets WCAG AA (4.5:1) and input borders and the focus ring meet 3:1, in both light and dark
+ * themes. The checked pairs and ratios are listed in docs/design-tokens.md.
+ */
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+/* Dark theme follows the device setting; there is no separate switch to remember. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+  --primary: #355e50;
+  --primary-foreground: #ffffff;
+  --secondary: #f0eeec;
+  --secondary-foreground: #1c1917;
+  --muted: #f0eeec;
+  --muted-foreground: #57534e;
+  --accent: #e7efeb;
+  --accent-foreground: #1f3d33;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  /* Decorative lines (cards, separators) may be light; form controls use --input (≥ 3:1). */
+  --border: #e2dfdc;
+  --input: #78716c;
+  --ring: #355e50;
+  --radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #171514;
+    --foreground: #f5f5f4;
+    --card: #211f1d;
+    --card-foreground: #f5f5f4;
+    --popover: #211f1d;
+    --popover-foreground: #f5f5f4;
+    --primary: #9cc9b6;
+    --primary-foreground: #122a22;
+    --secondary: #2a2725;
+    --secondary-foreground: #f5f5f4;
+    --muted: #2a2725;
+    --muted-foreground: #b8b2ad;
+    --accent: #24352f;
+    --accent-foreground: #d7ebe2;
+    --destructive: #f4847a;
+    --destructive-foreground: #1c1917;
+    --border: #3a3633;
+    --input: #8a837d;
+    --ring: #9cc9b6;
+  }
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* 16 px minimum; respects the person's browser font-size setting. */
+    font-size: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background font-sans text-base leading-relaxed text-foreground antialiased;
+  }
+
+  /* One clearly visible focus style everywhere (constitution IV). */
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  a {
+    @apply underline underline-offset-2;
+  }
+}
+
+/*
+ * Calm design (constitution V): components ship without animations. This rule is a safety net
+ * for anything that slips through, and it fully applies when the person asks for less motion.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "wunan",
+  "private": true,
+  "description": "Share what you have with your community. Invite-only, calm, and free of extraction.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "npm run dev -w apps/api & npm run dev -w apps/web & wait",
+    "check": "npm run check --workspaces --if-present && eslint .",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "npm run test -w apps/api",
+    "test:e2e": "npm run test:e2e -w apps/web"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "dotenv-cli": "11.1.0",
+    "eslint": "10.14.0",
+    "eslint-plugin-svelte": "3.24.0",
+    "globals": "17.14.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-svelte": "4.1.1",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1"
+  }
+}

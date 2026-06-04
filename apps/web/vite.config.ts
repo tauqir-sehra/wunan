@@ -1,0 +1,34 @@
+// Vite and SvelteKit configuration: Node adapter for self-hosting, Tailwind CSS v4, and a strict
+// Content Security Policy (constitution III). SvelteKit adds a nonce to its own scripts.
+import adapter from '@sveltejs/adapter-node';
+import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  plugins: [
+    tailwindcss(),
+    sveltekit({
+      adapter: adapter(),
+      csp: {
+        mode: 'nonce',
+        directives: {
+          'default-src': ['self'],
+          'script-src': ['self'],
+          // Inline style attributes are used by positioning in menus; styles cannot run code.
+          'style-src': ['self', 'unsafe-inline'],
+          'img-src': ['self', 'data:', 'blob:'],
+          'font-src': ['self'],
+          'connect-src': ['self'],
+          'worker-src': ['self'],
+          'manifest-src': ['self'],
+          'form-action': ['self'],
+          'frame-ancestors': ['none'],
+          'base-uri': ['self'],
+          'object-src': ['none']
+        }
+      }
+    })
+  ],
+  server: { port: 5173, strictPort: true }
+});

@@ -30,7 +30,7 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 |----------|--------|-----------|
 | `POST /api/auth/sign-in/email` | public | `{ email, password }` → session + token in `set-auth-token` header. One generic error for any failure, except a correct password on an unconfirmed account → `403 email_not_confirmed` ("Please open the confirmation link we emailed you."). Rate-limited. |
 | `POST /api/auth/sign-out` | member | Revokes the session. |
-| `POST /api/auth/forget-password` | public | `{ email, redirectTo }` → always the same success response. |
+| `POST /api/auth/request-password-reset` | public | `{ email, redirectTo }` → always the same success response. |
 | `POST /api/auth/reset-password` | public | `{ token, newPassword }`; single-use, 1-hour token. |
 | `GET /api/auth/get-session` | member | Current session and member id. |
 | `POST /api/auth/sign-up/email` | — | Disabled; always refused. Use invitation accept below. |

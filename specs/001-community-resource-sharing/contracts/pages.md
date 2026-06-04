@@ -18,12 +18,12 @@ without JavaScript.
 
 | Route | Actions | Access | Behaviour |
 |-------|---------|--------|-----------|
-| `/sign-in` | `default`, `resendConfirmation` | public | Email + password. One generic error for any failure, except a correct password on an unconfirmed account: "Please open the confirmation link we emailed you." with a "Send it again" button (`resendConfirmation`). Rate-limited by Better Auth. |
+| `/sign-in` | `signIn`, `resendConfirmation` | public | Email + password. One generic error for any failure, except a correct password on an unconfirmed account: "Please open the confirmation link we emailed you." with a "Send it again" button (`resendConfirmation`). Rate-limited by Better Auth. |
 | `/sign-out` | `default` | member | Ends session. |
 | `/password-reset` | `default` | public | Always: "If that email is registered, we've sent a link." |
 | `/password-reset/[token]` | `default` | public | Single-use, 1-hour link; set new password. |
-| `/join/[token]` | `default` | public | Valid invite → sign-up (email, display name, password, and an optional unticked checkbox "Email me when someone messages me or something needs my attention" with one sentence on what it's for). Invalid/used/expired → plain message to ask the inviter for a new link. Success → "Check your email" page: "We've emailed a link to <email>. The link works for 7 days.", with "Send it again" and "Wrong email? Start again" (back to this form). |
-| `/join/confirm/[token]` | — | public | Opened from the confirmation email; confirms and signs in, then goes home. Expired → if the invitation is still valid, "This link has run out. Use your invitation link again."; otherwise "Ask the person who invited you for a new link." |
+| `/join/[token]` | `join`, `resend` | public | Valid invite → sign-up (email, display name, password, and an optional unticked checkbox "Email me when someone messages me or something needs my attention" with one sentence on what it's for). Invalid/used/expired → plain message to ask the inviter for a new link. Success → "Check your email" page: "We've emailed a link to <email>. The link works for 7 days.", with "Send it again" and "Wrong email? Start again" (back to this form). |
+| `/join/confirm/[token]` | `confirm` | public | Opened from the confirmation email; one "Finish joining" button confirms and signs in, then goes home (a button, so email link-scanners can't use up the one-time link). Expired → if the invitation is still valid, "This link has run out. Use your invitation link again."; otherwise "Ask the person who invited you for a new link." |
 | `/invitations` | `create`, `cancel` | member | Lists my invitations; `create` shows the link once with a "Copy link" button; `cancel` asks to confirm. |
 | `/members/[id]` | — | member | Profile: name, bio, joined, "Invited by" (linked) or "Founding member", people they invited, available listings. Deleted → "<name> (no longer a member)". |
 | `/members/[id]/chain` | — | member | Invite chain up to a founder. |

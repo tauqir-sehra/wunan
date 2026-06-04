@@ -1,0 +1,28 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.svelte-kit/
+coverage/
+
+# Local configuration and secrets (never commit these)
+.env
+.env.*
+!.env.example
+
+# Uploaded photos in local development
+apps/api/photos/
+apps/api/photos-test/
+
+# Test output
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Logs and editor files
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
