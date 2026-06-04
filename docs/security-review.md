@@ -36,3 +36,28 @@ storage, or input handling. Each entry lists what was checked, what was found, a
 
 **Notes for later phases**: the API trusts `X-Forwarded-For` because it is reachable only through
 Caddy and the web app; `compose.yaml` (T111) must not publish the API port.
+
+## US2: listings and photo upload (2026-06-04)
+
+**Scope**: `apps/api/src/modules/listings.ts`, `modules/photos.ts`, `routes/listings.ts`,
+`routes/photos.ts`, `app.ts` (body limits); `apps/web/src/routes/listings/**`,
+`routes/photos/[key]/+server.ts`.
+
+**Checked**
+
+| Area | Result |
+|------|--------|
+| Ownership | Every change (edit, status, photos) goes through `ownedListing`, which refuses non-owners with 403 (tested). Flags can't target your own listing (tested). |
+| Input | Listing fields validated by the shared Zod schema per type, with fields from other types refused (tested), plus matching database check constraints. Flags 1–500 characters, 10 per member per day. |
+| Photo contents | The real format is read from the file's bytes; only photo formats are accepted, so SVG and non-images are refused (tested). `limitInputPixels` stops decompression bombs. |
+| Photo size | Request bodies capped at 11 MB for uploads (1 MB for everything else); files over 10 MB refused with 413 (tested). At most 6 photos per listing (tested). |
+| Metadata | Every photo is re-encoded as WebP, which drops EXIF including GPS (tested in the API and end to end with a real GPS-tagged JPEG). |
+| Storage and serving | Files named by 16 random bytes; the key format is checked before touching the disk, so paths can't escape the photos folder (tested). Served only to signed-in members with `Cache-Control: private`, through the web app's proxy (tested). |
+
+**Found and fixed**
+
+1. *SVG files were accepted*: sharp can decode SVG, which is a document format rather than a
+   photo. Uploads are now limited to photo formats by their actual contents.
+
+**Notes for later phases**: deleting a listing's rows does not delete its photo files; account
+deletion (T108) must call `deletePhotoFiles` for the member's photos.

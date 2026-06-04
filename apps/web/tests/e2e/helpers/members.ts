@@ -1,7 +1,10 @@
 // Test helpers that create members the same way real people do: founders with the setup script,
 // everyone else through invitations and the emailed confirmation link (read from Mailpit).
 import { execFileSync } from 'node:child_process';
-import { API_URL } from '../../../playwright.config.ts';
+import { API_URL, WEB_URL } from '../../../playwright.config.ts';
+
+// Like the web server, test calls to the API say which site they come from (Better Auth's CSRF check).
+const origin = { origin: WEB_URL };
 
 export type TestMember = { email: string; password: string; displayName: string };
 
@@ -26,7 +29,7 @@ export function createFounder(displayName = 'Founder'): TestMember {
 export async function signIn(member: TestMember): Promise<string> {
   const response = await fetch(`${API_URL}/api/auth/sign-in/email`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...origin },
     body: JSON.stringify({ email: member.email, password: member.password })
   });
   const token = response.headers.get('set-auth-token');
@@ -39,7 +42,7 @@ export async function createInvitation(inviter: TestMember): Promise<string> {
   const token = await signIn(inviter);
   const response = await fetch(`${API_URL}/api/v1/invitations`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${token}` }
+    headers: { authorization: `Bearer ${token}`, ...origin }
   });
   if (!response.ok) throw new Error(`Could not create invitation: ${response.status}`);
   const { link } = (await response.json()) as { link: string };
@@ -53,14 +56,14 @@ export async function createInvitedMember(inviter: TestMember, displayName = 'Al
   const member = { email: uniqueEmail(displayName), password: 'correct horse battery', displayName };
   const accept = await fetch(`${API_URL}/api/v1/invitations/${inviteToken}/accept`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...origin },
     body: JSON.stringify({ ...member, emailNotifications: false })
   });
   if (accept.status !== 202) throw new Error(`Could not accept invitation: ${accept.status}`);
   const confirmToken = await confirmationTokenFor(member.email);
   const confirm = await fetch(`${API_URL}/api/v1/invitations/confirm`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...origin },
     body: JSON.stringify({ token: confirmToken })
   });
   if (!confirm.ok) throw new Error(`Could not confirm ${member.email}: ${confirm.status}`);
@@ -93,4 +96,16 @@ export async function waitForEmailLink(to: string, pattern: RegExp): Promise<str
 
 function testDatabaseUrl() {
   return process.env.TEST_DATABASE_URL ?? 'postgres://wunan:wunan@localhost:5432/wunan_test';
+}
+
+/** Creates a listing through the API (quicker than the form when a test only needs it to exist). */
+export async function createListingFor(member: TestMember, body: Record<string, unknown>): Promise<{ id: string }> {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/listings`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin },
+    body: JSON.stringify(body)
+  });
+  if (response.status !== 201) throw new Error(`Could not create listing: ${response.status} ${await response.text()}`);
+  return (await response.json()) as { id: string };
 }

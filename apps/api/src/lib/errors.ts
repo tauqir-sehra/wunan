@@ -50,6 +50,11 @@ export const errors = {
 export function fieldsFromZod(error: z.ZodError): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const issue of error.issues) {
+    // Fields sent that don't belong (e.g., a loan length on a Gift) are named one by one.
+    if (issue.code === 'unrecognized_keys') {
+      for (const key of issue.keys) fields[key] ??= "This doesn't apply here.";
+      continue;
+    }
     const name = issue.path.join('.') || 'form';
     if (fields[name]) continue;
     fields[name] = issue.message && !issue.message.startsWith('Invalid')

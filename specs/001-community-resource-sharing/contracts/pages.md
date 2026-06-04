@@ -38,9 +38,9 @@ without JavaScript.
 |-------|---------|--------|-----------|
 | `/` | — | member | Home: search box, Lend / Gift / Trade / Service links, quiet counts of unread messages and items needing attention (updated on reload). |
 | `/listings` | — | member | Search. Query: `q`, `type` (`lend`/`gift`/`trade`/`service`), `area`, `include_lent`. Active filters shown with "Clear filters". Calm empty state. |
-| `/listings/new` | `default` | member | Step 1: choose Lend, Gift, Trade, or Service. Step 2: title, description, amount + unit (unit from a list; not for Service), and the type's own fields: max loan length (Lend); what's wanted / "Open to offers" (Trade); session length and number of times available (Service). Step 3: photos and area. Step 4: review. Only type and title required. |
+| `/listings/new` | `next`, `back`, `publish` | member | Step 1: choose Lend, Gift, Trade, or Service. Step 2: title, description, amount + unit (unit from a list; not for Service), and the type's own fields: max loan length (Lend); what's wanted / "Open to offers" (Trade); session length and number of times available (Service). Step 3: area. Step 4: photos and review (photos are on the last step because files can't be carried between steps without JavaScript). Only type and title required. |
 | `/listings/[id]` | `pause`, `resume`, `remove`, `reopen` (owner); `flag` (others) | member | Full details, photos with alt text, owner and their inviter. "Message about this" for others. Owner sees flags received and "Record an agreement". |
-| `/listings/[id]/edit` | `default`, `addPhotos`, `updatePhoto`, `deletePhoto` | owner | Edit fields; photos ≤6, ≤10 MB, images only. |
+| `/listings/[id]/edit` | `save`, `addPhotos`, `updatePhoto`, `deletePhoto` | owner | Edit fields; photos ≤6, ≤10 MB, images only. |
 | `/my-listings` | — | member | My listings by status, with flags received. |
 
 ## Messages

@@ -7,6 +7,8 @@ import { sql } from './db/index.ts';
 import { ApiError, handleError } from './lib/errors.ts';
 import { log } from './lib/log.ts';
 import { invitationRoutes } from './routes/invitations.ts';
+import { listingRoutes } from './routes/listings.ts';
+import { photoRoutes } from './routes/photos.ts';
 import { memberRoutes } from './routes/members.ts';
 import { meRoutes } from './routes/me.ts';
 
@@ -58,6 +60,8 @@ app.get('/api/v1/health', async (c) => {
 app.route('/api/v1', invitationRoutes);
 app.route('/api/v1', memberRoutes);
 app.route('/api/v1', meRoutes);
+app.route('/api/v1', listingRoutes);
+app.route('/api/v1', photoRoutes);
 
 app.openAPIRegistry.registerComponent('securitySchemes', 'bearer', {
   type: 'http',
