@@ -11,7 +11,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "npm run dev -w apps/api & npm run dev -w apps/web & wait",
+    "dev": "npm run dev -w apps/api -- --host & npm run dev -w apps/web -- --host & wait",
     "check": "npm run check --workspaces --if-present && eslint .",
     "lint": "eslint .",
     "format": "prettier --write .",

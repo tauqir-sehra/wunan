@@ -13,7 +13,7 @@ export const actions: Actions = {
         body: '{}'
       });
     }
-    clearSessionCookie(event.cookies);
+    clearSessionCookie(event.cookies, event.url);
     redirect(303, '/sign-in');
   }
 };

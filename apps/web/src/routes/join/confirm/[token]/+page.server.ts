@@ -11,7 +11,7 @@ export const actions: Actions = {
       const { token } = await apiFor(event).post<{ token: string }>('/api/v1/invitations/confirm', {
         token: event.params.token
       });
-      setSessionCookie(event.cookies, token);
+      setSessionCookie(event.cookies, event.url, token);
     } catch (error) {
       if (!(error instanceof ApiError)) throw error;
       return fail(error.status, { error: error.message });

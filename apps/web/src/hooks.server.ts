@@ -11,7 +11,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   if (event.locals.token && !(await loadMember(event))) {
     // Expired or revoked: forget it so pages treat the visitor as signed out.
-    clearSessionCookie(event.cookies);
+    clearSessionCookie(event.cookies, event.url);
     event.locals.token = undefined;
   }
 

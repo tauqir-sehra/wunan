@@ -31,7 +31,7 @@ export async function signInWithPassword(event: RequestEvent, email: string, pas
   if (!response.ok) throw await toApiError(response);
   const token = response.headers.get('set-auth-token');
   if (!token) throw new ApiError(500, 'unexpected', 'Sorry, signing in did not work. Please try again.');
-  setSessionCookie(event.cookies, token);
+  setSessionCookie(event.cookies, event.url, token);
   event.locals.token = token;
   await loadMember(event);
 }
