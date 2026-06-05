@@ -1,5 +1,7 @@
-// Notification settings per member and type, plus a log used to keep notifications infrequent.
-import { boolean, index, pgEnum, pgTable, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+// Notification settings per member and type, the devices that receive them, and a log used to
+// keep notifications infrequent.
+import { sql } from 'drizzle-orm';
+import { boolean, check, index, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { member } from './members.ts';
 
 export const notificationTypes = ['message', 'agreement', 'reminder', 'report', 'flag'] as const;
@@ -35,4 +37,33 @@ export const notificationLog = pgTable(
     sentAt: timestamp({ withTimezone: true }).notNull().defaultNow()
   },
   (t) => [index('notification_log_lookup_idx').on(t.memberId, t.conversationId, t.sentAt)]
+);
+
+/** `web` now; other values (e.g., `unifiedpush`) are reserved for future native clients. */
+export const pushPlatform = pgEnum('push_platform', ['web']);
+
+/**
+ * A device that receives notifications. Removed when the member turns it off, when the push
+ * service says it is gone, or when the member leaves wunan.
+ */
+export const pushSubscription = pgTable(
+  'push_subscription',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    memberId: uuid()
+      .notNull()
+      .references(() => member.id, { onDelete: 'cascade' }),
+    platform: pushPlatform().notNull().default('web'),
+    endpoint: text().notNull().unique(),
+    p256dh: text(),
+    auth: text(),
+    /** Shown in Settings ("iPhone Safari") so the member can recognise and remove it. */
+    label: text().notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    index('push_subscription_member_idx').on(t.memberId),
+    check('push_subscription_web_keys', sql`${t.platform} <> 'web' or (${t.p256dh} is not null and ${t.auth} is not null)`),
+    check('push_subscription_label_length', sql`char_length(${t.label}) between 1 and 60`)
+  ]
 );

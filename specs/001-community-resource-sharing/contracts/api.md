@@ -52,10 +52,11 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 | `GET /me/contact`, `PUT /me/contact` | member | My private `sharePhone`, `shareEmail`. |
 | `POST /me/password` | member | `{ currentPassword, newPassword }`. |
 | `GET /me/notification-preferences`, `PUT /me/notification-preferences` | member | `[{ type, email, device }]` for the five types. |
-| `POST /me/push-subscriptions` | member | `{ platform: "web", endpoint, keys: { p256dh, auth }, label }`. Other platforms reserved for future clients. |
+| `GET /me/push-subscriptions` | member | `{ publicKey, devices: [{ id, label, createdAt }] }`. `publicKey` (VAPID) is null when the operator has not set up device notifications. |
+| `POST /me/push-subscriptions` | member | `{ platform: "web", endpoint, keys: { p256dh, auth }, label }` → `201`. Only endpoints on browser push services (HTTPS). If no kind had devices turned on yet, turns devices on for all five, so turning on a device is one step. Other platforms reserved for future clients. |
 | `DELETE /me/push-subscriptions/{id}` | member | Removes a device. |
-| `GET /me/export` | member | ZIP per [export-format.md](export-format.md). |
-| `DELETE /me` | member | `{ password }` → `204 No Content`. Effects per research §16. |
+| `GET /me/export` | member | ZIP per [export-format.md](export-format.md). 10 per member per hour (`429 slow_down`). |
+| `DELETE /me` | member | `{ password }` → `204 No Content`. Effects per research §16. Password checks (here and `POST /me/password`) are limited to 10 per member per hour. |
 | `GET /me/summary` | member | Quiet home counts: `{ unreadConversations, agreementsNeedingAttention, unseenFlags }`. |
 
 ## Listings

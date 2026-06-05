@@ -87,3 +87,35 @@ deletion (T108) must call `deletePhotoFiles` for the member's photos.
 
 **Accepted for now**: there is no cap on how many live streams one member opens at once. Each
 holds one HTTP connection, not a database connection; revisit if it becomes a problem.
+
+## Phase 9: notification settings, device notifications, export, leaving (2026-06-04)
+
+**Scope**: `apps/api/src/modules/settings.ts`, `notify/push.ts`, `modules/export.ts`,
+`modules/members.ts` (`deleteAccount`), `routes/me.ts`; `apps/web/src/routes/settings/**`,
+`routes/goodbye`, `src/service-worker/`, `lib/same-origin.ts`, `static/manifest.webmanifest`.
+
+**Checked**
+
+| Area | Result |
+|------|--------|
+| Device addresses | The API only accepts push addresses on the browser makers' push services (Google, Mozilla, Apple, Microsoft), over HTTPS on the normal port, so it can't be told to send requests to other servers, including ones on the operator's network (tested). Addresses are never shown back to anyone. |
+| Device ownership | Only the member who added a device can remove it; others get "not found" (tested). A browser that someone else turned on before moves to whoever turned it on last, so a shared computer never notifies the previous person. |
+| Push contents | Only title, body (at most 100 characters, no exclamation marks) and a link to a page on this site, encrypted for the device with the operator's own keys (tested). Devices the push service reports as gone are deleted (tested). The service worker shows notifications silently and opens only paths on this site. |
+| Permission | The browser is asked for notification permission only when the member presses the button (browser test counts the requests). |
+| Device endpoints in the web app | JSON endpoints check that the request comes from this site and that a member is signed in; the API re-checks everything. |
+| Service worker cache | Only the app's built files and icons; pages, messages and photos are never cached, because devices can be shared. |
+| Export | Only the member's own data; other members by display name only, never their email, ids or private contact details (tested), except details they shared in a conversation with this member. Downloads are `no-store`. Limited to 10 an hour per member, as each export reads every photo. |
+| Leaving | Needs the password; password checks (leaving and changing the password) are limited to 10 an hour per member, so a stolen session can't be used to guess it (tested). Removes the email (replaced, so it can join again), password, sessions on every device, bio, contact details, devices, notification settings, listings and photo files, and password-reset links; cancels unused invitations (tested). |
+
+**Found and fixed**
+
+1. *Password guessing with a stolen session*: changing the password had no attempt limit. Both
+   password forms now share a limit of 10 attempts an hour per member.
+2. *Contact details left behind*: contact details a leaving member had shared in conversations
+   stayed in those messages. They are now replaced with "Contact details were removed when this
+   member left wunan." (tested).
+
+**Decided**: a listing that is part of an agreement can't be deleted without breaking the other
+member's agreement, so when its owner leaves it keeps only its title and kind, closed, with
+description, area and photos removed. Messages, agreements, requests for help and requests about
+listings stay visible to the other members involved, as research §16 describes.

@@ -28,9 +28,10 @@ without JavaScript.
 | `/members/[id]` | — | member | Profile: name, bio, joined, "Invited by" (linked) or "Founding member", people they invited, available listings. Deleted → "<name> (no longer a member)". |
 | `/members/[id]/chain` | — | member | Invite chain up to a founder. |
 | `/settings` | `profile`, `contact`, `password` | member | Edit profile, private contact details, password. |
-| `/settings/notifications` | `save` | member | Email and device switches per type. "Turn on notifications on this device" button (needs JS; explains plainly what will happen first). Lists devices with "Remove". |
-| `/settings/export` | `default` | member | Downloads the export ZIP ([export-format.md](export-format.md)). |
-| `/settings/delete-account` | `default` | member | Explains effects, lists open loans, password required to confirm. |
+| `/settings/notifications` | `save`, `removeDevice` | member | Email and device switches per type. "Turn on notifications on this device" button (needs JS; explains plainly what will happen first). Lists devices with "Remove". |
+| `/settings/export` | — | member | Explains the export; "Download my data" links to `/settings/export/download`. |
+| `/settings/delete-account` | `default` | member | Explains effects, lists open loans, password required to confirm; then signs out and goes to `/goodbye`. |
+| `/goodbye` | — | public | "Your account is deleted". |
 
 ## Listings and search
 
@@ -75,7 +76,7 @@ without JavaScript.
 | Route | Access | Behaviour |
 |-------|--------|-----------|
 | `/photos/[key]` | member | Streams `GET /api/v1/photos/{key}` so the browser's cookie session applies. |
-| `/settings/export` | member | Streams `GET /api/v1/me/export` as a download. |
+| `/settings/export/download` | member | Streams `GET /api/v1/me/export` as a download. |
 
 The browser never calls `/api/*` directly; that path is public only for future native clients.
 

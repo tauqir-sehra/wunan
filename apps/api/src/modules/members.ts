@@ -1,11 +1,26 @@
 // Members: creating accounts, profiles, the invite chain, private contact details, and passwords
 // (FR-001 to FR-005, FR-019). Profiles never include email or contact details.
-import { and, asc, eq, sql as rawSql } from 'drizzle-orm';
+import { and, asc, eq, inArray, notExists, sql as rawSql } from 'drizzle-orm';
 import { auth } from '../auth.ts';
 import { db } from '../db/index.ts';
-import { account, member, session } from '../db/schema/index.ts';
+import {
+  account,
+  agreement,
+  invitation,
+  listing,
+  listingPhoto,
+  member,
+  message,
+  notificationLog,
+  notificationPreference,
+  pushSubscription,
+  session,
+  verification
+} from '../db/schema/index.ts';
 import { decryptOptional, encryptOptional } from '../lib/crypto.ts';
 import { ApiError, errors } from '../lib/errors.ts';
+import { checkRateLimit } from '../lib/rate-limit.ts';
+import { deletePhotoFiles } from './photos.ts';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -152,21 +167,102 @@ export async function updateContact(memberId: string, details: { sharePhone: str
 
 /** Changes the password after checking the current one, and signs out other devices. */
 export async function changePassword(memberId: string, currentSessionToken: string, currentPassword: string, newPassword: string) {
+  await requirePassword(memberId, currentPassword, 'currentPassword');
   const ctx = await auth.$context;
-  const [credential] = await db
-    .select()
-    .from(account)
-    .where(and(eq(account.userId, memberId), eq(account.providerId, 'credential')));
-  const valid =
-    credential?.password && (await ctx.password.verify({ hash: credential.password, password: currentPassword }));
-  if (!valid) {
-    throw new ApiError(400, 'validation_failed', 'Some details need fixing.', {
-      currentPassword: "That isn't your current password. Please try again."
-    });
-  }
   await ctx.internalAdapter.updatePassword(memberId, await ctx.password.hash(newPassword));
   // Other devices must sign in again with the new password; this one stays signed in.
   await db
     .delete(session)
     .where(and(eq(session.userId, memberId), rawSql`${session.token} <> ${currentSessionToken}`));
+}
+
+/** Checks a member's password, reporting a wrong one against the given form field. */
+async function requirePassword(memberId: string, password: string, field: string) {
+  // Someone holding a member's session can't use these forms to guess the password.
+  await checkRateLimit(`password-check:${memberId}`, 10, 60);
+  const ctx = await auth.$context;
+  const [credential] = await db
+    .select()
+    .from(account)
+    .where(and(eq(account.userId, memberId), eq(account.providerId, 'credential')));
+  const valid = credential?.password && (await ctx.password.verify({ hash: credential.password, password }));
+  if (!valid) {
+    throw new ApiError(400, 'validation_failed', 'Some details need fixing.', {
+      [field]: "That isn't your current password. Please try again."
+    });
+  }
+}
+
+const CONTACT_REMOVED = 'Contact details were removed when this member left wunan.';
+
+/**
+ * Leaving wunan (FR-032, research §16). Keeps only the display name, so invite chains and the
+ * agreements other members took part in still make sense; shown as "<name> (no longer a member)".
+ *
+ * - Personal fields, contact details, the password, sessions, devices, and notification
+ *   settings are removed. The email is replaced, so it can be used to join again later.
+ * - Listings are deleted with their photos. A listing that is part of an agreement keeps only
+ *   its title and kind, closed, so the other member's agreement still says what it was about.
+ * - Contact details this member shared in conversations are replaced with a short note.
+ * - Messages, agreements, and requests for help stay visible to the other members involved.
+ * - Unused invitation links stop working.
+ */
+export async function deleteAccount(memberId: string, password: string) {
+  await requirePassword(memberId, password, 'password');
+
+  const photoKeys = await db.transaction(async (tx) => {
+    const [row] = await tx.select().from(member).where(eq(member.id, memberId)).for('update');
+    if (!row || row.deletedAt) throw errors.notSignedIn();
+
+    const myListings = tx.select({ id: listing.id }).from(listing).where(eq(listing.ownerId, memberId));
+    const photos = await tx
+      .delete(listingPhoto)
+      .where(inArray(listingPhoto.listingId, myListings))
+      .returning({ fileKey: listingPhoto.fileKey });
+
+    const withoutAgreements = and(
+      eq(listing.ownerId, memberId),
+      notExists(tx.select({ one: rawSql`1` }).from(agreement).where(eq(agreement.listingId, listing.id)))
+    );
+    await tx.delete(listing).where(withoutAgreements);
+    await tx
+      .update(listing)
+      .set({ description: null, area: null, status: 'closed', closedReason: 'removed', updatedAt: new Date() })
+      .where(eq(listing.ownerId, memberId));
+
+    await tx
+      .update(message)
+      .set({ body: CONTACT_REMOVED })
+      .where(and(eq(message.authorId, memberId), eq(message.kind, 'contact_shared')));
+
+    await tx
+      .update(invitation)
+      .set({ status: 'cancelled' })
+      .where(and(eq(invitation.inviterId, memberId), eq(invitation.status, 'unused')));
+
+    await tx.delete(pushSubscription).where(eq(pushSubscription.memberId, memberId));
+    await tx.delete(notificationPreference).where(eq(notificationPreference.memberId, memberId));
+    await tx.delete(notificationLog).where(eq(notificationLog.memberId, memberId));
+    await tx.delete(session).where(eq(session.userId, memberId));
+    await tx.delete(account).where(eq(account.userId, memberId));
+    // Password-reset and confirmation links belonging to this member.
+    await tx.delete(verification).where(eq(verification.value, memberId));
+
+    await tx
+      .update(member)
+      .set({
+        email: `deleted-${memberId}@deleted.invalid`,
+        bio: null,
+        image: null,
+        sharePhone: null,
+        shareEmail: null,
+        deletedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(member.id, memberId));
+    return photos.map((p) => p.fileKey);
+  });
+
+  // Files are removed after the rows, so a failure here never leaves rows pointing at nothing.
+  await deletePhotoFiles(photoKeys);
 }

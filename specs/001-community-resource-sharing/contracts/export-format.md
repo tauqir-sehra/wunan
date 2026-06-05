@@ -32,18 +32,25 @@ photos/<listing-id>-<position>.webp
   }],
   "agreements": [{
     "listing_title": "", "role": "owner|other", "other_member": "", "outcome": "",
-    "amount": null, "return_due": null, "returned_at": null, "confirmation": ""
+    "amount": null, "sessions": null, "return_due": null, "returned_at": null,
+    "confirmation": "", "note": "", "recorded": ""
   }],
-  "problem_reports": [{ "agreement": "", "role": "reporter|reported|mediator", "status": "", "description": "" }],
+  "problem_reports": [{
+    "agreement": "", "role": "reporter|reported|mediator", "status": "", "description": "",
+    "outcome_note": "", "created": ""
+  }],
   "conversations": [{
-    "with": ["display names"], "listing_title": null,
-    "messages": [{ "from": "", "sent": "", "kind": "", "body": "" }]
+    "with": ["display names"], "listing_title": null, "asking_for_help": false,
+    "messages": [{ "from": "me or a display name", "sent": "", "kind": "", "body": "", "proposed_time": "(call messages only)" }]
   }],
   "flags_sent": [{ "listing_title": "", "request": "", "sent": "" }],
   "flags_received": [{ "listing_title": "", "from": "", "request": "", "sent": "" }],
   "notification_preferences": [{ "type": "message", "email": true, "device": false }]
 }
 ```
+
+Photos are numbered from 1 in display order. A member who has left appears as "<name> (no longer a
+member)".
 
 Other members appear by display name only, never by email or private contact details (except
 details they themselves shared in a conversation with this member).

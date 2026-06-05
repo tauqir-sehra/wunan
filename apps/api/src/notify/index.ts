@@ -12,6 +12,7 @@ import {
 } from '../db/schema/index.ts';
 import { log } from '../lib/log.ts';
 import { sendEmail } from './email.ts';
+import { sendPushToMember } from './push.ts';
 
 export type Notice = {
   title: string;
@@ -20,14 +21,6 @@ export type Notice = {
   url: string;
   conversationId?: string;
 };
-
-type PushSender = (memberId: string, notice: Notice) => Promise<void>;
-
-// Device notifications are wired in later (notify/push.ts); until then they are skipped.
-let sendPush: PushSender = async () => {};
-export function setPushSender(sender: PushSender) {
-  sendPush = sender;
-}
 
 const PREVIEW_LIMIT = 100;
 
@@ -84,7 +77,7 @@ export async function notify(memberId: string, type: NotificationType, notice: N
     }).catch(() => log.warn('notification_email_failed', { type }));
   }
   if (wantsDevice) {
-    await sendPush(memberId, calmNotice).catch(() => log.warn('notification_push_failed', { type }));
+    await sendPushToMember(memberId, calmNotice).catch(() => log.warn('notification_push_failed', { type }));
   }
 }
 

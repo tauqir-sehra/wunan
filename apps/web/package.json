@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "dotenv -e ../../.env -- vite preview",
     "start": "node build",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && tsc -p src/service-worker/tsconfig.json --noEmit",
     "test:e2e": "dotenv -e ../../.env -- playwright test"
   },
   "devDependencies": {

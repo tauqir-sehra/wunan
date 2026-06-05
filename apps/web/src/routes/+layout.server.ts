@@ -5,7 +5,7 @@ import { apiFor } from '#lib/api.ts';
 import type { Summary } from '@wunan/shared';
 import type { LayoutServerLoad } from './$types';
 
-const PUBLIC_PATHS = ['/sign-in', '/password-reset', '/join'];
+const PUBLIC_PATHS = ['/sign-in', '/password-reset', '/join', '/goodbye'];
 
 export const load: LayoutServerLoad = async (event) => {
   const { locals, url } = event;

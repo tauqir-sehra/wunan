@@ -17,7 +17,7 @@ its standard schema and are not repeated here.
 | invited_by_id | FK → member, nullable | Null only when `is_founder` (FR-001, FR-003) |
 | is_founder | boolean | Set only by the `create-founder` command; final mediators (FR-029a) |
 | share_phone, share_email | text, nullable | Private; revealed only via contact sharing (FR-019). Stored encrypted (AES-256-GCM, research §14) |
-| deleted_at | timestamptz, nullable | Set on account deletion; personal fields cleared except `display_name`; shown as "<name> (no longer a member)" |
+| deleted_at | timestamptz, nullable | Set on account deletion; personal fields cleared except `display_name`, and `email` replaced with `deleted-<id>@deleted.invalid` so the address can join again; shown as "<name> (no longer a member)". Listings that are part of an agreement keep only title and kind, closed (`removed`); other listings are deleted |
 
 Password hashes live in Better Auth's `account` table. There is no field for removal, suspension, or
 penalty (FR-029b). Invite chain = follow `invited_by_id` until a founder.
