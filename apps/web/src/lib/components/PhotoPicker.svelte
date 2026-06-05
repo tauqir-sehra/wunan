@@ -16,7 +16,7 @@
   }
 </script>
 
-<fieldset class="grid gap-4">
+<fieldset class="grid min-w-0 gap-4">
   <legend class="mb-1 text-base font-medium">Photos <span class="font-normal text-muted-foreground">(optional)</span></legend>
   <p class="text-sm text-muted-foreground">
     Up to 10 MB each. Location data is removed from photos before anyone sees them. You can add up
@@ -30,7 +30,7 @@
         name="photo_{index}"
         type="file"
         accept="image/*"
-        class="min-h-11 text-base file:mr-3 file:min-h-11 file:rounded-md file:border file:border-input file:bg-card file:px-4 file:text-base"
+        class="min-h-11 w-full min-w-0 text-base file:mr-3 file:min-h-11 file:rounded-md file:border file:border-input file:bg-card file:px-4 file:text-base"
         onchange={(event) => preview(index, event)}
       />
       {#if previews[index]}

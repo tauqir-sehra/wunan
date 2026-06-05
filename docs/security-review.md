@@ -119,3 +119,43 @@ holds one HTTP connection, not a database connection; revisit if it becomes a pr
 member's agreement, so when its owner leaves it keeps only its title and kind, closed, with
 description, area and photos removed. Messages, agreements, requests for help and requests about
 listings stay visible to the other members involved, as research §16 describes.
+
+## Final review, whole app (2026-06-04)
+
+**Scope**: the areas listed in plan.md (sign-in and invitation accept, bearer handling in the web
+app, photo upload, contact sharing, live stream, push subscriptions), plus the self-hosting setup
+(`apps/*/Dockerfile`, `compose.yaml`, `Caddyfile`).
+
+**Checked**
+
+| Area | Result |
+|------|--------|
+| Inputs | Every API body, query and path parameter is validated with the shared Zod schemas before use; unknown fields are refused where they would be ignored silently. The OpenAPI completeness test confirms every contract endpoint is described. |
+| Access checks | Every `/api/v1` route except invitation check/accept/confirm, health and the OpenAPI document requires a member; owner, participant, party and mediator checks answer "not found" to others (tested per story). |
+| Rate limits | Sign-in, password reset, joining, resending confirmation, invitations, messages, listing requests, password checks and exports are limited; limits are per visitor address or per member as fits. |
+| Visitor addresses | In the self-hosted setup only Caddy is reachable from outside. Caddy sets `X-Forwarded-For`; the web app (`ADDRESS_HEADER`, `XFF_DEPTH=1`) and the API both take the right-most entry, which a visitor can't forge. The API port is not published. |
+| CSP and headers | Strict nonce-based CSP from SvelteKit (no inline scripts, no third-party origins, `frame-ancestors 'none'`); `nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY`, a restrictive `Permissions-Policy`; HSTS from Caddy. |
+| Cookies | The web session cookie is `HttpOnly`, `SameSite=Lax`, and `Secure` in production (only relaxed for development over plain http, so phones on the local network can test). Form posts are checked for same-origin by SvelteKit; behind Caddy the scheme comes from `X-Forwarded-Proto`, which only Caddy can set. |
+| Containers | Both images run as the unprivileged `node` user, with production dependencies only; photos are written to a volume owned by that user. |
+| Logs | One JSON line per request with the route pattern (never the full URL), status and time. Field names suggesting personal data are dropped. |
+| Native clients | A client using only the API (curl) can sign in, get a bearer token and search, so a future Android app needs nothing from the web app. |
+
+**Found and fixed**
+
+1. *Email addresses in error logs*: errors from the mail server (e.g. "550 <name@example.org>:
+   recipient rejected") were logged as they were. The logger now blanks out email addresses in
+   every value (tested), and email subjects (which include members' names) are no longer logged.
+2. *Uploads refused in production*: the Node adapter accepts request bodies up to 512 KB by
+   default, so photo uploads through the website would have failed once deployed.
+   `BODY_SIZE_LIMIT` is set to 64 MB in `compose.yaml` (six 10 MB photos); the API still limits
+   each photo to 10 MB.
+3. *Form posts refused over plain http behind Caddy*: the Node adapter assumes `https` unless told
+   otherwise. `PROTOCOL_HEADER=X-Forwarded-Proto` is set, trusted because only Caddy reaches the
+   web app.
+
+**Accepted for now**
+
+- `npm run audit` reports 4 moderate advisories, all in `esbuild` inside `drizzle-kit`, which
+  `better-auth` lists as a dependency. They concern esbuild's development server, which wunan never
+  runs. Revisit when better-auth or drizzle-kit update.
+- No cap on simultaneous live streams per member (see US4).

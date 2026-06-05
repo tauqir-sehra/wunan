@@ -1,0 +1,18 @@
+# Caddy serves wunan over HTTPS, getting certificates automatically for the address in SITE_URL.
+# The API is under /api/ (for other clients, such as a future Android app); everything else is
+# the web app.
+{$SITE_URL} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

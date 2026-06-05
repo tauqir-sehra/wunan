@@ -33,7 +33,7 @@ export async function sendEmail({ to, subject, text, settingsFooter = false }: E
     await transport.sendMail({ from: config.MAIL_FROM, to, subject, text: text + footer });
   } catch (error) {
     // Logged without the address; the caller decides whether failure matters.
-    log.error('email_failed', { subject, reason: (error as Error).message });
+    log.error('email_failed', { reason: (error as Error).message });
     throw error;
   }
 }

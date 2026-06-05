@@ -16,7 +16,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "npm run test -w apps/api",
-    "test:e2e": "npm run test:e2e -w apps/web"
+    "test:e2e": "npm run test:e2e -w apps/web",
+    "audit": "npm audit --omit=dev"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

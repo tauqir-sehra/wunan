@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HelpLink from '#lib/components/HelpLink.svelte';
   import { onMount } from 'svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import Notice from '#lib/components/Notice.svelte';
@@ -22,7 +23,8 @@
     expired: 'Expired',
     cancelled: 'Cancelled'
   };
-  const date = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+  const date = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
 </script>
 
 <svelte:head><title>Invitations · wunan</title></svelte:head>
@@ -30,6 +32,7 @@
 <section class="grid gap-6">
   <div class="grid gap-2">
     <h1 class="text-2xl font-semibold">Invite someone</h1>
+    <HelpLink topic="joining" label="How invitations work" />
     <p class="text-muted-foreground">
       Invite people you know and trust. Your name will show on their profile as the person who
       invited them, and you're the first person they can ask for help.
@@ -57,7 +60,9 @@
       {/if}
     </div>
   {:else}
-    <form method="POST" action="?/create"><Button type="submit">Create an invitation link</Button></form>
+    <form method="POST" action="?/create">
+      <Button type="submit">Create an invitation link</Button>
+    </form>
   {/if}
 
   {#if form?.cancelled}
@@ -80,7 +85,9 @@
             {/if}
           </p>
           <p class="text-sm text-muted-foreground">
-            Created {date(invite.createdAt)}{#if invite.status === 'unused'}, works until {date(invite.expiresAt)}{/if}
+            Created {date(invite.createdAt)}{#if invite.status === 'unused'}, works until {date(
+                invite.expiresAt
+              )}{/if}
           </p>
           {#if invite.status === 'unused'}
             {#if form?.confirmCancel === invite.id}

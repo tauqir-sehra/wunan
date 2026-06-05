@@ -70,7 +70,7 @@ export async function startAcceptance(token: string, details: SignUp, visitorAdd
   const tokenHash = hash(token);
   // Limits stop one link (or one visitor) from being used to send lots of email.
   await checkRateLimit(`accept:invitation:${tokenHash}`, 5, 24 * 60);
-  await checkRateLimit(`accept:ip:${visitorAddress}`, 10, 60);
+  await checkRateLimit(`accept:ip:${visitorAddress}`, config.E2E_RELAXED_LIMITS ? 1000 : 10, 60);
   await releaseExpiredHolds();
 
   const email = details.email.trim().toLowerCase();

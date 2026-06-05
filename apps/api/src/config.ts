@@ -22,8 +22,8 @@ const schema = z.object({
   VAPID_SUBJECT: z.string().optional().default(''),
   PHOTOS_DIR: z.string().min(1).default('./photos'),
   NODE_ENV: z.string().optional().default('development'),
-  // Only for the browser tests, whose many sign-ins all come from one address. Never set in production.
-  E2E_RELAXED_SIGN_IN_LIMITS: z.enum(['true', 'false', '']).optional().transform((value) => value === 'true')
+  // Only for the browser tests, whose many sign-ins and joins all come from one address. Never set in production.
+  E2E_RELAXED_LIMITS: z.enum(['true', 'false', '']).optional().transform((value) => value === 'true')
 });
 
 const parsed = schema.safeParse(process.env);

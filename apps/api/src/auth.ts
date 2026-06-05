@@ -22,7 +22,7 @@ import { sendEmail } from './notify/email.ts';
 const DAY = 60 * 60 * 24;
 const isTest = config.NODE_ENV === 'test';
 // The browser tests sign in many times from one address; see config.ts.
-const signInLimit = config.E2E_RELAXED_SIGN_IN_LIMITS ? 1000 : 10;
+const signInLimit = config.E2E_RELAXED_LIMITS ? 1000 : 10;
 
 export const auth = betterAuth({
   baseURL: config.SITE_URL,

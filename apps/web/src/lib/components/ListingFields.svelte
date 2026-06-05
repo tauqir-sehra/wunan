@@ -20,7 +20,7 @@
 
 {#snippet numberWithUnit(label: string, numberName: string, unitName: string, hint: string, unitChoices: [string, string][])}
   {@const error = fields[numberName] ?? fields[unitName]}
-  <fieldset class="grid gap-1.5" aria-describedby="{numberName}-hint{error ? ` ${numberName}-error` : ''}">
+  <fieldset class="grid min-w-0 gap-1.5" aria-describedby="{numberName}-hint{error ? ` ${numberName}-error` : ''}">
     <legend class="text-base font-medium">{label} <span class="font-normal text-muted-foreground">(optional)</span></legend>
     <p id="{numberName}-hint" class="text-sm text-muted-foreground">{hint}</p>
     {#if error}<p id="{numberName}-error" class="text-sm font-medium text-destructive">{error}</p>{/if}

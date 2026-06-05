@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import ListingCard from '#lib/components/ListingCard.svelte';
 
@@ -18,9 +19,12 @@
     <h1 class="text-2xl font-semibold">My listings</h1>
     <Button href="/listings/new">Share something</Button>
   </div>
+  <HelpLink topic="listing" label="Help with your listings" />
 
   {#if data.listings.length === 0}
-    <p class="text-muted-foreground">You haven't listed anything yet. When you do, it shows up here.</p>
+    <p class="text-muted-foreground">
+      You haven't listed anything yet. When you do, it shows up here.
+    </p>
   {/if}
 
   {#each groups as group (group.status)}
@@ -34,7 +38,11 @@
               <ListingCard {listing} showOwner={false} />
               {#if listing.unseenFlags}
                 <p class="text-sm">
-                  <a href="/listings/{listing.id}">{listing.unseenFlags} new {listing.unseenFlags === 1 ? 'request' : 'requests'}</a>
+                  <a href="/listings/{listing.id}"
+                    >{listing.unseenFlags} new {listing.unseenFlags === 1
+                      ? 'request'
+                      : 'requests'}</a
+                  >
                 </p>
               {/if}
             </li>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import FormField from '#lib/components/FormField.svelte';
   import Notice from '#lib/components/Notice.svelte';
@@ -13,6 +14,7 @@
 <section class="grid gap-8">
   <div class="grid gap-4">
     <h1 class="text-2xl font-semibold">Settings</h1>
+    <HelpLink topic="your-data" label="Help with your data and leaving" />
     <SettingsNav />
   </div>
 
@@ -51,7 +53,11 @@
           <li class="rounded-lg border bg-card p-4">
             <a href="/agreements/{loan.id}" class="font-medium">{loan.listing.title}</a>
             <span class="block text-sm text-muted-foreground">
-              {loan.myRole === 'owner' ? `Lent to ${loan.otherMember.displayName}` : `Borrowed from ${loan.owner.displayName}`}{loan.returnDue ? `, due back ${day(loan.returnDue)}` : ''}
+              {loan.myRole === 'owner'
+                ? `Lent to ${loan.otherMember.displayName}`
+                : `Borrowed from ${loan.owner.displayName}`}{loan.returnDue
+                ? `, due back ${day(loan.returnDue)}`
+                : ''}
             </span>
           </li>
         {/each}

@@ -1,0 +1,17 @@
+# Keep images small and free of secrets and local data.
+**/node_modules
+**/.svelte-kit
+**/.svelte-kit-e2e
+**/build
+**/test-results
+**/playwright-report
+apps/api/photos
+apps/api/photos-test
+.git
+.env
+.env.*
+!.env.example
+*.log
+coverage
+Dockerfile*
+.dockerignore

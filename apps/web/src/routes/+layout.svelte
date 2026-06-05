@@ -16,7 +16,8 @@
     { href: '/messages', label: 'Messages' },
     { href: '/my-listings', label: 'My listings' },
     { href: '/agreements', label: 'Agreements' },
-    { href: '/settings', label: 'Settings' }
+    { href: '/settings', label: 'Settings' },
+    { href: '/help', label: 'Help' }
   ];
 
   const isCurrent = (href: string) =>
@@ -47,7 +48,9 @@
                 {link.label}
                 {#if link.href === '/messages' && data.summary?.unreadConversations}
                   <span class="ml-1.5 rounded-md bg-muted px-1.5 text-sm font-medium">
-                    {data.summary.unreadConversations}<span class="sr-only"> with new messages</span>
+                    {data.summary.unreadConversations}<span class="sr-only">
+                      with new messages</span
+                    >
                   </span>
                 {/if}
               </a>
@@ -55,7 +58,9 @@
           {/each}
         </ul>
       </nav>
-      <a href="/sign-out" class="inline-flex min-h-11 items-center px-2 text-muted-foreground">Sign out</a>
+      <a href="/sign-out" class="inline-flex min-h-11 items-center px-2 text-muted-foreground"
+        >Sign out</a
+      >
     {/if}
   </div>
 </header>

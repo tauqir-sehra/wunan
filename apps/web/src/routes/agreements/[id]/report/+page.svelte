@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import FormField from '#lib/components/FormField.svelte';
   import Notice from '#lib/components/Notice.svelte';
@@ -14,6 +15,7 @@
 
 <section class="grid max-w-2xl gap-5">
   <h1 class="text-2xl font-semibold">Ask for help</h1>
+  <HelpLink topic="asking-for-help" label="How asking for help works" />
   <p>{agreementSentence(a)}</p>
   <p class="text-muted-foreground">
     If something went wrong, the person who invited {other.displayName} will be asked to help. You'll
@@ -23,7 +25,7 @@
 
   {#if form?.review !== undefined && form.review !== ''}
     <p>This is what you'll share with {other.displayName} and the person helping:</p>
-    <p class="whitespace-pre-line rounded-lg border border-input bg-card p-4">{form.review}</p>
+    <p class="rounded-lg border border-input bg-card p-4 whitespace-pre-line">{form.review}</p>
     <form method="POST" action="?/send" class="flex flex-wrap items-center gap-3">
       <input type="hidden" name="description" value={form.review} />
       <Button type="submit">Ask for help</Button>

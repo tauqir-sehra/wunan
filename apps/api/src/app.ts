@@ -1,5 +1,6 @@
 // The wunan API as a Hono app: shared middleware, authentication routes, the health check, the
 // generated OpenAPI document, and every /api/v1 route. `index.ts` starts it; tests call it directly.
+import { createRoute, z } from '@hono/zod-openapi';
 import { bodyLimit } from 'hono/body-limit';
 import { createRouter } from './app-router.ts';
 import { auth, rewriteAuthError } from './auth.ts';
@@ -54,10 +55,18 @@ app.use('/api/*', async (c, next) => {
 // Better Auth: sign in, sign out, session, password reset. Errors rewritten to wunan's shape.
 app.on(['GET', 'POST'], '/api/auth/*', async (c) => rewriteAuthError(await auth.handler(c.req.raw)));
 
-app.get('/api/v1/health', async (c) => {
-  await sql`select 1`;
-  return c.json({ ok: true });
-});
+app.openapi(
+  createRoute({
+    method: 'get',
+    path: '/api/v1/health',
+    summary: 'Whether the API can reach its database (for health checks)',
+    responses: { 200: { description: 'Healthy', content: { 'application/json': { schema: z.object({ ok: z.literal(true) }) } } } }
+  }),
+  async (c) => {
+    await sql`select 1`;
+    return c.json({ ok: true as const }, 200);
+  }
+);
 
 // Versioned API routes (contracts/api.md). Each area lives in its own file under routes/.
 app.route('/api/v1', invitationRoutes);

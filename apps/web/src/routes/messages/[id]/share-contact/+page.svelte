@@ -31,7 +31,7 @@
   {:else}
     {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
     <form method="POST" action="?/review" class="grid gap-4">
-      <fieldset class="grid gap-2">
+      <fieldset class="grid min-w-0 gap-2">
         <legend class="mb-1 font-medium">What would you like to share?</legend>
         {#if data.contact.sharePhone}
           <label class="flex min-h-11 items-center gap-3">

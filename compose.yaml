@@ -1,0 +1,86 @@
+# wunan for self-hosting: `docker compose up -d --build` (see docs/operator.md).
+# Settings come from `.env` next to this file. Only Caddy is reachable from outside; the API and
+# the database are on the internal network only.
+name: wunan
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wunan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: wunan
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U wunan']
+      interval: 5s
+      retries: 30
+
+  api:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://wunan:${POSTGRES_PASSWORD}@postgres:5432/wunan
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env}
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?Set DATA_ENCRYPTION_KEY in .env}
+      SITE_URL: ${SITE_URL:?Set SITE_URL in .env}
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST in .env}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM in .env}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # Return reminders go out "the day after" in this time zone.
+      TZ: ${TZ:-UTC}
+    volumes:
+      - photos:/data/photos
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3000/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      retries: 30
+    # No `ports:` on purpose: only Caddy and the web app reach the API.
+
+  web:
+    build: { context: ., dockerfile: apps/web/Dockerfile }
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: http://api:3000
+      SITE_URL: ${SITE_URL}
+      # Only Caddy reaches the web app, so its forwarded headers can be trusted: the scheme
+      # (http or https) for form-safety checks, and the visitor's address (the right-most
+      # X-Forwarded-For entry, added by Caddy).
+      PROTOCOL_HEADER: X-Forwarded-Proto
+      ADDRESS_HEADER: X-Forwarded-For
+      XFF_DEPTH: '1'
+      # Room for up to six 10 MB photos in one upload.
+      BODY_SIZE_LIMIT: 64M
+      TZ: ${TZ:-UTC}
+    depends_on:
+      api: { condition: service_healthy }
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      SITE_URL: ${SITE_URL}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web]
+
+volumes:
+  database:
+  photos:
+  caddy-data:
+  caddy-config:

@@ -32,7 +32,7 @@ export default defineConfig({
         API_PORT: String(apiPort),
         SITE_URL: WEB_URL,
         PHOTOS_DIR: './photos-test',
-        E2E_RELAXED_SIGN_IN_LIMITS: 'true',
+        E2E_RELAXED_LIMITS: 'true',
         // A key pair used only by the tests, so the device-notification button is shown.
         VAPID_PUBLIC_KEY: 'BCqW4uR_wB7SZCVZ_9zzRJqI3_9-z424hVlLZvkW2xcOi_i-GQpnxl_pmV5wJxMrt3IDVUtvm_y0sO36t_VrlZc',
         VAPID_PRIVATE_KEY: 'aunHLGGAk5OXa9xzRJjf6zAY4qB4gZzfryFCb51kUI4',
