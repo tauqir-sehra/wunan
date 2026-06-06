@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { agreementSentence, confirmationText } from '#lib/format.ts';
+  import { agreementSentence } from '#lib/format.ts';
 
   let { data } = $props();
   const groups = [
@@ -29,7 +29,7 @@
               <a href="/agreements/{agreement.id}" class="grid gap-1 rounded-xl border bg-card p-4 text-foreground no-underline hover:bg-accent">
                 <span class="underline underline-offset-2">{agreementSentence(agreement)}</span>
                 <span class="text-sm text-muted-foreground">
-                  {confirmationText[agreement.confirmation]}{#if agreement.returnedAt} · Returned{:else if agreement.overdue} · The return date has passed{/if}
+                  Agreed {new Date(agreement.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}{#if agreement.returnedAt} · Returned{:else if agreement.overdue} · It was due back already{/if}
                 </span>
               </a>
             </li>

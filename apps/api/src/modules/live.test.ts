@@ -1,7 +1,7 @@
 // Live messages in an open conversation (FR-018a; research §9).
 import { describe, expect, it } from 'vitest';
 import { app } from '../app.ts';
-import { api, createFounder, createInvitedMember, signIn } from '../test/setup.ts';
+import { api, createFounder, createInvitedMember, createListing, propose, signIn } from '../test/setup.ts';
 import { ready } from './live.ts';
 
 /** Reads Server-Sent Events text until `until` matches or the time runs out. */
@@ -25,7 +25,8 @@ describe('live stream', () => {
     const alex = await createInvitedMember(sam, 'Alex');
     const samToken = await signIn(sam);
     const alexToken = await signIn(alex);
-    const { body: conversation } = await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id } });
+    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const conversation = { id: (await propose(alexToken, drill.id)).conversationId };
 
     const response = await app.request(`/api/v1/conversations/${conversation.id}/live`, { headers: { authorization: `Bearer ${samToken}` } });
     expect(response.status).toBe(200);
@@ -47,7 +48,7 @@ describe('live stream', () => {
     const sam = await createFounder('Sam');
     const alex = await createInvitedMember(sam, 'Alex');
     const samToken = await signIn(sam);
-    const { body: conversation } = await api('POST', '/api/v1/conversations', { token: await signIn(alex), body: { memberId: sam.id } });
+    const conversation = { id: (await propose(await signIn(alex), (await createListing(await signIn(sam), { type: 'lend', title: 'Drill' })).id)).conversationId };
     const response = await app.request(`/api/v1/conversations/${conversation.id}/live`, { headers: { authorization: `Bearer ${samToken}` } });
     const text = await readStream(response.body!, (t) => t.includes(': heartbeat'), 2000);
     expect(text).toContain(': heartbeat');
@@ -57,7 +58,7 @@ describe('live stream', () => {
     const sam = await createFounder('Sam');
     const alex = await createInvitedMember(sam, 'Alex');
     const robinToken = await signIn(await createInvitedMember(sam, 'Robin'));
-    const { body: conversation } = await api('POST', '/api/v1/conversations', { token: await signIn(alex), body: { memberId: sam.id } });
+    const conversation = { id: (await propose(await signIn(alex), (await createListing(await signIn(sam), { type: 'lend', title: 'Drill' })).id)).conversationId };
     const response = await app.request(`/api/v1/conversations/${conversation.id}/live`, { headers: { authorization: `Bearer ${robinToken}` } });
     expect(response.status).toBe(404);
   });

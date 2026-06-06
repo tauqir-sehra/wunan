@@ -1,19 +1,25 @@
-// Return reminders (US5; FR-025).
+// Return reminders (001 FR-025): once, the day after a loan's end, in the community's time zone.
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
-import { notificationPreference } from '../db/schema/index.ts';
+import { eq } from 'drizzle-orm';
+import { agreement, notificationPreference } from '../db/schema/index.ts';
+import { localToInstant } from '../lib/time.ts';
 import { testOutbox } from '../notify/email.ts';
-import { api, createFounder, createInvitedMember, signIn } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, signIn } from '../test/setup.ts';
 import { runReminders } from './reminders.ts';
 
+/** A loan due back on `returnDue` (local date, end of the day before it starts again). */
 async function loan(returnDue: string) {
   const sam = await createFounder('Sam');
   const alex = await createInvitedMember(sam, 'Alex');
   for (const memberId of [sam.id, alex.id]) await db.insert(notificationPreference).values({ memberId, type: 'reminder', email: true });
   const token = await signIn(sam);
-  const { body: drill } = await api('POST', '/api/v1/listings', { token, body: { type: 'lend', title: 'Drill' } });
-  const { body } = await api('POST', `/api/v1/listings/${drill.id}/agreements`, { token, body: { otherMemberId: alex.id, returnDue } });
-  return { sam, alex, token, agreementId: body.id as string };
+  const drill = await createListing(token, { type: 'lend', title: 'Drill' });
+  const { agreementId } = await agree(token, await signIn(alex), drill.id, completeDetails('lend'));
+  // Move the loan so it ends at noon on `returnDue`.
+  const ends = localToInstant(returnDue, '12:00');
+  await db.update(agreement).set({ loanStartsAt: new Date(ends.getTime() - 86_400_000), loanEndsAt: ends }).where(eq(agreement.id, agreementId));
+  return { sam, alex, token, agreementId };
 }
 const reminders = () => testOutbox.filter((e) => e.subject === 'A reminder about the Drill');
 
@@ -40,7 +46,8 @@ describe('return reminders', () => {
   });
 
   it("doesn't count the due day itself as overdue", async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     await loan(today);
     await runReminders();
     expect(reminders()).toHaveLength(0);

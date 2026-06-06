@@ -125,7 +125,7 @@ only with none:
   session length and sessions (Service);
 - handover not among the listing's handovers; loan length over the maximum; amount over
   `remaining`; sessions over `sessions_remaining`; session length over the listing's;
-- service time outside availability; service place outside the listing's area (research §2, §5);
+- service time outside availability; service meeting place (`elsewhere`) outside the listing's area; a drop-off place (`to_requester`) is never checked (research §2, §5);
 - `starts_at` in the past;
 - Lend: loan period overlaps a loan not yet returned (FR-011a);
 - listing not `available`.
@@ -173,6 +173,6 @@ automatic closes.
 
 ## Data export (FR-033)
 
-The export ZIP gains `proposals.json`: every proposal the member made or received, with details,
-state, and its thread's messages. `conversations.json` keeps only report threads. Agreements gain the
+`my-wunan-data.json` in the export gains `proposals`: every proposal the member made or received,
+with details, state, and its thread's messages. `conversations` keeps only report threads. Agreements gain the
 new fields.

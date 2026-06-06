@@ -46,7 +46,8 @@ schema). The API decides what each viewer sees:
 - Proposal and agreement places: visible in full to the two members, and to mediators of a report on
   that agreement (agreement details).
 
-"Within the listing's area" (FR-014): when both places came from suggestions, they match if the
+"Within the listing's area" (FR-014, checked only for a service's meeting place, never for a drop-off at
+the recipient's): when both places came from suggestions, they match if the
 neighbourhoods are equal (case- and accent-insensitive), or, when the listing area has no
 neighbourhood (it's a whole city), if the cities are equal. If either place was typed, wunan can't
 tell, so the check is skipped and the lister decides; the proposal page says "wunan couldn't check

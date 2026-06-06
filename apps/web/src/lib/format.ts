@@ -1,5 +1,5 @@
 // Plain-language text for listings, used everywhere a listing is shown (constitution II).
-import type { Listing, ListingType, Unit } from '@wunan/shared';
+import type { Handover, Listing, ListingType, PlaceView, Unit } from '@wunan/shared';
 
 export const typeLabels: Record<ListingType, string> = { lend: 'Lend', gift: 'Gift', trade: 'Trade', service: 'Service' };
 export const typeHints: Record<ListingType, string> = {
@@ -13,6 +13,8 @@ const unitNames: Record<Unit, [string, string]> = {
   item: ['item', 'items'],
   kg: ['kg', 'kg'],
   g: ['g', 'g'],
+  lb: ['lb', 'lb'],
+  oz: ['oz', 'oz'],
   litre: ['litre', 'litres'],
   hour: ['hour', 'hours'],
   portion: ['portion', 'portions'],
@@ -63,27 +65,89 @@ export function amountLine(listing: Listing): string | null {
   }
 }
 
-/** For trades: what the owner would like in return. */
-export function wantedLine(listing: Listing): string | null {
+/** For trades: what the owner accepts in return, or that they're open to offers (002 FR-006). */
+export function acceptsLine(listing: Pick<Listing, 'type' | 'accepts' | 'owner'>): string | null {
   if (listing.type !== 'trade') return null;
-  const parts = [];
-  if (listing.wanted) {
-    parts.push(
-      listing.wantedAmount
-        ? `Would like: ${quantity(listing.wantedAmount, listing.wantedUnit)} of ${listing.wanted}`
-        : `Would like: ${listing.wanted}`
-    );
-  }
-  if (listing.openToOffers) parts.push('Open to offers');
-  return parts.join(' · ') || null;
+  if (listing.accepts.length === 0) return `Open to offers: ${listing.owner.displayName} hasn't listed anything specific`;
+  return `Accepts: ${listing.accepts.map((a) => (a.amount ? `${a.description} (${quantity(a.amount, a.unit)})` : a.description)).join(', ')}`;
 }
 
 export const statusText: Record<Listing['status'], string> = {
   available: 'Available',
-  lent_out: 'Lent out',
   paused: 'Paused',
   closed: 'Closed'
 };
+
+/** "Lent out until Tue 10 Nov" or the status in words. */
+export function listingStatus(listing: Pick<Listing, 'status' | 'lentOut' | 'takenPeriods'>): string {
+  if (listing.status === 'available' && listing.lentOut) {
+    const now = listing.takenPeriods.find((p) => new Date(p.startsAt) <= new Date());
+    return now ? `Lent out until ${shortDay(now.endsAt)}` : 'Lent out';
+  }
+  return statusText[listing.status];
+}
+
+/** How the handover happens, in words for the type (002 research §6). */
+export function handoverText(type: ListingType, handover: Handover, names: { lister: string; requester: string }): string {
+  const goods = type === 'lend' || type === 'gift';
+  const place = (name: string) => (name === 'you' ? 'your place' : name === 'me' ? 'my place' : `${name}'s`);
+  switch (handover) {
+    case 'to_requester':
+      return goods ? `Dropped off to ${names.requester}` : `At ${place(names.requester)}`;
+    case 'at_lister':
+      return goods ? `Picked up from ${names.lister}` : `At ${place(names.lister)}`;
+    case 'elsewhere':
+      return type === 'service' ? 'Somewhere else' : 'Meet somewhere else';
+    case 'online':
+      return 'Online';
+  }
+}
+
+/** The question a listing form asks about the handover. */
+export const handoverQuestion: Record<ListingType, string> = {
+  lend: 'How the pickup happens',
+  gift: 'How the pickup happens',
+  trade: 'How the trade happens',
+  service: 'How the service happens'
+};
+
+export const handoverValues: Handover[] = ['to_requester', 'at_lister', 'elsewhere', 'online'];
+
+export const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/** "Monday–Friday, 18:00–21:00; Saturday, 10:00–12:00": consecutive days with the same hours grouped. */
+export function timesText(times: { weekday: number; startTime: string; endTime: string }[]): string {
+  const byHours = new Map<string, number[]>();
+  for (const t of times) byHours.set(`${t.startTime}–${t.endTime}`, [...(byHours.get(`${t.startTime}–${t.endTime}`) ?? []), t.weekday]);
+  const parts: string[] = [];
+  for (const [hours, days] of byHours) {
+    const sorted = [...new Set(days)].sort((a, b) => a - b);
+    const runs: string[] = [];
+    let start = sorted[0]!;
+    for (let i = 1; i <= sorted.length; i += 1) {
+      if (sorted[i] !== sorted[i - 1]! + 1) {
+        const end = sorted[i - 1]!;
+        runs.push(start === end ? dayNames[start]! : `${dayNames[start]}–${dayNames[end]}`);
+        start = sorted[i]!;
+      }
+    }
+    parts.push(`${runs.join(', ')}, ${hours}`);
+  }
+  return parts.join('; ');
+}
+
+/** What may be shown of a place: in full for those allowed, otherwise neighbourhood and city. */
+export const placeText = (place: PlaceView | null | undefined) => (place ? ('label' in place ? place.label : place.display) : null);
+
+/** "Tue 10 Nov" for an ISO time. */
+export function shortDay(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+/** "8–11 Nov" style range for lend periods already taken. */
+export function periodText(startsAt: string, endsAt: string): string {
+  return `${shortDay(startsAt)} to ${shortDay(endsAt)}`;
+}
 
 /** A calm, readable time: "Sat 7 Nov, 14:30". Uses the server's time zone (set TZ for the community). */
 export function when(iso: string): string {
@@ -99,7 +163,7 @@ type AgreementLike = {
   outcome: 'lent' | 'gifted' | 'traded' | 'provided';
   amount: string | null;
   sessions: number | null;
-  returnDue: string | null;
+  loanEndsAt: string | null;
   listing: { title: string; unit: Unit | null };
   owner: { displayName: string };
   otherMember: { displayName: string };
@@ -113,7 +177,7 @@ export function agreementSentence(a: AgreementLike): string {
   const what = a.amount ? `${quantity(a.amount, a.listing.unit)} of ${a.listing.title}` : a.listing.title;
   switch (a.outcome) {
     case 'lent':
-      return `${owner} lent ${other} ${a.listing.title}${a.returnDue ? `, back by ${day(a.returnDue)}` : ''}.`;
+      return `${owner} lent ${other} ${a.listing.title}${a.loanEndsAt ? `, back by ${when(a.loanEndsAt)}` : ''}.`;
     case 'gifted':
       return `${owner} gave ${other} ${what}.`;
     case 'traded':
@@ -122,10 +186,3 @@ export function agreementSentence(a: AgreementLike): string {
       return `${owner} provided ${a.sessions ?? 1} ${a.sessions === 1 || !a.sessions ? 'session' : 'sessions'} of ${a.listing.title} for ${other}.`;
   }
 }
-
-export const confirmationText = {
-  pending: 'Waiting for an answer',
-  confirmed: 'Confirmed',
-  disputed: 'Needs a correction',
-  cancelled: 'Cancelled'
-} as const;

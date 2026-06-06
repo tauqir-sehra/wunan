@@ -14,7 +14,8 @@
     "create-founder": "dotenv -e ../../.env -- node scripts/create-founder.ts",
     "reminders:once": "dotenv -e ../../.env -- node scripts/reminders-once.ts",
     "seed:demo": "dotenv -e ../../.env -- node scripts/seed-demo.ts",
-    "db:reset-test": "dotenv -e ../../.env -- node scripts/reset-test-db.ts"
+    "db:reset-test": "dotenv -e ../../.env -- node scripts/reset-test-db.ts",
+    "db:reset": "dotenv -e ../../.env -- node scripts/reset-db.ts"
   },
   "dependencies": {
     "@hono/node-server": "2.1.6",

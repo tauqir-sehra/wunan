@@ -1,5 +1,5 @@
-// Create a listing in four short steps (FR-007). Works without JavaScript: each step is a normal
-// form post, and earlier answers travel along as hidden fields. Photos are chosen on the last step
+// Create a listing in four short steps (FR-007). Each step is a normal form post, and earlier answers
+// travel along as hidden fields; the details step needs JavaScript (002 research §10). Photos are chosen on the last step
 // because files can't be carried between steps.
 import { fail, redirect } from '@sveltejs/kit';
 import { CreateListing, ListingType } from '@wunan/shared';
@@ -28,8 +28,9 @@ export const actions: Actions = {
       const checked = CreateListing.safeParse(listingBody(values));
       if (!checked.success) {
         const fields = fieldErrors(checked.error);
-        // Area is asked on step 3; everything else on step 2.
-        const relevant = Object.fromEntries(Object.entries(fields).filter(([name]) => (step === AREA_STEP) === (name === 'area')));
+        // Places are asked on step 3; everything else on step 2.
+        const isPlace = (name: string) => name === 'area' || name === 'meetingPlace';
+        const relevant = Object.fromEntries(Object.entries(fields).filter(([name]) => (step === AREA_STEP) === isPlace(name)));
         if (Object.keys(relevant).length > 0) return fail(400, { step, values, fields: relevant });
       }
     }

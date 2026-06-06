@@ -4,7 +4,7 @@
   import FormField from '#lib/components/FormField.svelte';
   import Notice from '#lib/components/Notice.svelte';
   import SettingsNav from '#lib/components/SettingsNav.svelte';
-  import { day } from '#lib/format.ts';
+  import { when } from '#lib/format.ts';
 
   let { data, form } = $props();
 </script>
@@ -55,8 +55,8 @@
             <span class="block text-sm text-muted-foreground">
               {loan.myRole === 'owner'
                 ? `Lent to ${loan.otherMember.displayName}`
-                : `Borrowed from ${loan.owner.displayName}`}{loan.returnDue
-                ? `, due back ${day(loan.returnDue)}`
+                : `Borrowed from ${loan.owner.displayName}`}{loan.loanEndsAt
+                ? `, due back ${when(loan.loanEndsAt)}`
                 : ''}
             </span>
           </li>

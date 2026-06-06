@@ -7,3 +7,6 @@ process.env.PHOTOS_DIR = process.env.PHOTOS_DIR_TEST ?? './photos-test';
 process.env.VAPID_PUBLIC_KEY = 'BCqW4uR_wB7SZCVZ_9zzRJqI3_9-z424hVlLZvkW2xcOi_i-GQpnxl_pmV5wJxMrt3IDVUtvm_y0sO36t_VrlZc';
 process.env.VAPID_PRIVATE_KEY = 'aunHLGGAk5OXa9xzRJjf6zAY4qB4gZzfryFCb51kUI4';
 process.env.VAPID_SUBJECT = 'mailto:tests@example.org';
+// Place suggestions are off unless a test starts the stub (src/test/places-stub.ts) and points
+// config.PLACES_URL at it, so no test ever reaches the internet.
+process.env.PLACES_URL = '';

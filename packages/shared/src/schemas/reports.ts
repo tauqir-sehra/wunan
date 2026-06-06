@@ -32,6 +32,10 @@ export const ProblemReport = z.object({
   reportedMember: memberRef,
   mediators: z.array(memberRef),
   conversationId: z.string(),
+  /** The reporter or reported member let the mediators read the proposal's messages (002 FR-022a). */
+  proposalMessagesShared: z.boolean(),
+  proposalConversationId: z.string().nullable(),
+  canShareProposalMessages: z.boolean(),
   canEscalate: z.boolean(),
   canResolve: z.boolean(),
   createdAt: z.string()

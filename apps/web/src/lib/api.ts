@@ -8,12 +8,15 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fields: Record<string, string>;
+  /** Anything else the API sent to help recover, e.g. `proposalId` or `issues`. */
+  readonly details: Record<string, unknown>;
 
-  constructor(status: number, code: string, message: string, fields: Record<string, string> = {}) {
+  constructor(status: number, code: string, message: string, fields: Record<string, string> = {}, details: Record<string, unknown> = {}) {
     super(message);
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.details = details;
   }
 }
 
@@ -61,9 +64,10 @@ export function apiFor(event: Pick<RequestEvent, 'locals' | 'getClientAddress'>)
 export async function toApiError(response: Response): Promise<ApiError> {
   try {
     const { error } = (await response.json()) as {
-      error: { code: string; message: string; fields?: Record<string, string> };
+      error: { code: string; message: string; fields?: Record<string, string>; [detail: string]: unknown };
     };
-    return new ApiError(response.status, error.code, error.message, error.fields);
+    const { code, message, fields, ...details } = error;
+    return new ApiError(response.status, code, message, fields, details);
   } catch {
     return new ApiError(
       response.status,

@@ -4,6 +4,7 @@ import { sql } from './db/index.ts';
 import { pruneRateLimitEvents } from './lib/rate-limit.ts';
 import { log } from './lib/log.ts';
 import { releaseExpiredHolds } from './modules/invitations.ts';
+import { closeQuietProposals } from './modules/proposals.ts';
 import { runReminders } from './modules/reminders.ts';
 
 const LOCK_ID = 7_412_001; // Any fixed number; identifies "wunan hourly jobs" to PostgreSQL.
@@ -14,7 +15,9 @@ type Job = { name: string; run: () => Promise<unknown> };
 const jobs: Job[] = [
   { name: 'release_expired_holds', run: releaseExpiredHolds },
   { name: 'prune_rate_limits', run: pruneRateLimitEvents },
-  { name: 'return_reminders', run: runReminders }
+  { name: 'return_reminders', run: runReminders },
+  // Open proposals with no activity for 30 days (002 FR-020a).
+  { name: 'close_quiet_proposals', run: () => closeQuietProposals() }
 ];
 
 /** Adds a job (e.g., return reminders) to the hourly run. */

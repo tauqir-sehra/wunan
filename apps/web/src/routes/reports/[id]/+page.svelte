@@ -29,6 +29,7 @@
   {#if form?.done === 'escalate'}<Notice
       ><p>More help has been asked for. They've joined the conversation.</p></Notice
     >{/if}
+  {#if form?.done === 'share'}<Notice><p>The helpers can now read your messages about this agreement.</p></Notice>{/if}
   {#if form?.done === 'resolve'}<Notice
       ><p>Marked as settled. The note is kept with the agreement.</p></Notice
     >{/if}
@@ -49,7 +50,36 @@
     <h2 id="helping-heading" class="text-lg font-semibold">Who is helping</h2>
     <p>{r.mediators.map((m) => m.displayName).join(', ') || 'No one yet'}</p>
     <p class="text-muted-foreground">{step}</p>
-    <div><Button href="/messages/{r.conversationId}">Open the shared conversation</Button></div>
+    <div><Button href="/threads/{r.conversationId}">Open the shared conversation</Button></div>
+  </section>
+
+  <section class="grid gap-2" aria-labelledby="share-heading">
+    <h2 id="share-heading" class="text-lg font-semibold">Messages about the agreement</h2>
+    {#if r.proposalMessagesShared}
+      <p>The messages you two wrote about this agreement are shared with the helpers.</p>
+      {#if r.proposalConversationId && r.reporter.id !== data.member?.id && r.reportedMember.id !== data.member?.id}
+        <p><a href="/threads/{r.proposalConversationId}">Read the messages about the agreement</a></p>
+      {/if}
+    {:else if r.canShareProposalMessages}
+      {#if (form as { confirmShare?: boolean } | null)?.confirmShare}
+        <form method="POST" action="?/share" class="grid gap-3 rounded-lg border border-input bg-card p-4">
+          <input type="hidden" name="confirmed" value="yes" />
+          <p>
+            Let {r.mediators.map((m) => m.displayName).join(', ') || 'the helpers'} read every message you two wrote about this
+            agreement? They can read them but not write there. This can't be undone.
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <Button type="submit">Yes, share them</Button>
+            <a href="/reports/{r.id}">Not now</a>
+          </div>
+        </form>
+      {:else}
+        <p class="text-muted-foreground">The helpers can't see what you two wrote to each other. You can let them read it, if it would help.</p>
+        <form method="POST" action="?/share"><Button type="submit" variant="outline">Let the helpers read your messages</Button></form>
+      {/if}
+    {:else}
+      <p class="text-muted-foreground">The helpers can't see the messages you two wrote about this agreement unless one of you shares them.</p>
+    {/if}
   </section>
 
   {#if r.status === 'resolved'}

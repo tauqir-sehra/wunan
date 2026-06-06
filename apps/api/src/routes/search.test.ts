@@ -2,13 +2,14 @@
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
-import { listing } from '../db/schema/index.ts';
-import { api, createFounder, signIn } from '../test/setup.ts';
+import { agreement } from '../db/schema/index.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, signIn } from '../test/setup.ts';
 
 async function setup() {
-  const token = await signIn(await createFounder());
+  const founder = await createFounder();
+  const token = await signIn(founder);
   const make = async (body: Record<string, unknown>) => (await api('POST', '/api/v1/listings', { token, body })).body;
-  return { token, make };
+  return { founder, token, make };
 }
 const search = (token: string, query: string) => api('GET', `/api/v1/listings?${query}`, { token });
 const titles = (result: { body: { items: { title: string }[] } }) => result.body.items.map((item) => item.title);
@@ -22,9 +23,9 @@ describe('search', () => {
     expect(titles(await search(token, 'q=drilling'))).toEqual(['Drill']);
   });
 
-  it('also searches the description and what a trade wants', async () => {
+  it('also searches the description and what a trade accepts', async () => {
     const { token, make } = await setup();
-    await make({ type: 'trade', title: 'Sneakers', wanted: 'leather boots' });
+    await make({ type: 'trade', title: 'Sneakers', accepts: [{ description: 'leather boots' }] });
     await make({ type: 'gift', title: 'Jar', description: 'Good for storing flour' });
     expect(titles(await search(token, 'q=boots'))).toEqual(['Sneakers']);
     expect(titles(await search(token, 'q=flour'))).toEqual(['Jar']);
@@ -40,14 +41,17 @@ describe('search', () => {
   });
 
   it('shows only available listings unless lent-out ones are asked for', async () => {
-    const { token, make } = await setup();
+    const { founder, token, make } = await setup();
     const available = await make({ type: 'gift', title: 'Available rice' });
     const paused = await make({ type: 'gift', title: 'Paused rice' });
     const closed = await make({ type: 'gift', title: 'Closed rice' });
     const lent = await make({ type: 'lend', title: 'Lent drill' });
     await api('POST', `/api/v1/listings/${paused.id}/pause`, { token });
     await api('POST', `/api/v1/listings/${closed.id}/remove`, { token });
-    await db.update(listing).set({ status: 'lent_out' }).where(eq(listing.id, lent.id));
+    // A loan that started yesterday and isn't back yet.
+    const borrower = await createInvitedMember(founder, 'Alex');
+    const { agreementId } = await agree(token, await signIn(borrower), lent.id, completeDetails('lend'));
+    await db.update(agreement).set({ loanStartsAt: new Date(Date.now() - 86_400_000), loanEndsAt: new Date(Date.now() + 86_400_000) }).where(eq(agreement.id, agreementId));
     expect(titles(await search(token, ''))).toEqual([available.title]);
     expect(titles(await search(token, 'includeLent=true')).sort()).toEqual(['Available rice', 'Lent drill']);
   });

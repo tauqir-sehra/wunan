@@ -8,6 +8,7 @@ import {
   agreement,
   conversation,
   conversationParticipant,
+  proposal,
   listing,
   listingFlag,
   listingPhoto,
@@ -37,10 +38,12 @@ my-wunan-data.json
   profile                   Your name, email, bio, when you joined, who invited you, and the
                             private contact details you saved (only ever shared when you chose to).
   invitations               Invitation links you made and who used them.
-  listings                  Everything you listed, with amounts, loan lengths and what you wanted.
-  agreements                Agreements you recorded or that were recorded with you.
+  listings                  Everything you listed: amounts, loan lengths, how the handover happens,
+                            what a trade accepts, and when a service is offered.
+  proposals                 Proposals you made or received, their details, and every message.
+  agreements                Agreements made when a proposal was accepted.
   problem_reports           Requests for help you made, were part of, or helped with.
-  conversations             Your conversations and every message in them.
+  conversations             The conversations of those requests for help, and every message.
   flags_sent                Requests you sent about other members' listings.
   flags_received            Requests other members sent about your listings.
   notification_preferences  Which notifications you turned on, by email and on your devices.
@@ -88,7 +91,8 @@ export async function buildExport(memberId: string) {
     .select({ conversation, listingTitle: listing.title })
     .from(conversationParticipant)
     .innerJoin(conversation, eq(conversation.id, conversationParticipant.conversationId))
-    .leftJoin(listing, eq(listing.id, conversation.listingId))
+    .leftJoin(proposal, eq(proposal.id, conversation.proposalId))
+    .leftJoin(listing, eq(listing.id, proposal.listingId))
     .where(eq(conversationParticipant.memberId, memberId))
     .orderBy(asc(conversation.createdAt));
   const conversationIds = myConversations.map((c) => c.conversation.id);
@@ -98,6 +102,15 @@ export async function buildExport(memberId: string) {
   const messages = conversationIds.length
     ? await db.select().from(message).where(inArray(message.conversationId, conversationIds)).orderBy(asc(message.createdAt))
     : [];
+
+  // Proposals I made or received (002 FR-033).
+  const myProposals = await db
+    .select({ proposal, listingTitle: listing.title, listingType: listing.type, ownerId: listing.ownerId })
+    .from(proposal)
+    .innerJoin(listing, eq(listing.id, proposal.listingId))
+    .where(or(eq(proposal.requesterId, memberId), eq(listing.ownerId, memberId)))
+    .orderBy(asc(proposal.createdAt));
+  const threadOfProposal = new Map(myConversations.filter((c) => c.conversation.proposalId).map((c) => [c.conversation.proposalId!, c.conversation.id]));
 
   const mediatedReportIds = myConversations
     .map((c) => c.conversation.problemReportId)
@@ -187,15 +200,13 @@ export async function buildExport(memberId: string) {
       remaining: trimDecimal(l.remaining),
       loan_length: l.loanLength,
       loan_length_unit: l.loanLengthUnit,
-      wanted: l.wanted,
-      wanted_amount: trimDecimal(l.wantedAmount),
-      wanted_unit: l.wantedUnit,
-      open_to_offers: l.openToOffers,
+      handovers: l.handovers,
+      meeting_place: l.meetingPlace?.label ?? '',
       session_length: l.sessionLength,
       session_length_unit: l.sessionLengthUnit,
       sessions_available: l.sessionsAvailable,
       sessions_remaining: l.sessionsRemaining,
-      area: l.area ?? '',
+      area: l.area?.label ?? '',
       status: l.status,
       created: l.createdAt.toISOString(),
       photos: photoPaths.get(l.id) ?? []
@@ -209,10 +220,13 @@ export async function buildExport(memberId: string) {
         outcome: a.outcome,
         amount: trimDecimal(a.amount),
         sessions: a.sessions,
-        return_due: a.returnDue,
+        when: iso(a.startsAt),
+        handover: a.handover,
+        place: a.place?.label ?? '',
+        offer: a.offer,
+        loan_starts_at: iso(a.loanStartsAt),
+        loan_ends_at: iso(a.loanEndsAt),
         returned_at: iso(a.returnedAt),
-        confirmation: a.confirmation,
-        note: a.note ?? '',
         recorded: a.createdAt.toISOString()
       };
     }),
@@ -224,7 +238,30 @@ export async function buildExport(memberId: string) {
       outcome_note: r.outcomeNote ?? '',
       created: r.createdAt.toISOString()
     })),
-    conversations: myConversations.map(({ conversation: c, listingTitle }) => ({
+    proposals: myProposals.map(({ proposal: p, listingTitle, ownerId }) => ({
+      listing_title: listingTitle,
+      role: p.requesterId === memberId ? 'requester' : 'lister',
+      with: name(p.requesterId === memberId ? ownerId : p.requesterId),
+      status: p.status,
+      closed_reason: p.closedReason,
+      when: iso(p.startsAt),
+      has_time: p.hasTime,
+      handover: p.handover,
+      place: p.place?.label ?? '',
+      loan_length: p.loanLength,
+      loan_length_unit: p.loanLengthUnit,
+      amount: trimDecimal(p.amount),
+      own_offer: p.ownOffer,
+      session_length: p.sessionLength,
+      session_length_unit: p.sessionLengthUnit,
+      sessions: p.sessions,
+      decision_note: p.decisionNote,
+      created: p.createdAt.toISOString(),
+      messages: messages
+        .filter((m) => m.conversationId === threadOfProposal.get(p.id))
+        .map((m) => ({ from: m.authorId === memberId ? 'me' : name(m.authorId), sent: m.createdAt.toISOString(), kind: m.kind, body: m.body }))
+    })),
+    conversations: myConversations.filter(({ conversation: c }) => c.problemReportId !== null).map(({ conversation: c, listingTitle }) => ({
       with: participants
         .filter((p) => p.conversationId === c.id && p.memberId !== memberId)
         .map((p) => name(p.memberId)),

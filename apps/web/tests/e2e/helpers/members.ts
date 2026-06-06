@@ -117,11 +117,42 @@ export async function memberIdOf(member: TestMember): Promise<string> {
   return ((await response.json()) as { id: string }).id;
 }
 
-/** `member` messages `ownerId` about a listing, as people do before agreeing. */
-export async function messageAbout(member: TestMember, ownerId: string, listingId: string) {
+/** `member` makes a proposal on a listing (with a first message), as people do before agreeing. */
+export async function proposeOn(member: TestMember, listingId: string, details: Record<string, unknown> = {}) {
   const token = await signIn(member);
   const headers = { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin };
-  const started = await fetch(`${API_URL}/api/v1/conversations`, { method: 'POST', headers, body: JSON.stringify({ memberId: ownerId, listingId }) });
-  const { id } = (await started.json()) as { id: string };
-  await fetch(`${API_URL}/api/v1/conversations/${id}/messages`, { method: 'POST', headers, body: JSON.stringify({ body: 'Is this still available?' }) });
+  const response = await fetch(`${API_URL}/api/v1/listings/${listingId}/proposals`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ message: 'Is this still available?', ...details })
+  });
+  if (response.status !== 201) throw new Error(`Could not propose: ${response.status} ${await response.text()}`);
+  return (await response.json()) as { id: string; conversationId: string };
+}
+
+/** A date some days ahead, as YYYY-MM-DD. */
+export function daysAhead(days: number) {
+  const d = new Date(Date.now() + days * 86_400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Complete details for a listing type, so the proposal can be accepted straight away. */
+export function completeDetails(type: 'lend' | 'gift' | 'trade' | 'service', extra: Record<string, unknown> = {}) {
+  const byType: Record<string, Record<string, unknown>> = {
+    lend: { loanLength: 2, loanLengthUnit: 'days' },
+    gift: {},
+    trade: { ownOffer: 'A jar of jam' },
+    service: { sessionLength: 1, sessionLengthUnit: 'hours', sessions: 1 }
+  };
+  return { date: daysAhead(3), time: '10:00', handover: 'online', ...byType[type], ...extra };
+}
+
+/** `owner` accepts a proposal on their listing; returns the agreement id. */
+export async function acceptProposal(owner: TestMember, proposalId: string) {
+  const token = await signIn(owner);
+  const headers = { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin };
+  const shown = (await (await fetch(`${API_URL}/api/v1/proposals/${proposalId}`, { headers })).json()) as { version: number };
+  const response = await fetch(`${API_URL}/api/v1/proposals/${proposalId}/accept`, { method: 'POST', headers, body: JSON.stringify({ version: shown.version }) });
+  if (response.status !== 200) throw new Error(`Could not accept: ${response.status} ${await response.text()}`);
+  return ((await response.json()) as { agreementId: string }).agreementId;
 }

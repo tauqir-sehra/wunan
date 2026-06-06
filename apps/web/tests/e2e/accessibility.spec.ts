@@ -3,9 +3,8 @@
 // visible focus indicator. Screen-reader walkthroughs are done by hand.
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
-import { createFounder, createInvitation, createInvitedMember, createListingFor, memberIdOf, messageAbout, signIn } from './helpers/members.ts';
+import { acceptProposal, completeDetails, createFounder, createInvitation, createInvitedMember, createListingFor, memberIdOf, proposeOn } from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
-import { API_URL, WEB_URL } from '../../playwright.config.ts';
 
 async function noSidewaysScroll(page: Page, label: string) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -17,20 +16,17 @@ async function pagesOfACommunity() {
   const alex = await createInvitedMember(sam, 'Alex');
   const drill = await createListingFor(sam, { type: 'lend', title: 'Drill', description: 'A cordless drill with two batteries.', area: 'Riverside' });
   const samId = await memberIdOf(sam);
-  await messageAbout(alex, samId, drill.id);
-  const token = await signIn(sam);
-  const headers = { 'content-type': 'application/json', authorization: `Bearer ${token}`, origin: WEB_URL };
-  const agreement = await fetch(`${API_URL}/api/v1/listings/${drill.id}/agreements`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ otherMemberId: await memberIdOf(alex), returnDue: '2030-01-05' })
-  }).then((r) => r.json() as Promise<{ id: string }>);
-  const conversations = await fetch(`${API_URL}/api/v1/conversations`, { headers }).then((r) => r.json() as Promise<{ items: { id: string }[] }>);
+  const deal = await proposeOn(alex, drill.id, completeDetails('lend'));
+  const agreement = { id: await acceptProposal(sam, deal.id) };
+  const rice = await createListingFor(sam, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+  const open = await proposeOn(alex, rice.id);
+  const jam = await createListingFor(alex, { type: 'trade', title: 'Jam', accepts: [{ description: 'Eggs' }] });
   return {
     sam,
     paths: [
       '/', '/listings', '/listings?q=drill&type=lend', `/listings/${drill.id}`, '/listings/new', `/listings/${drill.id}/edit`,
-      `/listings/${drill.id}/agreements/new`, '/my-listings', '/messages', `/messages/${conversations.items[0]!.id}`,
+      `/listings/${jam.id}/propose`, '/my-listings', '/proposals', `/proposals/${open.id}`, `/proposals/${deal.id}`,
+      `/threads/${open.conversationId}/share-contact`,
       '/agreements', `/agreements/${agreement.id}`, `/agreements/${agreement.id}/report`, '/invitations',
       `/members/${samId}`, `/members/${samId}/chain`, '/settings', '/settings/notifications', '/settings/export',
       '/settings/delete-account', '/help', '/help/joining', '/help/asking-for-help'
@@ -103,7 +99,7 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
     expect(focused.ring, `"${focused.text}" has no visible focus ring`).toBe(true);
     seen.add(focused.text);
   }
-  for (const label of ['Home', 'Find', 'Messages', 'My listings', 'Agreements', 'Settings', 'Help', 'Sign out']) {
+  for (const label of ['Home', 'Find', 'Proposals', 'My listings', 'Agreements', 'Settings', 'Help', 'Sign out']) {
     expect([...seen].some((text) => text.startsWith(label)), `${label} reachable by keyboard`).toBe(true);
   }
 });

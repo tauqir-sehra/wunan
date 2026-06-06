@@ -14,6 +14,6 @@
 
 <h2>When you find something</h2>
 <p>
-  Open the listing and press "Message about this" to talk to the person who listed it. See
-  <a href="/help/messages">Messages and contact details</a>.
+  Open the listing and press "Ask to borrow", "Ask for this", "Offer a trade" or "Ask for this
+  service". See <a href="/help/proposals">Proposals and messages</a>.
 </p>

@@ -26,7 +26,7 @@ async function createListing(
   await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByText('Step 3 of 4')).toBeVisible();
   if (check) await expectAccessible(page, 'new listing: area');
-  if (area) await page.getByLabel('Area').fill(area);
+  if (area) await page.getByRole('combobox', { name: /^Area/ }).fill(area);
   await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByText('Step 4 of 4')).toBeVisible();
   if (check) await expectAccessible(page, 'new listing: review');
@@ -53,7 +53,7 @@ test('a member lists one of each kind, and photos lose their location data', asy
     { area: 'Riverside', photo: true, check: true }
   );
   await expect(page.getByText('5 kg available')).toBeVisible();
-  await expect(page.getByText('Area: Riverside')).toBeVisible();
+  await expect(page.getByRole('definition').filter({ hasText: 'Riverside' })).toBeVisible();
   await expectAccessible(page, 'listing page');
 
   // The served photo is WebP without any EXIF (location) data.
@@ -73,21 +73,24 @@ test('a member lists one of each kind, and photos lose their location data', asy
   });
   await expect(page.getByText('Lend for up to 3 days')).toBeVisible();
 
-  // A Trade needs something wanted, or "Open to offers".
-  await page.goto('/listings/new');
-  await page.getByRole('radio', { name: /^Trade/ }).check();
-  await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByLabel('Title').fill('Sneakers');
-  await page.getByRole('button', { name: 'Next' }).click();
-  await expect(page.getByText("Say what you'd like in return, or tick Open to offers.")).toBeVisible();
-  await expectAccessible(page, 'trade error');
+  // A Trade lists what it accepts; with nothing listed it's plainly open to offers (002 FR-005, FR-006).
+  await createListing(page, 'Trade', 'Old records');
+  await expect(page.getByText("Open to offers: Sam hasn't listed anything specific")).toBeVisible();
 
   await createListing(page, 'Trade', 'Sneakers', async (p) => {
     await p.getByLabel('Amount: number').fill('1');
     await p.getByLabel('Amount: unit').selectOption('item');
-    await p.getByLabel('What you’d like in return').fill('leather boots');
-  });
-  await expect(page.getByText('Would like: leather boots')).toBeVisible();
+    await p.getByRole('button', { name: 'Add something you’d accept' }).click();
+    await expect(p.getByLabel('What', { exact: true })).toBeFocused();
+    await p.getByLabel('What', { exact: true }).fill('Leather boots');
+    await p.getByRole('button', { name: 'Add another' }).click();
+    await p.getByLabel('What', { exact: true }).nth(1).fill('Wool socks');
+    await p.getByRole('button', { name: 'Remove thing 2' }).click();
+    await expect(p.locator('[aria-live="polite"]').filter({ hasText: 'Removed thing 2.' })).toHaveCount(1);
+    await p.getByRole('checkbox', { name: 'At my place' }).check();
+  }, { area: 'Riverside' });
+  await expect(page.getByText('Accepts: Leather boots')).toBeVisible();
+  await expect(page.getByText('At my place')).toBeVisible();
 
   await createListing(page, 'Service', 'Bodywork session', async (p) => {
     await p.getByLabel('How long each time: number').fill('1');
@@ -96,9 +99,26 @@ test('a member lists one of each kind, and photos lose their location data', asy
   });
   await expect(page.getByText('1 hour · 3 sessions available')).toBeVisible();
 
+  // New units and lengths (002 US6).
+  await createListing(page, 'Gift', 'Coffee beans', async (p) => {
+    await p.getByLabel('Amount: number').fill('2');
+    await p.getByLabel('Amount: unit').selectOption('lb');
+  });
+  await expect(page.getByText('2 lb available')).toBeVisible();
+  await createListing(page, 'Service', 'Garden course', async (p) => {
+    await p.getByLabel('How long each time: number').fill('2');
+    await p.getByLabel('How long each time: unit').selectOption('days');
+    await p.getByRole('button', { name: 'Add a time' }).click();
+    await p.getByLabel('Day', { exact: true }).selectOption('Saturday');
+    await p.getByLabel('From').fill('09:00');
+    await p.getByLabel('To', { exact: true }).fill('17:00');
+  });
+  await expect(page.getByText('2 days')).toBeVisible();
+  await expect(page.getByText('Saturday, 09:00–17:00')).toBeVisible();
+
   await page.goto('/my-listings');
   await expect(page.getByRole('heading', { name: 'Available' })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('article')).toHaveCount(4);
+  await expect(page.getByRole('main').getByRole('article')).toHaveCount(7);
   await expectAccessible(page, 'my listings');
 
   // Edit, pause, and remove with a confirmation step, then reopen.
@@ -118,7 +138,7 @@ test('a member lists one of each kind, and photos lose their location data', asy
   await expect(page.getByText('Your listing is available again.')).toBeVisible();
 });
 
-test('listing works with JavaScript turned off', async ({ browser }) => {
+test('a simple listing works with JavaScript turned off', async ({ browser }) => {
   const founder = createFounder('Robin');
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
@@ -139,6 +159,7 @@ test('listing works with JavaScript turned off', async ({ browser }) => {
 });
 
 test("another member's request reaches the owner and leaves the listing as it is", async ({ page, browser }) => {
+  test.setTimeout(60_000);
   const founder = createFounder('Sam');
   const alex = await createInvitedMember(founder, 'Alex');
   await signInAs(page, founder);
@@ -149,7 +170,7 @@ test("another member's request reaches the owner and leaves the listing as it is
   const alexPage = await alexContext.newPage();
   await signInAs(alexPage, alex);
   await alexPage.goto(url);
-  await expect(alexPage.getByRole('link', { name: 'Message about this' })).toBeVisible();
+  await expect(alexPage.getByRole('link', { name: 'Ask for this' })).toBeVisible();
   await alexPage.getByText('Raise a conflict about this posting to the person who listed this').click();
   await alexPage.getByLabel('Your request').fill('Is this still available?');
   await alexPage.getByRole('button', { name: 'Send request' }).click();

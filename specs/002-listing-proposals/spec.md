@@ -326,9 +326,10 @@ each place field; pick a suggestion; use the keyboard only.
   offers.
 - **FR-014**: A Service proposal MUST hold: when, where, how, how long each time, and how many
   times. Each MUST fit the listing when the listing sets it: how long ≤ session length, how many ≤
-  times remaining, when within the available times, where within the listing's area. "Within"
-  means the place has the same neighbourhood as the listing's area, or the same city when the
-  listing's area is a whole city.
+  times remaining, when within the available times, and, when meeting somewhere else, where within
+  the listing's area. "Within" means the place has the same neighbourhood as the listing's area, or
+  the same city when the listing's area is a whole city. A place at the recipient's (drop-off) is
+  never checked: how far is fine is agreed in messages.
 - **FR-015**: Every proposal detail MUST be optional when the proposal is made and when changed, so
   members can agree details by message instead (Gift and Trade amounts start at all that remains).
 - **FR-016**: Only the requester MUST be able to fill in or change details while the proposal is

@@ -65,3 +65,44 @@ export async function signIn(member: { email: string; password: string }, ip?: s
   }
   return token;
 }
+
+/** Creates a listing through the API and returns it. */
+export async function createListing(token: string, body: Record<string, unknown>) {
+  const result = await api('POST', '/api/v1/listings', { token, body });
+  if (result.status !== 201) throw new Error(`Listing failed: ${result.status} ${JSON.stringify(result.body)}`);
+  return result.body as { id: string } & Record<string, unknown>;
+}
+
+/** A date a few days from now, as YYYY-MM-DD in the community's time zone. */
+export function futureDate(daysAhead = 3) {
+  const day = new Date(Date.now() + daysAhead * 86_400_000);
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+}
+
+/** Complete details for a proposal on a listing of this type, so it can be accepted. */
+export function completeDetails(type: 'lend' | 'gift' | 'trade' | 'service', extra: Record<string, unknown> = {}) {
+  const base: Record<string, unknown> = { date: futureDate(), time: '10:00', handover: 'online' };
+  const byType: Record<string, Record<string, unknown>> = {
+    lend: { loanLength: 2, loanLengthUnit: 'days' },
+    gift: {},
+    trade: { ownOffer: 'A jar of jam' },
+    service: { sessionLength: 1, sessionLengthUnit: 'hours', sessions: 1 }
+  };
+  return { ...base, ...byType[type], ...extra };
+}
+
+/** Makes a proposal as `requesterToken` and returns its id and thread. */
+export async function propose(requesterToken: string, listingId: string, body: Record<string, unknown> = {}) {
+  const result = await api('POST', `/api/v1/listings/${listingId}/proposals`, { token: requesterToken, body });
+  if (result.status !== 201) throw new Error(`Proposal failed: ${result.status} ${JSON.stringify(result.body)}`);
+  return result.body as { id: string; conversationId: string };
+}
+
+/** Makes a complete proposal and accepts it: the quickest way to an agreement in tests. */
+export async function agree(listerToken: string, requesterToken: string, listingId: string, details: Record<string, unknown>) {
+  const made = await propose(requesterToken, listingId, details);
+  const shown = await api('GET', `/api/v1/proposals/${made.id}`, { token: listerToken });
+  const accepted = await api('POST', `/api/v1/proposals/${made.id}/accept`, { token: listerToken, body: { version: shown.body.version } });
+  if (accepted.status !== 200) throw new Error(`Accept failed: ${accepted.status} ${JSON.stringify(accepted.body)}`);
+  return { proposalId: made.id, conversationId: made.conversationId, agreementId: accepted.body.agreementId as string };
+}

@@ -28,6 +28,9 @@ export const problemReport = pgTable(
     status: reportStatus().notNull().default('open'),
     outcomeNote: text(),
     resolvedById: uuid().references(() => member.id),
+    /** Set once when the reporter or reported member lets the mediators read the proposal's messages. */
+    proposalMessagesSharedAt: timestamp({ withTimezone: true }),
+    proposalMessagesSharedById: uuid().references(() => member.id),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow()
   },
   (t) => [

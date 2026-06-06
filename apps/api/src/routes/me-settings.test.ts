@@ -10,7 +10,7 @@ import { db } from '../db/index.ts';
 import { invitation, listing, member, pushSubscription } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
 import { notify } from '../notify/index.ts';
-import { api, createFounder, createInvitedMember, PASSWORD, signIn } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, PASSWORD, propose, signIn } from '../test/setup.ts';
 
 const types = ['message', 'agreement', 'reminder', 'report', 'flag'];
 
@@ -178,9 +178,7 @@ describe('data export', () => {
     await api('PUT', '/api/v1/me/contact', { token: alexToken, body: { sharePhone: '07700 900999', shareEmail: 'alex.private@example.org' } });
     const { body: rice } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'gift', title: 'Rice', amount: 5, unit: 'kg' } });
     await addPhoto(samToken, rice.id);
-    const { body: started } = await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id, listingId: rice.id } });
-    await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: alexToken, body: { body: 'Could I have 2 kg?' } });
-    await api('POST', `/api/v1/listings/${rice.id}/agreements`, { token: samToken, body: { otherMemberId: alex.id, amount: 2 } });
+    await agree(samToken, alexToken, rice.id, completeDetails('gift', { amount: '2', message: 'Could I have 2 kg?' }));
 
     const { response, files } = await download(samToken);
     expect(response.status).toBe(200);
@@ -195,8 +193,9 @@ describe('data export', () => {
     expect(data.profile).toMatchObject({ display_name: 'Sam', email: sam.email, is_founder: true, invited_by: null });
     expect(data.listings[0]).toMatchObject({ title: 'Rice', amount: '5', remaining: '3', photos: [`photos/${rice.id}-1.webp`] });
     expect(data.agreements[0]).toMatchObject({ listing_title: 'Rice', role: 'owner', other_member: 'Alex', outcome: 'gifted', amount: '2' });
-    expect(data.conversations[0]).toMatchObject({ with: ['Alex'], listing_title: 'Rice' });
-    expect(data.conversations[0].messages[0]).toMatchObject({ from: 'Alex', body: 'Could I have 2 kg?' });
+    expect(data.proposals[0]).toMatchObject({ with: 'Alex', listing_title: 'Rice', role: 'lister', status: 'accepted', amount: '2' });
+    expect(data.proposals[0].messages[0]).toMatchObject({ from: 'Alex', body: 'Could I have 2 kg?' });
+    expect(data.conversations).toEqual([]);
     expect(data.notification_preferences).toHaveLength(5);
     // Nothing private about Alex.
     expect(json).not.toContain(alex.email);
@@ -252,10 +251,14 @@ describe('leaving wunan', () => {
     await addPhoto(samToken, pump.id);
     const { body: drill } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'lend', title: 'Drill', area: 'Near the park' } });
     await addPhoto(samToken, drill.id);
-    const { body: started } = await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id, listingId: drill.id } });
+    const deal = await agree(samToken, alexToken, drill.id, completeDetails('lend'));
+    const started = { id: deal.conversationId };
     await api('POST', `/api/v1/conversations/${started.id}/contact-share`, { token: samToken, body: { phone: true, email: false } });
     await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: samToken, body: { body: 'See you Saturday' } });
-    const { body: loan } = await api('POST', `/api/v1/listings/${drill.id}/agreements`, { token: samToken, body: { otherMemberId: alex.id, returnDue: '2030-01-01' } });
+    const loan = { id: deal.agreementId };
+    // An open proposal on another of Sam's listings closes when Sam leaves.
+    const { body: ladder } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'lend', title: 'Ladder' } });
+    const open = await propose(alexToken, ladder.id);
 
     const deleted = await api('DELETE', '/api/v1/me', { token: samToken, body: { password: PASSWORD } });
     expect(deleted.status).toBe(204);
@@ -296,9 +299,11 @@ describe('leaving wunan', () => {
     expect(await db.select().from(pushSubscription)).toEqual([]);
     expect((await db.select().from(invitation).where(eq(invitation.inviterId, sam.id))).map((i) => i.status)).toEqual(['cancelled']);
 
-    // No more notifications, and nobody can start a new conversation with a former member.
+    // The open proposal closed, and its listing stays (title only) so Alex's proposal still makes sense.
+    expect((await api('GET', `/api/v1/proposals/${open.id}`, { token: alexToken })).body).toMatchObject({ status: 'closed', closedReason: 'member_left' });
+    expect((await api('GET', `/api/v1/listings/${ladder.id}`, { token: alexToken })).body).toMatchObject({ title: 'Ladder', status: 'closed' });
+    // No more notifications.
     await notify(sam.id, 'message', { title: 'x', body: 'y', url: '/' });
-    expect((await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id } })).status).toBe(404);
   });
 
   it('frees the email, so it can be used to join again later', async () => {

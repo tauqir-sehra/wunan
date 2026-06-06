@@ -1,10 +1,12 @@
 <!--
-  The messages in a conversation, oldest first. With JavaScript, new messages arrive live
+  The messages in a thread, oldest first, with the notes wunan writes when a proposal changes
+  (shown quietly, not as speech bubbles). With JavaScript, new messages arrive live
   (FR-018a): they are added without animation or sound, the page only follows them if the member
   is already at the bottom, and each one is announced politely to screen readers.
   Without JavaScript, the "Check for new messages" link on the page reloads it.
 -->
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
   import { onMount, tick } from 'svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import { when } from '#lib/format.ts';
@@ -18,19 +20,24 @@
 
   onMount(() => {
     if (!('EventSource' in window)) return;
-    const source = new EventSource(`/messages/${conversationId}/live`);
+    const source = new EventSource(`/threads/${conversationId}/live`);
     source.addEventListener('message', async (event) => {
       const message = JSON.parse(event.data) as Message;
       if (messages.some((m) => m.id === message.id)) return;
       const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 80;
       added.push(message);
       if (message.author?.id !== meId) announcement = `New message from ${message.author?.displayName ?? 'wunan'}: ${describe(message)}`;
+      // A change to the proposal refreshes its details at the top of the page (002 FR-025).
+      if (notes.has(message.kind)) void invalidateAll();
       await tick();
       // Follow new messages only if the member hasn't scrolled up to read earlier ones.
       if (atBottom) window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' });
     });
     return () => source.close();
   });
+
+  /** Notes wunan writes about a proposal or a request for help. */
+  const notes = new Set<Message['kind']>(['system', 'detail_changed', 'accepted', 'declined', 'withdrawn', 'closed', 'messages_shared']);
 
   function describe(message: Message): string {
     switch (message.kind) {
@@ -49,12 +56,12 @@
 <ol class="grid gap-3" aria-label="Messages">
   {#each messages as message (message.id)}
     {@const mine = message.author?.id === meId}
-    <li class="grid gap-1 rounded-xl border p-4 {mine ? 'ml-8 bg-accent' : 'mr-8 bg-card'} {message.kind === 'system' ? 'mx-0 border-dashed bg-muted' : ''}">
+    <li class="grid gap-1 rounded-xl border p-4 {notes.has(message.kind) ? 'mx-0 border-dashed bg-muted' : mine ? 'ml-8 bg-accent' : 'mr-8 bg-card'}">
       <p class="text-sm text-muted-foreground">
         <span class="font-medium text-foreground">{mine ? 'You' : (message.author?.displayName ?? 'wunan')}</span>
         · <time datetime={message.createdAt}>{when(message.createdAt)}</time>
       </p>
-      {#if message.kind === 'text' || message.kind === 'system'}
+      {#if message.kind === 'text' || notes.has(message.kind)}
         <p class="whitespace-pre-line">{message.body}</p>
       {:else if message.kind === 'contact_shared'}
         <p class="font-medium">{mine ? 'You shared your contact details:' : 'Shared their contact details:'}</p>

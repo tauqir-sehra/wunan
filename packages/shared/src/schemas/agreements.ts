@@ -1,41 +1,40 @@
-// Agreements (FR-022 to FR-026): recorded by a listing's owner with another member.
+// Agreements (001 FR-025, FR-026; 002 FR-018 to FR-021): made when a lister accepts a proposal.
+// An agreement is confirmed from the start; owners mark loans returned.
 import { z } from 'zod';
-import { memberRef, optionalText } from './common.ts';
-import { ListingType, Unit } from './listings.ts';
-
-export const CreateAgreement = z.object({
-  otherMemberId: z.uuid({ message: 'Please choose who you agreed with.' }),
-  /** Gift/Trade with an amount: how much of it. */
-  amount: z
-    .union([z.number(), z.string().trim()])
-    .transform((value) => String(value).replace(',', '.'))
-    .refine((value) => /^\d{1,9}(\.\d{1,3})?$/.test(value) && Number(value) > 0, { message: 'Please enter a number above 0, like 2 or 2.5.' })
-    .nullish(),
-  /** Lend: when it should come back (YYYY-MM-DD). */
-  returnDue: z.iso.date({ message: 'Please choose the return date.' }).nullish(),
-  /** Service: how many sessions (default 1). */
-  sessions: z.coerce.number({ message: 'Please enter a whole number of 1 or more.' }).int('Please enter a whole number of 1 or more.').min(1, 'Please enter a whole number of 1 or more.').nullish(),
-  note: optionalText(500, 'Please keep the note to 500 characters or fewer.')
-});
-export type CreateAgreement = z.infer<typeof CreateAgreement>;
+import { memberRef } from './common.ts';
+import { Handover, ListingType, SessionLengthUnit, Unit } from './listings.ts';
+import { PlaceView } from './places.ts';
 
 export const AgreementOutcome = z.enum(['lent', 'gifted', 'traded', 'provided']);
-export const AgreementConfirmation = z.enum(['pending', 'confirmed', 'disputed', 'cancelled']);
 /** How the agreement looks from my side, for grouping my history. */
 export const AgreementGroup = z.enum(['given', 'received', 'lent', 'borrowed', 'provided']);
 
+export const AgreementOfferSnapshot = z.object({
+  items: z.array(z.object({ description: z.string(), amount: z.string().nullable(), unit: Unit.nullable() })),
+  own: z.object({ description: z.string(), amount: z.string().nullable(), unit: Unit.nullable() }).nullable()
+});
+export type AgreementOfferSnapshot = z.infer<typeof AgreementOfferSnapshot>;
+
 export const Agreement = z.object({
   id: z.string(),
+  proposalId: z.string(),
   listing: z.object({ id: z.string(), title: z.string(), type: ListingType, unit: Unit.nullable() }),
   owner: memberRef,
   otherMember: memberRef,
   outcome: AgreementOutcome,
+  startsAt: z.string().nullable(),
+  hasTime: z.boolean(),
+  handover: Handover.nullable(),
+  /** In full for the two members and mediators. */
+  place: PlaceView.nullable(),
   amount: z.string().nullable(),
   sessions: z.number().nullable(),
-  returnDue: z.string().nullable(),
+  sessionLength: z.number().nullable(),
+  sessionLengthUnit: SessionLengthUnit.nullable(),
+  loanStartsAt: z.string().nullable(),
+  loanEndsAt: z.string().nullable(),
+  offer: AgreementOfferSnapshot.nullable(),
   returnedAt: z.string().nullable(),
-  confirmation: AgreementConfirmation,
-  note: z.string().nullable(),
   createdAt: z.string(),
   myRole: z.enum(['owner', 'other', 'mediator']),
   group: AgreementGroup.nullable(),
@@ -44,5 +43,3 @@ export const Agreement = z.object({
   reports: z.array(z.object({ id: z.string(), status: z.enum(['open', 'resolved']), outcomeNote: z.string().nullable() })).optional()
 });
 export type Agreement = z.infer<typeof Agreement>;
-
-export const AgreementCandidate = memberRef;

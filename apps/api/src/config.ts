@@ -21,6 +21,20 @@ const schema = z.object({
   VAPID_PRIVATE_KEY: z.string().optional().default(''),
   VAPID_SUBJECT: z.string().optional().default(''),
   PHOTOS_DIR: z.string().min(1).default('./photos'),
+  // Place suggestions (research §1): a Photon server. Empty turns suggestions off.
+  PLACES_URL: z.union([z.literal(''), z.string().url()]).optional().default('https://photon.komoot.io'),
+  // Optional "lat,lon" so suggestions favour the community's own area.
+  PLACES_BIAS: z
+    .string()
+    .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, 'PLACES_BIAS must look like 51.5,-0.12')
+    .optional()
+    .or(z.literal('')),
+  // Optional "minLon,minLat,maxLon,maxLat" to keep suggestions inside a box.
+  PLACES_BBOX: z
+    .string()
+    .regex(/^(-?\d+(\.\d+)?,){3}-?\d+(\.\d+)?$/, 'PLACES_BBOX must look like -0.5,51.3,0.3,51.7')
+    .optional()
+    .or(z.literal('')),
   NODE_ENV: z.string().optional().default('development'),
   // Only for the browser tests, whose many sign-ins and joins all come from one address. Never set in production.
   E2E_RELAXED_LIMITS: z.enum(['true', 'false', '']).optional().transform((value) => value === 'true')
@@ -36,5 +50,6 @@ if (!parsed.success) {
 export const config = {
   ...parsed.data,
   // Trailing slashes would produce links like "https://site//join/…".
-  SITE_URL: parsed.data.SITE_URL.replace(/\/+$/, '')
+  SITE_URL: parsed.data.SITE_URL.replace(/\/+$/, ''),
+  PLACES_URL: parsed.data.PLACES_URL.replace(/\/+$/, '')
 };

@@ -4,7 +4,7 @@
   import { Button } from '#lib/components/ui/button/index.ts';
   import FormField from '#lib/components/FormField.svelte';
   import Notice from '#lib/components/Notice.svelte';
-  import { amountLine, statusText, typeLabels, wantedLine } from '#lib/format.ts';
+  import { acceptsLine, amountLine, handoverQuestion, handoverText, listingStatus, periodText, placeText, timesText, typeLabels } from '#lib/format.ts';
 
   let { data, form } = $props();
   const listing = $derived(data.listing);
@@ -18,6 +18,8 @@
     reopen: 'Your listing is available again.',
     flag: 'Your request was sent to the person who listed this.'
   };
+  const askWords = { lend: 'Ask to borrow', gift: 'Ask for this', trade: 'Offer a trade', service: 'Ask for this service' } as const;
+  const names = $derived({ lister: isOwner ? 'me' : listing.owner.displayName, requester: isOwner ? 'the recipient' : 'you' });
   const since = $derived(new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
 </script>
 
@@ -39,13 +41,28 @@
   <header class="grid gap-2">
     <div class="flex flex-wrap gap-2">
       <Badge>{typeLabels[listing.type]}</Badge>
-      <Badge variant="outline">{statusText[listing.status]}</Badge>
+      <Badge variant="outline">{listingStatus(listing)}</Badge>
     </div>
     <h1 class="text-3xl font-semibold">{listing.title}</h1>
     {#if amountLine(listing)}<p class="text-lg">{amountLine(listing)}</p>{/if}
-    {#if wantedLine(listing)}<p class="text-lg">{wantedLine(listing)}</p>{/if}
-    {#if listing.area}<p class="text-muted-foreground">Area: {listing.area}</p>{/if}
+    {#if acceptsLine(listing)}<p class="text-lg">{acceptsLine(listing)}</p>{/if}
   </header>
+
+  <dl class="grid gap-2 rounded-lg border bg-card p-4 sm:grid-cols-[12rem_1fr]">
+    <dt class="font-medium">{handoverQuestion[listing.type]}</dt>
+    <dd>{listing.handovers.length ? listing.handovers.map((h) => handoverText(listing.type, h, names)).join(', or ') : 'To be agreed'}</dd>
+    {#if listing.area}<dt class="font-medium">Area</dt><dd>{placeText(listing.area)}</dd>{/if}
+    {#if listing.meetingPlace}<dt class="font-medium">Meeting place</dt><dd>{placeText(listing.meetingPlace)}</dd>{/if}
+    {#if listing.type === 'service' && listing.availability.length}<dt class="font-medium">When it's offered</dt><dd>{timesText(listing.availability)}</dd>{/if}
+    {#if listing.type === 'lend' && listing.takenPeriods.length}
+      <dt class="font-medium">Already lent</dt>
+      <dd>
+        <ul>
+          {#each listing.takenPeriods as period (period.startsAt)}<li>{periodText(period.startsAt, period.endsAt)}{period.overdue ? ' (not back yet)' : ''}</li>{/each}
+        </ul>
+      </dd>
+    {/if}
+  </dl>
 
   {#if listing.photos.length}
     <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -73,7 +90,7 @@
     <section class="grid gap-4" aria-labelledby="manage-heading">
       <h2 id="manage-heading" class="text-xl font-semibold">Manage your listing</h2>
       <div class="flex flex-wrap gap-3">
-        {#if listing.status === 'available'}<Button href="/listings/{listing.id}/agreements/new">Record an agreement</Button>{/if}
+        {#if listing.openProposalCount}<Button href="/proposals?role=lister">Proposals ({listing.openProposalCount})</Button>{/if}
         {#if listing.status !== 'closed'}<Button href="/listings/{listing.id}/edit" variant="outline">Edit</Button>{/if}
         {#if listing.status === 'available'}
           <form method="POST" action="?/pause"><Button type="submit" variant="outline">Pause</Button></form>
@@ -117,7 +134,11 @@
       {/if}
     </section>
   {:else}
-    <div><Button href="/messages/start?member={listing.owner.id}&listing={listing.id}">Message about this</Button></div>
+    {#if listing.myOpenProposalId}
+      <div><Button href="/proposals/{listing.myOpenProposalId}">See your proposal</Button></div>
+    {:else if listing.status === 'available'}
+      <div><Button href="/listings/{listing.id}/propose">{askWords[listing.type]}</Button></div>
+    {/if}
 
     <details class="grid gap-1 rounded-lg border bg-card p-4" open={Boolean(form?.fields?.request)}>
       <summary class="min-h-11 cursor-pointer content-center font-medium">Raise a conflict about this posting to the person who listed this</summary>

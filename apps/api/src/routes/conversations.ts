@@ -1,8 +1,9 @@
-// Conversation endpoints (contracts/api.md, "Conversations and messages"), including the live
+// Thread endpoints (002 contracts/api.md, "Threads"): the messages of a proposal or a problem
+// report. There is no inbox and no way to start a thread here. Includes the live
 // stream: Server-Sent Events carrying each new message as `event: message`, plus a heartbeat
 // comment every 25 seconds so proxies keep the connection open.
 import { createRoute, z } from '@hono/zod-openapi';
-import { ConversationSummary, Message, MessagesPage, ProposeCall, SendMessage, ShareContact, StartConversation } from '@wunan/shared';
+import { Message, MessagesPage, ProposeCall, SendMessage, ShareContact } from '@wunan/shared';
 import { streamSSE } from 'hono/streaming';
 import { createRouter } from '../app-router.ts';
 import { config } from '../config.ts';
@@ -14,7 +15,6 @@ import * as messaging from '../modules/messaging.ts';
 import { eq } from 'drizzle-orm';
 
 export const conversationRoutes = createRouter();
-conversationRoutes.use('/conversations', requireMember);
 conversationRoutes.use('/conversations/*', requireMember);
 
 const security = [{ bearer: [] }];
@@ -23,26 +23,6 @@ const body = <T extends z.ZodType>(schema: T) => ({ content: { 'application/json
 const reply = <T extends z.ZodType>(schema: T, description: string) => ({ description, content: { 'application/json': { schema } } });
 // Every 25 seconds; much faster under test so heartbeats can be checked quickly.
 const HEARTBEAT_MS = config.NODE_ENV === 'test' ? 300 : 25_000;
-
-conversationRoutes.openapi(
-  createRoute({ method: 'get', path: '/conversations', summary: 'My conversations, latest first', security, responses: { 200: reply(z.object({ items: z.array(ConversationSummary) }), 'My conversations') } }),
-  async (c) => c.json({ items: await messaging.listConversations(c.get('member').id) }, 200)
-);
-
-conversationRoutes.openapi(
-  createRoute({
-    method: 'post',
-    path: '/conversations',
-    summary: 'Start a conversation, or get the existing one for this member and listing',
-    security,
-    request: { body: body(StartConversation) },
-    responses: { 200: reply(z.object({ id: z.string(), created: z.boolean() }), 'The conversation') }
-  }),
-  async (c) => {
-    const { memberId, listingId } = c.req.valid('json');
-    return c.json(await messaging.startConversation(c.get('member').id, memberId, listingId ?? null), 200);
-  }
-);
 
 conversationRoutes.openapi(
   createRoute({
@@ -116,7 +96,8 @@ conversationRoutes.openapi(
   async (c) => {
     const conversationId = c.req.valid('param').id;
     const memberId = c.get('member').id;
-    await messaging.requireParticipant(conversationId, memberId); // 404 for anyone else.
+    // 404 for anyone else; mediators may follow a thread shared with them.
+    await messaging.requireAccess(conversationId, memberId, { write: false });
 
     return streamSSE(c, async (stream) => {
       const unsubscribe = subscribe(conversationId, memberId, (messageId) => {

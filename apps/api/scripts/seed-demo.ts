@@ -23,7 +23,7 @@ const LISTINGS = Number(values.listings);
 
 const { runMigrations } = await import('../src/db/migrate.ts');
 const { db, sql } = await import('../src/db/index.ts');
-const { account, listing, member } = await import('../src/db/schema/index.ts');
+const { account, listing, member, tradeAccept } = await import('../src/db/schema/index.ts');
 const { auth } = await import('../src/auth.ts');
 const { searchListings } = await import('../src/modules/search.ts');
 const { eq } = await import('drizzle-orm');
@@ -57,26 +57,30 @@ const things = {
 const describeAs = ['Good condition.', 'Pick up any evening this week.', 'I can drop it off nearby.', 'Works well, a bit worn.', 'From my garden.', 'Spare after a big shop.', null];
 const wantedThings = ['Eggs', 'Help in the garden', 'A bike pump', 'Some honey', 'Jam', 'Books', 'Baking'];
 
+/** A demo area as if picked from a suggestion: neighbourhood and city. */
+const areaPlace = (neighbourhood: string) => ({ label: `${neighbourhood}, Springfield`, source: 'suggestion' as const, neighbourhood, city: 'Springfield' });
+
 function listingRow(ownerId: string, index: number): typeof listing.$inferInsert {
   const type = pick(['lend', 'gift', 'gift', 'trade', 'service'] as const);
   const title = `${pick(things[type])}${index % 7 === 0 ? ' (spare)' : ''}`;
   const createdAt = daysAgo(300);
-  const base = { ownerId, type, title, description: pick(describeAs), area: random() < 0.8 ? pick(areas) : null, createdAt, updatedAt: createdAt };
-  // Most listings are available; some have been lent out or finished, as in a real community.
+  const area = random() < 0.8 ? areaPlace(pick(areas)) : null;
+  // How the handover happens: picked up from the owner (when they gave an area), or online now and then.
+  const handovers = area && random() < 0.6 ? (['at_lister'] as const) : random() < 0.1 ? (['online'] as const) : ([] as const);
+  const base = { ownerId, type, title, description: pick(describeAs), area, handovers: [...handovers], createdAt, updatedAt: createdAt };
+  // Most listings are available; some are paused or finished, as in a real community.
   const roll = random();
-  const status = roll < 0.75 ? 'available' : roll < 0.85 ? 'paused' : type === 'lend' ? 'lent_out' : 'closed';
+  const status = roll < 0.8 ? 'available' : roll < 0.9 ? 'paused' : 'closed';
   const closed = status === 'closed' ? { closedReason: 'used_up' as const } : {};
   switch (type) {
     case 'lend':
-      return { ...base, status, amount: '1', unit: 'item', loanLength: pick([1, 2, 3, 7]), loanLengthUnit: pick(['days', 'weeks'] as const) };
+      return { ...base, status, ...(status === 'closed' ? { closedReason: 'removed' as const } : {}), amount: '1', unit: 'item', loanLength: pick([1, 2, 3, 7]), loanLengthUnit: pick(['days', 'weeks'] as const) };
     case 'gift': {
       const amount = String(pick([1, 2, 5, 10]));
       return { ...base, status, ...closed, amount, unit: pick(['kg', 'item', 'bag', 'box'] as const), remaining: status === 'closed' ? '0' : amount };
     }
     case 'trade':
-      return random() < 0.5
-        ? { ...base, status, ...closed, wanted: pick(wantedThings) }
-        : { ...base, status, ...closed, openToOffers: true };
+      return { ...base, status, ...closed };
     case 'service':
       return { ...base, status, ...closed, sessionLength: pick([30, 60, 90]), sessionLengthUnit: 'minutes' };
   }
@@ -118,7 +122,29 @@ await insertInBatches(
 
 const listings = Array.from({ length: LISTINGS }, (_, i) => listingRow(pick(members).id, i));
 await insertInBatches(listings, (batch) => db.insert(listing).values(batch));
+// What a trade accepts in return: about half list something, the rest are open to offers.
+const trades = (await db.select({ id: listing.id }).from(listing).where(eq(listing.type, 'trade'))).filter(() => random() < 0.5);
+await insertInBatches(
+  trades.map((t) => ({ listingId: t.id, position: 0, description: pick(wantedThings) })),
+  (batch) => db.insert(tradeAccept).values(batch)
+);
+// Search words, as modules/listings.ts sets them on every save.
+await sql`update listing l set search_vector =
+  setweight(to_tsvector('english', l.title), 'A') ||
+  setweight(to_tsvector('english', coalesce(l.description, '') || ' ' ||
+    coalesce((select string_agg(description, ' ') from trade_accept t where t.listing_id = l.id), '')), 'B')`;
 await sql`analyze`;
+
+// A few proposals for the demo member, so the Proposals page has something to show.
+const { createProposal } = await import('../src/modules/proposals.ts');
+const demoMember = members[1]!;
+const open = await db.select({ id: listing.id, ownerId: listing.ownerId }).from(listing).where(eq(listing.status, 'available')).limit(40);
+let proposed = 0;
+for (const item of open) {
+  if (proposed >= 5 || item.ownerId === demoMember.id) continue;
+  await createProposal(item.id, demoMember.id, { message: 'Hello! Would this work for you?' });
+  proposed += 1;
+}
 console.log(`Seeded in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
 
 // SC-006: filtered searches answer in under 2 seconds.
@@ -133,7 +159,7 @@ const queries = [
 let slowest = 0;
 for (const query of queries) {
   const begin = performance.now();
-  const result = await searchListings({ limit: 20, includeLent: false, ...query });
+  const result = await searchListings({ limit: 20, includeLent: false, ...query }, members[0]!.id);
   const ms = performance.now() - begin;
   slowest = Math.max(slowest, ms);
   console.log(`  search ${JSON.stringify(query).padEnd(52)} ${String(result.items.length).padStart(2)} results  ${ms.toFixed(0)} ms`);

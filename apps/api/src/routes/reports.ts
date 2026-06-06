@@ -46,3 +46,15 @@ reportRoutes.openapi(
   }),
   async (c) => c.json(await reports.resolve(c.req.valid('param').id, c.get('member').id, c.req.valid('json').outcomeNote), 200)
 );
+
+reportRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/reports/{id}/share-proposal-messages',
+    summary: "Let the helpers read the agreement's proposal messages (reporter or reported member); can't be undone",
+    security,
+    request: { params: Id },
+    responses: { 200: { description: 'The request for help', ...reply } }
+  }),
+  async (c) => c.json(await reports.shareProposalMessages(c.req.valid('param').id, c.get('member').id), 200)
+);

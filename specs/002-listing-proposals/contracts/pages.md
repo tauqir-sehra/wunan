@@ -22,21 +22,22 @@ still fall back to reloading.
 | `/proposals` | — | member | Two groups, "Asked by me" and "On my listings" (`?role=` filters to one), open first, then ended. Each: listing title, other member, state in words ("Waiting for Sam", "Needs details: when, where", "Agreed", "Closed: nothing left"), new-activity marker in text. Calm empty state. Nav label "Proposals". |
 | `/proposals/[id]` | `send`, `proposeCall`, `acceptCall`, `accept` (lister), `decline` (lister), `withdraw` (requester) | requester, lister | Top: listing link and current details, each empty one "Not decided yet", then issues in plain words. Primary action: lister "Accept" (only when no issues; posts the shown `version`), requester "Change details" → `/proposals/[id]/edit`. Secondary: "Decline" / "Withdraw" with an optional note and confirmation. Below: messages and history (detail changes shown as quiet notes), message box, call time, "Share contact details". Marked read on open. Live updates as in 001 (FR-018a); a `detail_changed` event refreshes the details block. Ended proposals are read-only. Accepted: links to the agreement. |
 | `/proposals/[id]/edit` | `default` | requester, open | Same form as propose, filled in. Submit "Save changes". |
-| `/proposals/[id]/share-contact` | `default` | participant | As 001 `/messages/[id]/share-contact`. |
-| `/proposals/[id]/live` | GET (Server-Sent Events) | participant | Passes through the thread's live stream. |
+| `/threads/[id]` | `send`, `proposeCall`, `acceptCall` | participant; mediators read-only | A thread on its own: a request for help's shared conversation, or (read-only) a proposal's messages shared with helpers. Proposal members are sent to the proposal's page. Replaces 001 `/messages/[id]`. |
+| `/threads/[id]/share-contact` | `review`, `share` | participant | As 001 `/messages/[id]/share-contact`; returns to the proposal or thread. |
+| `/threads/[id]/live` | GET (Server-Sent Events) | participant, or mediator reading shared messages | Passes through the thread's live stream. |
 | `/places` | GET (JSON, same-origin) | member | Forwards `?q=` to `GET /api/v1/places` for PlaceField. |
 
-Removed: `/messages`, `/messages/start`, `/messages/[id]`, `/messages/[id]/share-contact`,
-`/messages/[id]/live`, `/listings/[id]/agreements/new`.
+Removed: `/messages`, `/messages/start`, `/listings/[id]/agreements/new`. `/messages/[id]` and
+its sub-routes became `/threads/[id]`.
 
 ## Agreements and problems
 
 | Route | Actions | Access | Behaviour |
 |-------|---------|--------|-----------|
 | `/agreements/[id]` | `returned` (owner, loans) | party, mediator | Details (when, how, full place, loan period, amount, offer, sessions), link to the proposal for parties. No confirm, dispute, or cancel. |
-| `/reports/[id]` | adds `shareProposalMessages` (reporter, reported member) | reporter, reported, mediators | Report thread as before (uses the thread endpoints). "Let the helpers read your messages about this" with a plain explanation and confirmation; once shared, mediators see a read-only link to the proposal's messages. |
+| `/reports/[id]` | adds `share` (reporter, reported member) | reporter, reported, mediators | Report thread as before (uses the thread endpoints). "Let the helpers read your messages about this" with a plain explanation and confirmation; once shared, mediators see a read-only link to the proposal's messages. |
 
 ## Help
 
 Topics change: "Messages and sharing contact details" and "Recording an agreement" become
-"Proposals and messages" and "Agreements and returns".
+"Proposals and messages" (`/help/proposals`) and "Agreements and returns" (`/help/agreements`).

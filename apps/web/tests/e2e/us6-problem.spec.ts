@@ -1,7 +1,7 @@
 // US6: ask for help when something goes wrong (quickstart scenario 7).
 import { expect, test } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
-import { createFounder, createInvitedMember, createListingFor, memberIdOf, messageAbout } from './helpers/members.ts';
+import { acceptProposal, completeDetails, createFounder, createInvitedMember, createListingFor, proposeOn } from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
 
 test("the borrower's inviter helps in a shared conversation; escalation ends with the founders", async ({ page, browser }) => {
@@ -9,15 +9,10 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
   const robin = await createInvitedMember(sam, 'Robin');
   const alex = await createInvitedMember(robin, 'Alex'); // Robin invited Alex.
   const drill = await createListingFor(sam, { type: 'lend', title: 'Drill' });
-  await messageAbout(alex, await memberIdOf(sam), drill.id);
-
   // Sam lends the drill to Alex.
+  const agreementId = await acceptProposal(sam, (await proposeOn(alex, drill.id, completeDetails('lend'))).id);
   await signInAs(page, sam);
-  await page.goto(`/listings/${drill.id}/agreements/new`);
-  await page.getByRole('radio', { name: 'Alex' }).check();
-  await page.getByLabel('Back by').fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
-  await page.getByRole('button', { name: 'Review' }).click();
-  await page.getByRole('button', { name: 'Record agreement' }).click();
+  await page.goto(`/agreements/${agreementId}`);
 
   // Sam asks for help.
   await page.getByRole('link', { name: 'Ask for help' }).click();
@@ -35,12 +30,23 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
   const robinContext = await browser.newContext();
   const robinPage = await robinContext.newPage();
   await signInAs(robinPage, robin);
-  await robinPage.goto('/messages');
-  await expect(robinPage.getByText('(asking for help)')).toBeVisible();
-  await robinPage.getByRole('link', { name: /Sam, Alex|Alex, Sam/ }).click();
+  await robinPage.goto(reportUrl);
+  await robinPage.getByRole('link', { name: 'Open the shared conversation' }).click();
   await expect(robinPage.getByText(/has been added to help/)).toBeVisible();
   await expect(robinPage.getByRole('list', { name: 'Messages' }).getByText("The drill hasn't come back")).toBeVisible();
   await expectAccessible(robinPage, 'mediation conversation');
+
+  // Robin can't read Sam and Alex's own messages until one of them shares them (002 FR-022a).
+  await robinPage.goto(reportUrl);
+  await expect(robinPage.getByText("The helpers can't see the messages you two wrote about this agreement unless one of you shares them.")).toBeVisible();
+  await page.goto(reportUrl);
+  await page.getByRole('button', { name: 'Let the helpers read your messages' }).click();
+  await page.getByRole('button', { name: 'Yes, share them' }).click();
+  await expect(page.getByText('The helpers can now read your messages about this agreement.')).toBeVisible();
+  await robinPage.reload();
+  await robinPage.getByRole('link', { name: 'Read the messages about the agreement' }).click();
+  await expect(robinPage.getByText('Is this still available?')).toBeVisible();
+  await expect(robinPage.getByText('Only the two people in the agreement can write here.')).toBeVisible();
   await robinContext.close();
 
   // Asking for more help goes to the founders (Robin's inviter is Sam, already in it): the last step.

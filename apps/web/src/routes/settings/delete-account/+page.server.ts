@@ -11,7 +11,7 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = memberLoad(async (event) => {
   const { items } = await apiFor(event).get<{ items: Agreement[] }>('/api/v1/me/agreements');
   const openLoans = items.filter(
-    (a) => a.outcome === 'lent' && !a.returnedAt && a.confirmation !== 'cancelled' && a.myRole !== 'mediator'
+    (a) => a.outcome === 'lent' && !a.returnedAt && a.myRole !== 'mediator'
   );
   return { openLoans };
 });

@@ -1,9 +1,9 @@
-// Conversations and messages (FR-018 to FR-020): starting a conversation, listing them with unread
-// state, sending, sharing chosen contact details, and agreeing a call time. Only participants can
-// read or write a conversation; anyone else gets "not found".
+// Threads of messages (001 FR-018 to FR-020; 002 FR-022 to FR-025): each belongs to a proposal or a
+// problem report. Sending, sharing chosen contact details, agreeing a call time, and the notes the
+// API writes when a proposal changes. There is no inbox and no way to start a thread directly.
 import { and, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { conversation, conversationParticipant, listing, member, message } from '../db/schema/index.ts';
+import { conversation, conversationParticipant, listing, member, message, proposal } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { checkRateLimit } from '../lib/rate-limit.ts';
 import { notify } from '../notify/index.ts';
@@ -12,72 +12,82 @@ import { getContact, shownName } from './members.ts';
 
 type MessageRow = typeof message.$inferSelect;
 
-/** Throws "not found" unless the member takes part in the conversation. */
-export async function requireParticipant(conversationId: string, memberId: string) {
+/**
+ * Who may use a thread: its participants read and write; mediators of a problem report may read
+ * (never write) the agreement's proposal thread once the reporter or reported member shared it
+ * (002 FR-022a). Anyone else gets "not found". Writing also needs the thread to be open: a proposal
+ * that was declined, withdrawn, or closed is read-only (002 FR-022b).
+ */
+export async function requireAccess(conversationId: string, memberId: string, { write }: { write: boolean }) {
   const [row] = await db
     .select({ id: conversationParticipant.id, lastReadAt: conversationParticipant.lastReadAt })
     .from(conversationParticipant)
     .where(and(eq(conversationParticipant.conversationId, conversationId), eq(conversationParticipant.memberId, memberId)));
-  if (!row) throw errors.notFound('That conversation');
-  return row;
-}
-
-/** Finds the conversation between two members (about the same listing), or starts one. */
-export async function startConversation(memberId: string, otherId: string, listingId: string | null) {
-  if (memberId === otherId) throw new ApiError(400, 'cannot_message_self', "You can't start a conversation with yourself.");
-  const [other] = await db.select().from(member).where(eq(member.id, otherId));
-  if (!other || !other.emailVerified || other.deletedAt) throw errors.notFound('That member');
-  if (listingId) {
-    const [item] = await db.select({ id: listing.id }).from(listing).where(eq(listing.id, listingId));
-    if (!item) throw errors.notFound('That listing');
+  if (row) {
+    if (write && !(await isWritable(conversationId))) {
+      throw new ApiError(409, 'thread_closed', 'This proposal has ended, so no new messages can be added.');
+    }
+    return { ...row, participant: true };
   }
-
-  return db.transaction(async (tx) => {
-    // One conversation per pair and listing: a lock on the pair stops two being created at once.
-    const pairKey = [memberId, otherId].sort().join(':') + (listingId ?? '');
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${pairKey}))`);
-    const existing = await tx.execute<{ id: string }>(sql`
-      select c.id from conversation c
-       where c.problem_report_id is null
-         and c.listing_id is not distinct from ${listingId}
-         and exists (select 1 from conversation_participant p where p.conversation_id = c.id and p.member_id = ${memberId})
-         and exists (select 1 from conversation_participant p where p.conversation_id = c.id and p.member_id = ${otherId})
-         and (select count(*) from conversation_participant p where p.conversation_id = c.id) = 2
-       limit 1`);
-    if (existing[0]) return { id: existing[0].id, created: false };
-    const [created] = await tx.insert(conversation).values({ listingId }).returning();
-    await tx.insert(conversationParticipant).values([
-      { conversationId: created!.id, memberId },
-      { conversationId: created!.id, memberId: otherId }
-    ]);
-    return { id: created!.id, created: true };
-  });
+  if (await canReadShared(conversationId, memberId)) {
+    if (write) throw new ApiError(403, 'read_only', 'You can read these messages, but only the two members can write here.');
+    return { id: null, lastReadAt: null, participant: false };
+  }
+  throw errors.notFound('That conversation');
 }
 
-/** My conversations, latest first, each with who's in it, the listing, a preview, and unread state. */
-export async function listConversations(memberId: string) {
-  const mine = await db
-    .select({ conversation, lastReadAt: conversationParticipant.lastReadAt })
-    .from(conversationParticipant)
-    .innerJoin(conversation, eq(conversation.id, conversationParticipant.conversationId))
-    .where(eq(conversationParticipant.memberId, memberId))
-    .orderBy(desc(conversation.lastMessageAt));
-  return Promise.all(mine.map(({ conversation: c, lastReadAt }) => summarise(c, memberId, lastReadAt)));
+/** Kept for callers that only deal with participants (contact sharing, calls, read state). */
+export const requireParticipant = (conversationId: string, memberId: string) => requireAccess(conversationId, memberId, { write: false }).then((access) => {
+  if (!access.participant) throw errors.notFound('That conversation');
+  return access;
+});
+
+async function isWritable(conversationId: string) {
+  const [row] = await db
+    .select({ status: proposal.status })
+    .from(conversation)
+    .leftJoin(proposal, eq(proposal.id, conversation.proposalId))
+    .where(eq(conversation.id, conversationId));
+  return !row?.status || row.status === 'open' || row.status === 'accepted';
+}
+
+/** A mediator of a report whose proposal messages were shared, reading that proposal's thread. */
+async function canReadShared(conversationId: string, memberId: string) {
+  const rows = await db.execute(sql`
+    select 1 from conversation c
+      join agreement a on a.proposal_id = c.proposal_id
+      join problem_report r on r.agreement_id = a.id and r.proposal_messages_shared_at is not null
+      join conversation rc on rc.problem_report_id = r.id
+      join conversation_participant rp on rp.conversation_id = rc.id and rp.member_id = ${memberId}
+     where c.id = ${conversationId} and ${memberId} <> r.reporter_id and ${memberId} <> r.reported_member_id
+     limit 1`);
+  return rows.length > 0;
+}
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Starts the thread of a proposal or a problem report with its participants. */
+export async function createThread(tx: Transaction, owner: { proposalId: string } | { problemReportId: string }, participantIds: string[]) {
+  const [created] = await tx.insert(conversation).values(owner).returning();
+  await tx.insert(conversationParticipant).values([...new Set(participantIds)].map((memberId) => ({ conversationId: created!.id, memberId })));
+  return created!;
 }
 
 export async function getConversation(conversationId: string, memberId: string) {
-  const { lastReadAt } = await requireParticipant(conversationId, memberId);
+  const access = await requireAccess(conversationId, memberId, { write: false });
   const [row] = await db.select().from(conversation).where(eq(conversation.id, conversationId));
-  return summarise(row!, memberId, lastReadAt);
+  return summarise(row!, memberId, access.lastReadAt, access.participant && (await isWritable(conversationId)));
 }
 
-async function summarise(c: typeof conversation.$inferSelect, memberId: string, lastReadAt: Date | null) {
+async function summarise(c: typeof conversation.$inferSelect, memberId: string, lastReadAt: Date | null, canWrite: boolean) {
   const people = await db
     .select({ id: member.id, displayName: member.displayName, deletedAt: member.deletedAt })
     .from(conversationParticipant)
     .innerJoin(member, eq(member.id, conversationParticipant.memberId))
     .where(and(eq(conversationParticipant.conversationId, c.id), ne(conversationParticipant.memberId, memberId)));
-  const [item] = c.listingId ? await db.select({ id: listing.id, title: listing.title }).from(listing).where(eq(listing.id, c.listingId)) : [];
+  const [item] = c.proposalId
+    ? await db.select({ id: listing.id, title: listing.title }).from(proposal).innerJoin(listing, eq(listing.id, proposal.listingId)).where(eq(proposal.id, c.proposalId))
+    : [];
   const [last] = await db.select().from(message).where(eq(message.conversationId, c.id)).orderBy(desc(message.createdAt)).limit(1);
   const [unread] = await db
     .select({ id: message.id })
@@ -96,6 +106,8 @@ async function summarise(c: typeof conversation.$inferSelect, memberId: string, 
     participants: people.map((p) => ({ id: p.id, displayName: shownName(p) })),
     listing: item ?? null,
     isMediation: c.problemReportId !== null,
+    proposalId: c.proposalId,
+    canWrite,
     lastMessage: last
       ? { preview: preview(last), createdAt: last.createdAt.toISOString(), author: lastAuthor ? { id: lastAuthor.id, displayName: shownName(lastAuthor) } : null }
       : null,
@@ -105,7 +117,7 @@ async function summarise(c: typeof conversation.$inferSelect, memberId: string, 
 
 /** Newest first, a page at a time. */
 export async function listMessages(conversationId: string, memberId: string, cursor: string | undefined, limit = 50) {
-  await requireParticipant(conversationId, memberId);
+  await requireAccess(conversationId, memberId, { write: false });
   const before = cursor ? new Date(cursor) : null;
   const rows = await db
     .select()
@@ -130,14 +142,14 @@ export async function getMessage(messageId: string) {
 }
 
 export async function sendMessage(conversationId: string, memberId: string, body: string) {
-  await requireParticipant(conversationId, memberId);
+  await requireAccess(conversationId, memberId, { write: true });
   await checkRateLimit(`message:${memberId}`, 60, 60);
   return post(conversationId, memberId, { kind: 'text', body });
 }
 
 /** Posts exactly the chosen saved contact details into the conversation (FR-019). */
 export async function shareContact(conversationId: string, memberId: string, choice: { phone: boolean; email: boolean }) {
-  await requireParticipant(conversationId, memberId);
+  await requireAccess(conversationId, memberId, { write: true });
   const saved = await getContact(memberId);
   const missing = (what: string) =>
     new ApiError(400, 'contact_not_saved', `You haven't saved ${what} yet. Add it in Settings first.`);
@@ -154,7 +166,7 @@ export async function shareContact(conversationId: string, memberId: string, cho
 }
 
 export async function proposeCall(conversationId: string, memberId: string, proposedTime: Date) {
-  await requireParticipant(conversationId, memberId);
+  await requireAccess(conversationId, memberId, { write: true });
   if (proposedTime.getTime() < Date.now()) {
     throw new ApiError(400, 'validation_failed', 'Some details need fixing.', { proposedTime: 'Please choose a time that is still to come.' });
   }
@@ -162,16 +174,16 @@ export async function proposeCall(conversationId: string, memberId: string, prop
 }
 
 /** The other person accepts a proposed time (FR-020). To suggest another time, they propose one. */
-export async function acceptCall(conversationId: string, memberId: string, proposalId: string) {
-  await requireParticipant(conversationId, memberId);
-  const [proposal] = await db
+export async function acceptCall(conversationId: string, memberId: string, callMessageId: string) {
+  await requireAccess(conversationId, memberId, { write: true });
+  const [suggested] = await db
     .select()
     .from(message)
-    .where(and(eq(message.id, proposalId), eq(message.conversationId, conversationId), eq(message.kind, 'call_proposed')));
-  if (!proposal) throw errors.notFound('That call time');
-  if (proposal.authorId === memberId) throw new ApiError(400, 'own_proposal', 'The other person needs to accept the time you suggested.');
-  if ((await acceptedProposals([proposal])).has(proposal.id)) throw new ApiError(409, 'already_accepted', 'This call time was already accepted.');
-  return post(conversationId, memberId, { kind: 'call_accepted', proposedTime: proposal.proposedTime });
+    .where(and(eq(message.id, callMessageId), eq(message.conversationId, conversationId), eq(message.kind, 'call_proposed')));
+  if (!suggested) throw errors.notFound('That call time');
+  if (suggested.authorId === memberId) throw new ApiError(400, 'own_proposal', 'The other person needs to accept the time you suggested.');
+  if ((await acceptedProposals([suggested])).has(suggested.id)) throw new ApiError(409, 'already_accepted', 'This call time was already accepted.');
+  return post(conversationId, memberId, { kind: 'call_accepted', proposedTime: suggested.proposedTime });
 }
 
 export async function markRead(conversationId: string, memberId: string) {
@@ -182,7 +194,8 @@ export async function markRead(conversationId: string, memberId: string) {
     .where(and(eq(conversationParticipant.conversationId, conversationId), eq(conversationParticipant.memberId, memberId)));
 }
 
-export async function countUnreadConversations(memberId: string) {
+/** Proposals and reports with something I haven't read yet, for the quiet count on home. */
+export async function countThreadsWithNews(memberId: string) {
   const [row] = await db.execute<{ unread: number }>(sql`
     select count(*)::int as unread from conversation_participant p
      where p.member_id = ${memberId}
@@ -198,28 +211,47 @@ export async function postSystemMessage(conversationId: string, body: string) {
   return post(conversationId, null, { kind: 'system', body });
 }
 
+type PostValues = Pick<MessageRow, 'kind'> & Partial<Pick<MessageRow, 'body' | 'proposedTime'>>;
+/** Who to tell about a note, and how; `false` tells nobody (the caller sends its own notices). */
+type NoticeOverride = false | { title: string; body?: string; to?: string[] };
+
+/**
+ * Saves a note the API writes into a proposal's thread (a detail change, acceptance, decline, …).
+ * `notice` replaces the usual "New message" notification, or `false` skips it.
+ */
+export async function postEvent(conversationId: string, authorId: string | null, values: PostValues, notice: NoticeOverride = false) {
+  return post(conversationId, authorId, values, notice);
+}
+
 /** Saves a message, tells open streams, and notifies participants who don't have it open. */
-async function post(conversationId: string, authorId: string | null, values: Pick<MessageRow, 'kind'> & Partial<Pick<MessageRow, 'body' | 'proposedTime'>>) {
+async function post(conversationId: string, authorId: string | null, values: PostValues, notice?: NoticeOverride) {
   const [saved] = await db
     .insert(message)
     .values({ conversationId, authorId, kind: values.kind, body: values.body ?? '', proposedTime: values.proposedTime ?? null })
     .returning();
   await db.update(conversation).set({ lastMessageAt: saved!.createdAt }).where(eq(conversation.id, conversationId));
-  await announce(conversationId, saved!.id);
-
   const [c] = await db.select().from(conversation).where(eq(conversation.id, conversationId));
-  const [item] = c?.listingId ? await db.select({ title: listing.title }).from(listing).where(eq(listing.id, c.listingId)) : [];
+  // Activity keeps a proposal from closing after a quiet month (002 FR-020a).
+  if (c?.proposalId) await db.update(proposal).set({ lastActivityAt: saved!.createdAt }).where(eq(proposal.id, c.proposalId));
+  await announce(conversationId, saved!.id);
+  if (notice === false) return (await toJson([saved!]))[0]!;
+
+  const [item] = c?.proposalId
+    ? await db.select({ title: listing.title }).from(proposal).innerJoin(listing, eq(listing.id, proposal.listingId)).where(eq(proposal.id, c.proposalId))
+    : [];
   const [author] = authorId ? await db.select().from(member).where(eq(member.id, authorId)) : [];
   const others = await db
     .select({ memberId: conversationParticipant.memberId })
     .from(conversationParticipant)
     .where(and(eq(conversationParticipant.conversationId, conversationId), authorId ? ne(conversationParticipant.memberId, authorId) : undefined));
+  const url = c?.proposalId ? `/proposals/${c.proposalId}` : `/reports/${c?.problemReportId}`;
   for (const { memberId } of others) {
     if (isConnected(memberId, conversationId)) continue;
+    if (notice?.to && !notice.to.includes(memberId)) continue;
     await notify(memberId, 'message', {
-      title: author ? `New message from ${author.displayName}${item ? ` about ${item.title}` : ''}` : 'A new note in a conversation',
-      body: preview(saved!),
-      url: `/messages/${conversationId}`,
+      title: notice?.title ?? (author ? `New message from ${author.displayName}${item ? ` about ${item.title}` : ''}` : 'A new note in a conversation'),
+      body: notice?.body ?? preview(saved!),
+      url,
       conversationId
     });
   }

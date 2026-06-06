@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { member, notificationPreference } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
-import { api, createFounder, createInvitedMember, signIn, type TestMember } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, signIn, type TestMember } from '../test/setup.ts';
 
 /**
  * Invite chain:  Fay (founder) → Ana → Ben → Xan (borrower)
@@ -22,9 +22,10 @@ async function chain() {
 
 async function loanBetween(owner: TestMember, borrower: TestMember) {
   const token = await signIn(owner);
-  const { body: drill } = await api('POST', '/api/v1/listings', { token, body: { type: 'lend', title: 'Drill' } });
-  const { body } = await api('POST', `/api/v1/listings/${drill.id}/agreements`, { token, body: { otherMemberId: borrower.id, returnDue: '2020-01-01' } });
-  return { agreementId: body.id as string, ownerToken: token };
+  const borrowerToken = await signIn(borrower);
+  const drill = await createListing(token, { type: 'lend', title: 'Drill' });
+  const deal = await agree(token, borrowerToken, drill.id, completeDetails('lend'));
+  return { ...deal, ownerToken: token, borrowerToken };
 }
 
 const names = (people: { displayName: string }[]) => people.map((p) => p.displayName).sort();
@@ -135,5 +136,28 @@ describe('asking for help', () => {
     const { agreementId, ownerToken } = await loanBetween(olu, xan);
     const { body: report } = await api('POST', `/api/v1/agreements/${agreementId}/reports`, { token: ownerToken, body: { description: 'Not back.' } });
     expect((await api('GET', `/api/v1/reports/${report.id}`, { token: await signIn(ana) })).status).toBe(404);
+  });
+
+  it("lets helpers read the proposal's messages only once a party shares them", async () => {
+    const { ben, xan, olu } = await chain();
+    const { agreementId, ownerToken, borrowerToken, conversationId } = await loanBetween(olu, xan);
+    await api('POST', `/api/v1/conversations/${conversationId}/messages`, { token: borrowerToken, body: { body: "I'll bring it back Friday." } });
+    const report = (await api('POST', `/api/v1/agreements/${agreementId}/reports`, { token: ownerToken, body: { description: 'Not back yet.' } })).body;
+    expect(report).toMatchObject({ proposalMessagesShared: false, proposalConversationId: null, canShareProposalMessages: true });
+
+    const benToken = await signIn(ben);
+    expect((await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: benToken })).status).toBe(404);
+    expect((await api('POST', `/api/v1/reports/${report.id}/share-proposal-messages`, { token: benToken })).status).toBe(403);
+
+    const shared = await api('POST', `/api/v1/reports/${report.id}/share-proposal-messages`, { token: borrowerToken });
+    expect(shared.body).toMatchObject({ proposalMessagesShared: true, proposalConversationId: conversationId });
+    const read = await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: benToken });
+    expect(read.status).toBe(200);
+    expect(read.body.conversation.canWrite).toBe(false);
+    expect(read.body.items.map((m: { body: string }) => m.body)).toContain("I'll bring it back Friday.");
+    expect((await api('POST', `/api/v1/conversations/${conversationId}/messages`, { token: benToken, body: { body: 'Hi' } })).status).toBe(403);
+    expect((await api('POST', `/api/v1/reports/${report.id}/share-proposal-messages`, { token: ownerToken })).body.error.code).toBe('already_shared');
+    const thread = await api('GET', `/api/v1/conversations/${report.conversationId}/messages`, { token: benToken });
+    expect(thread.body.items[0]).toMatchObject({ kind: 'messages_shared' });
   });
 });

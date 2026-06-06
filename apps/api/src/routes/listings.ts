@@ -28,7 +28,7 @@ listingRoutes.openapi(
     request: { query: SearchListingsQuery },
     responses: { 200: reply(z.object({ items: z.array(Listing), nextCursor: z.string().nullable() }), 'Matching listings') }
   }),
-  async (c) => c.json(await searchListings(c.req.valid('query')), 200)
+  async (c) => c.json(await searchListings(c.req.valid('query'), c.get('member').id), 200)
 );
 
 listingRoutes.openapi(

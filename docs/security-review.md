@@ -159,3 +159,35 @@ app, photo upload, contact sharing, live stream, push subscriptions), plus the s
   `better-auth` lists as a dependency. They concern esbuild's development server, which wunan never
   runs. Revisit when better-auth or drizzle-kit update.
 - No cap on simultaneous live streams per member (see US4).
+
+## 002 Proposals for listings (2026-06-05)
+
+Covers proposals, place suggestions, place privacy, loan overlap, and sharing proposal messages
+with helpers (002 tasks T032, T039, T067, T075).
+
+| Area | Review |
+|------|--------|
+| Proposal access | Only the requester changes details (`403 not_requester` for the lister, "not found" for anyone else); only the lister accepts or declines; only the requester withdraws. Every endpoint is covered by route tests. |
+| Accepting what was shown | Accept carries the `version` the lister saw; a change in between answers `409 proposal_changed` with the new details, so nobody agrees to details they didn't see. |
+| Over-allocation and double booking | Accepting locks the listing row and re-checks what's left in one transaction. Overlapping unreturned loans are refused by a PostgreSQL exclusion constraint (`agreement_loans_dont_overlap`) even if two accepts race (tested). Non-loan agreements have no loan period, so they never clash. |
+| Place privacy | Listing places are stored in full but every response goes through `viewPlace`: others get only "neighbourhood, city" until their proposal is accepted (listing page, search results, proposals that use the listing's area or meeting place). The area filter only matches neighbourhood, city, or typed text, so searching by street can't reveal whose listing is at an address (tested). A bare street address with no area parts is shown as "Area not given". |
+| Place suggestions | Called only by the API, server to server, with a 2 s timeout; the request carries only the typed text, `limit`, `lang`, and the operator's fixed bias/box (tested against the stub). The answer is validated with Zod and reduced to known fields before use. 60 lookups per member per minute; the web proxy requires a signed-in member. The typed text is never logged. Answers are cached in memory only (10 minutes, 500 entries). |
+| Threads | Proposal threads become read-only once declined, withdrawn, or closed. Helpers can read (never write) a proposal's thread only after the reporter or reported member shares it; sharing is one-way and noted in the report thread (tested). |
+| Account deletion | Open proposals the member made or received close; listings with proposals keep only their title, so the other member's proposal still makes sense. |
+| Data export | Proposals and their messages are included; the listing's full place is never exported to a requester who wasn't accepted (only their own typed place is stored on their proposal). |
+
+**Found and fixed during the work**
+
+1. *Every agreement clashed with every loan*: `tstzrange(null, null)` is an unbounded range, so
+   gifts and services counted as "lent for ever". The loan period is now null for anything but a
+   loan (tested: a second agreement on a listing is accepted).
+2. *Picked places carried a display field*: a suggestion's `display` was being sent back as part of
+   the place and refused. The place field now saves only the place itself.
+
+**Accepted for now**
+
+- Same 4 moderate `npm audit` advisories as before (esbuild inside drizzle-kit, development server
+  only).
+- The default place server is komoot's public Photon instance, an outside service. Operators who
+  don't want the typed text to leave their machines can self-host Photon or turn suggestions off;
+  the operator guide says so.

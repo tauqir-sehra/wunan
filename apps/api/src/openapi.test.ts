@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { api } from './test/setup.ts';
 
-const contract = readFileSync(new URL('../../../specs/001-community-resource-sharing/contracts/api.md', import.meta.url), 'utf8');
+const contract = readFileSync(new URL('../../../specs/002-listing-proposals/contracts/api.md', import.meta.url), 'utf8');
 
 /**
  * Reads the endpoint column of the contract's tables. One cell can list several endpoints:

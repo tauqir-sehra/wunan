@@ -25,11 +25,11 @@ describe('creating listings', () => {
   it('stores each type with its own fields and starting amounts', async () => {
     const { token } = await owner();
     const gift = await create(token, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg', area: 'Riverside' });
-    expect(gift.body).toMatchObject({ amount: '5', unit: 'kg', remaining: '5', area: 'Riverside' });
+    expect(gift.body).toMatchObject({ amount: '5', unit: 'kg', remaining: '5', area: { label: 'Riverside', source: 'typed', display: 'Riverside' } });
     const lend = await create(token, { type: 'lend', title: 'Drill', amount: 1, unit: 'item', loanLength: 3, loanLengthUnit: 'days' });
     expect(lend.body).toMatchObject({ loanLength: 3, loanLengthUnit: 'days', remaining: null });
-    const trade = await create(token, { type: 'trade', title: 'Sneakers', amount: '1', unit: 'item', wanted: 'leather boots' });
-    expect(trade.body).toMatchObject({ wanted: 'leather boots', openToOffers: false, remaining: '1' });
+    const trade = await create(token, { type: 'trade', title: 'Sneakers', amount: '1', unit: 'item', accepts: [{ description: 'Leather boots' }] });
+    expect(trade.body).toMatchObject({ accepts: [{ description: 'Leather boots', amount: null, unit: null }], remaining: '1' });
     const service = await create(token, { type: 'service', title: 'Bodywork session', sessionLength: 1, sessionLengthUnit: 'hours', sessionsAvailable: 3 });
     expect(service.body).toMatchObject({ sessionLength: 1, sessionsAvailable: 3, sessionsRemaining: 3 });
   });
@@ -50,12 +50,56 @@ describe('creating listings', () => {
     expect(zero.body.error.fields.amount).toBe('Please enter a number above 0, like 2 or 2.5.');
   });
 
-  it('needs Trade to say what is wanted or be open to offers', async () => {
+  it('lets a trade list up to 10 things it accepts, or none (open to offers)', async () => {
     const { token } = await owner();
-    const neither = await create(token, { type: 'trade', title: 'Sneakers' });
-    expect(neither.status).toBe(400);
-    expect(neither.body.error.fields.wanted).toBe("Say what you'd like in return, or tick Open to offers.");
-    expect((await create(token, { type: 'trade', title: 'Sneakers', openToOffers: true })).status).toBe(201);
+    expect((await create(token, { type: 'trade', title: 'Sneakers' })).body.accepts).toEqual([]);
+    const eleven = Array.from({ length: 11 }, (_, i) => ({ description: `Thing ${i}` }));
+    expect((await create(token, { type: 'trade', title: 'Sneakers', accepts: eleven })).status).toBe(400);
+    const noUnit = await create(token, { type: 'trade', title: 'Sneakers', accepts: [{ description: 'Eggs', amount: '6' }] });
+    expect(noUnit.body.error.fields['accepts.0.unit']).toBe('Please choose a unit for the amount.');
+
+    const starter = await create(token, { type: 'trade', title: 'Sourdough starter', accepts: [{ description: 'Eggs', amount: '6', unit: 'item' }, { description: 'Honey' }] });
+    expect(starter.body.accepts.map((a: { description: string }) => a.description)).toEqual(['Eggs', 'Honey']);
+    // Editing replaces the whole list.
+    const edited = await api('PATCH', `/api/v1/listings/${starter.body.id}`, { token, body: { accepts: [{ description: 'Jam' }] } });
+    expect(edited.body.accepts.map((a: { description: string }) => a.description)).toEqual(['Jam']);
+    const found = await api('GET', '/api/v1/listings?q=jam', { token });
+    expect(found.body.items.map((i: { title: string }) => i.title)).toEqual(['Sourdough starter']);
+  });
+
+  it('takes lb and oz, and service lengths in days and weeks', async () => {
+    const { token } = await owner();
+    expect((await create(token, { type: 'gift', title: 'Coffee', amount: '2', unit: 'lb' })).body.unit).toBe('lb');
+    expect((await create(token, { type: 'gift', title: 'Tea', amount: '8', unit: 'oz' })).body.unit).toBe('oz');
+    const course = await create(token, { type: 'service', title: 'Course', sessionLength: 2, sessionLengthUnit: 'days' });
+    expect(course.body).toMatchObject({ sessionLength: 2, sessionLengthUnit: 'days' });
+    expect((await create(token, { type: 'service', title: 'Retreat', sessionLength: 1, sessionLengthUnit: 'weeks' })).status).toBe(201);
+  });
+
+  it('needs a place for the handovers that happen at one', async () => {
+    const { token } = await owner();
+    const noArea = await create(token, { type: 'lend', title: 'Drill', handovers: ['at_lister'] });
+    expect(noArea.body.error.fields.area).toBe('Please add your area so people know roughly where it is.');
+    const noPlace = await create(token, { type: 'lend', title: 'Drill', handovers: ['elsewhere'] });
+    expect(noPlace.body.error.fields.meetingPlace).toBe('Please add the place to meet.');
+    const ok = await create(token, { type: 'lend', title: 'Drill', handovers: ['at_lister', 'online', 'online'], area: 'Riverside' });
+    expect(ok.body.handovers).toEqual(['at_lister', 'online']);
+  });
+
+  it('shows others only the neighbourhood and city of a place', async () => {
+    const { founder, token } = await owner();
+    const house = { label: '1 Mill Street, Riverside, Springfield', source: 'suggestion', street: 'Mill Street', houseNumber: '1', neighbourhood: 'Riverside', city: 'Springfield' };
+    const drill = await create(token, { type: 'lend', title: 'Drill', handovers: ['at_lister', 'elsewhere'], area: house, meetingPlace: { ...house, label: 'Riverside Library', name: 'Riverside Library' } });
+    expect(drill.body.area).toMatchObject({ street: 'Mill Street', display: 'Riverside, Springfield' });
+
+    const alex = await createInvitedMember(founder, 'Alex');
+    const seen = await api('GET', `/api/v1/listings/${drill.body.id}`, { token: await signIn(alex) });
+    expect(seen.body.area).toEqual({ display: 'Riverside, Springfield' });
+    expect(seen.body.meetingPlace).toEqual({ display: 'Riverside, Springfield' });
+    const searched = await api('GET', '/api/v1/listings?q=drill', { token: await signIn(alex) });
+    expect(searched.body.items[0].area).toEqual({ display: 'Riverside, Springfield' });
+    // Searching by street finds nothing: the filter never looks at the address.
+    expect((await api('GET', '/api/v1/listings?area=mill', { token })).body.items).toEqual([]);
   });
 
   it('checks the title', async () => {

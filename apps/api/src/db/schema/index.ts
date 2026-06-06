@@ -4,6 +4,7 @@ export * from './notifications.ts';
 export * from './system.ts';
 export * from './invitations.ts';
 export * from './listings.ts';
+export * from './proposals.ts';
 export * from './messaging.ts';
 export * from './agreements.ts';
 export * from './reports.ts';

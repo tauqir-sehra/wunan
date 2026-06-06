@@ -2,20 +2,12 @@
 // scenarios 5 and 9). Device notifications themselves need a real push service, so scenario 5's
 // delivery is checked by hand; here we check the page never asks for permission by itself.
 import { expect, test } from '@playwright/test';
-import { API_URL, WEB_URL } from '../../playwright.config.ts';
 import { expectAccessible } from './helpers/axe.ts';
-import { createFounder, createInvitedMember, createListingFor, memberIdOf, messageAbout, signIn, type TestMember } from './helpers/members.ts';
+import { acceptProposal, completeDetails, createFounder, createInvitedMember, createListingFor, proposeOn, type TestMember } from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
 
 async function lend(owner: TestMember, borrower: TestMember, listingId: string) {
-  const token = await signIn(owner);
-  const response = await fetch(`${API_URL}/api/v1/listings/${listingId}/agreements`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, origin: WEB_URL },
-    body: JSON.stringify({ otherMemberId: await memberIdOf(borrower), returnDue: '2030-01-05' })
-  });
-  if (response.status !== 201) throw new Error(`Could not record the loan: ${response.status}`);
-  return ((await response.json()) as { id: string }).id;
+  return acceptProposal(owner, (await proposeOn(borrower, listingId, completeDetails('lend'))).id);
 }
 
 test('notification settings save per kind, and device notifications wait for a click', async ({ page }) => {
@@ -75,7 +67,6 @@ test('a member downloads their data, then leaves; their name stays for the peopl
   const sam = createFounder('Sam');
   const alex = await createInvitedMember(sam, 'Alex');
   const drill = await createListingFor(sam, { type: 'lend', title: 'Drill' });
-  await messageAbout(alex, await memberIdOf(sam), drill.id);
   const agreementId = await lend(sam, alex, drill.id);
   await createListingFor(alex, { type: 'gift', title: 'Spare jam jars' });
 

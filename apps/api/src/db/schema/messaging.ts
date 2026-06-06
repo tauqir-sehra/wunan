@@ -1,20 +1,26 @@
-// Conversations and messages between members (FR-018 to FR-020). A conversation is usually two
-// members, optionally about a listing; mediation conversations (US6) have three or more.
+// Threads of messages (001 FR-018 to FR-020). Each belongs to exactly one proposal (its two
+// members, 002 FR-022) or one problem report (reporter, reported member, and mediators).
 import { sql } from 'drizzle-orm';
 import { check, index, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
-import { listing } from './listings.ts';
+import { proposal } from './proposals.ts';
 import { member } from './members.ts';
 import { problemReport } from './reports.ts';
 
-export const conversation = pgTable('conversation', {
-  id: uuid().primaryKey().defaultRandom(),
-  listingId: uuid().references(() => listing.id, { onDelete: 'set null' }),
-  /** Set for mediation conversations (asking for help with an agreement). */
-  problemReportId: uuid().references(() => problemReport.id, { onDelete: 'cascade' }),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-  /** Time of the latest message, for ordering the conversation list. */
-  lastMessageAt: timestamp({ withTimezone: true }).notNull().defaultNow()
-});
+export const conversation = pgTable(
+  'conversation',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    proposalId: uuid()
+      .unique()
+      .references(() => proposal.id, { onDelete: 'cascade' }),
+    /** Set for mediation threads (asking for help with an agreement). */
+    problemReportId: uuid().references(() => problemReport.id, { onDelete: 'cascade' }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    /** Time of the latest message. */
+    lastMessageAt: timestamp({ withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [check('conversation_has_one_owner', sql`(${t.proposalId} is null) <> (${t.problemReportId} is null)`)]
+);
 
 export const conversationParticipant = pgTable(
   'conversation_participant',
@@ -34,7 +40,20 @@ export const conversationParticipant = pgTable(
   ]
 );
 
-export const messageKind = pgEnum('message_kind', ['text', 'contact_shared', 'call_proposed', 'call_accepted', 'system']);
+export const messageKind = pgEnum('message_kind', [
+  'text',
+  'contact_shared',
+  'call_proposed',
+  'call_accepted',
+  'system',
+  // Written by the API when a proposal changes (002 FR-016, FR-020, FR-022a).
+  'detail_changed',
+  'accepted',
+  'declined',
+  'withdrawn',
+  'closed',
+  'messages_shared'
+]);
 
 export const message = pgTable(
   'message',

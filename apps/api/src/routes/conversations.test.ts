@@ -1,9 +1,9 @@
-// Conversations and messages (US4; FR-018 to FR-020).
+// Threads: the messages of a proposal (001 FR-018 to FR-020; 002 FR-022 to FR-025).
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { notificationPreference } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
-import { api, createFounder, createInvitedMember, signIn } from '../test/setup.ts';
+import { api, createFounder, createInvitedMember, propose, signIn } from '../test/setup.ts';
 
 async function pair() {
   const sam = await createFounder('Sam');
@@ -11,19 +11,17 @@ async function pair() {
   const samToken = await signIn(sam);
   const alexToken = await signIn(alex);
   const { body: drill } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'lend', title: 'Drill' } });
-  const { body: started } = await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id, listingId: drill.id } });
-  return { sam, alex, samToken, alexToken, drill, conversationId: started.id as string };
+  const started = await propose(alexToken, drill.id);
+  return { sam, alex, samToken, alexToken, drill, proposalId: started.id, conversationId: started.conversationId };
 }
 
 const send = (token: string, id: string, body: string) => api('POST', `/api/v1/conversations/${id}/messages`, { token, body: { body } });
 
 describe('conversations', () => {
-  it('reuses the conversation for the same pair and listing', async () => {
-    const { sam, alexToken, drill, conversationId } = await pair();
-    const again = await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id, listingId: drill.id } });
-    expect(again.body).toEqual({ id: conversationId, created: false });
-    const general = await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id } });
-    expect(general.body.id).not.toBe(conversationId);
+  it('has no inbox and no way to start a thread directly', async () => {
+    const { sam, alexToken } = await pair();
+    expect((await api('GET', '/api/v1/conversations', { token: alexToken })).status).toBe(404);
+    expect((await api('POST', '/api/v1/conversations', { token: alexToken, body: { memberId: sam.id } })).status).toBe(404);
   });
 
   it('lets only participants read or send', async () => {
@@ -39,18 +37,20 @@ describe('conversations', () => {
     expect((await send(alexToken, conversationId, '   ')).body.error.fields.body).toBe('Please write a message.');
   });
 
-  it('shows unread conversations until they are read', async () => {
+  it('shows unread proposals until they are read', async () => {
     const { samToken, alexToken, conversationId } = await pair();
     await send(alexToken, conversationId, 'Is Saturday okay?');
-    const list = await api('GET', '/api/v1/conversations', { token: samToken });
-    expect(list.body.items[0]).toMatchObject({ id: conversationId, unread: true, listing: { title: 'Drill' }, lastMessage: { preview: 'Is Saturday okay?' } });
-    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.unreadConversations).toBe(1);
+    const list = await api('GET', '/api/v1/proposals', { token: samToken });
+    expect(list.body.items[0]).toMatchObject({ unread: true, listing: { title: 'Drill' }, lastMessagePreview: 'Is Saturday okay?' });
+    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.proposalsWithNews).toBe(1);
+    const page = await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: samToken });
+    expect(page.body.conversation).toMatchObject({ listing: { title: 'Drill' }, canWrite: true });
 
     await api('POST', `/api/v1/conversations/${conversationId}/read`, { token: samToken });
-    expect((await api('GET', '/api/v1/conversations', { token: samToken })).body.items[0].unread).toBe(false);
-    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.unreadConversations).toBe(0);
+    expect((await api('GET', '/api/v1/proposals', { token: samToken })).body.items[0].unread).toBe(false);
+    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.proposalsWithNews).toBe(0);
     // My own messages never count as unread for me.
-    expect((await api('GET', '/api/v1/me/summary', { token: alexToken })).body.unreadConversations).toBe(0);
+    expect((await api('GET', '/api/v1/me/summary', { token: alexToken })).body.proposalsWithNews).toBe(0);
   });
 
   it('lists messages newest first', async () => {

@@ -13,7 +13,7 @@ import { agreement, conversation, conversationParticipant, listing, member, prob
 import { ApiError, errors } from '../lib/errors.ts';
 import { notify } from '../notify/index.ts';
 import { setMediatorCheck, setReportsLookup } from './agreements.ts';
-import { postSystemMessage, sendMessage } from './messaging.ts';
+import { createThread, postEvent, postSystemMessage, sendMessage } from './messaging.ts';
 import { shownName } from './members.ts';
 
 type ReportRow = typeof problemReport.$inferSelect;
@@ -56,10 +56,8 @@ export async function createReport(agreementId: string, reporterId: string, desc
 
   const { report, conversationId } = await db.transaction(async (tx) => {
     const [report] = await tx.insert(problemReport).values({ agreementId, reporterId, reportedMemberId: reportedId, description, escalationLevel: level }).returning();
-    const [room] = await tx.insert(conversation).values({ listingId: deal.listingId, problemReportId: report!.id }).returning();
-    const people = [reporterId, reportedId, ...mediators.map((m) => m.id)];
-    await tx.insert(conversationParticipant).values([...new Set(people)].map((memberId) => ({ conversationId: room!.id, memberId })));
-    return { report: report!, conversationId: room!.id };
+    const room = await createThread(tx, { problemReportId: report!.id }, [reporterId, reportedId, ...mediators.map((m) => m.id)]);
+    return { report: report!, conversationId: room.id };
   });
 
   const [reporter] = await db.select().from(member).where(eq(member.id, reporterId));
@@ -153,10 +151,38 @@ export async function getReport(reportId: string, memberId: string) {
     reportedMember: ref(report.reportedMemberId),
     mediators: mediatorIds.map(ref),
     conversationId: await conversationOf(report.id),
+    proposalMessagesShared: report.proposalMessagesSharedAt !== null,
+    proposalConversationId: report.proposalMessagesSharedAt ? await proposalConversationOf(report.agreementId) : null,
+    canShareProposalMessages:
+      report.proposalMessagesSharedAt === null && (memberId === report.reporterId || memberId === report.reportedMemberId),
     canEscalate: mayAct && report.status === 'open' && report.escalationLevel !== 'founders',
     canResolve: mayAct && report.status === 'open',
     createdAt: report.createdAt.toISOString()
   };
+}
+
+/**
+ * The reporter or reported member lets the helpers read the proposal's messages (002 FR-022a).
+ * Once only, and it can't be undone; a note in the report's thread says it happened.
+ */
+export async function shareProposalMessages(reportId: string, memberId: string) {
+  const report = await loadReport(reportId);
+  if (memberId !== report.reporterId && memberId !== report.reportedMemberId) {
+    await getReport(reportId, memberId); // "not found" for anyone who can't see the report at all.
+    throw new ApiError(403, 'not_allowed', 'Only the two people in the agreement can share their messages.');
+  }
+  const [updated] = await db
+    .update(problemReport)
+    .set({ proposalMessagesSharedAt: new Date(), proposalMessagesSharedById: memberId })
+    .where(and(eq(problemReport.id, reportId), isNull(problemReport.proposalMessagesSharedAt)))
+    .returning();
+  if (!updated) throw new ApiError(409, 'already_shared', 'The messages are already shared with the helpers.');
+  const [who] = await db.select().from(member).where(eq(member.id, memberId));
+  await postEvent(await conversationOf(reportId), memberId, {
+    kind: 'messages_shared',
+    body: `${who?.displayName ?? 'A member'} let the helpers read their messages about this agreement.`
+  });
+  return getReport(reportId, memberId);
 }
 
 /** Reports on an agreement, for the agreement page (outcome notes are kept with it, FR-029). */
@@ -183,6 +209,16 @@ async function loadReport(reportId: string) {
   const [report] = await db.select().from(problemReport).where(eq(problemReport.id, reportId));
   if (!report) throw errors.notFound('That request for help');
   return report;
+}
+
+/** The thread of the proposal that became this agreement. */
+async function proposalConversationOf(agreementId: string) {
+  const [row] = await db
+    .select({ id: conversation.id })
+    .from(agreement)
+    .innerJoin(conversation, eq(conversation.proposalId, agreement.proposalId))
+    .where(eq(agreement.id, agreementId));
+  return row?.id ?? null;
 }
 
 async function conversationOf(reportId: string) {

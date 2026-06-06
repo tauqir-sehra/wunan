@@ -1,11 +1,7 @@
-// Messages, contact sharing, and call times (FR-018 to FR-020).
+// Messages, contact sharing, and call times (001 FR-018 to FR-020). Every thread belongs to a
+// proposal or a problem report (002 FR-022); there is no inbox and no starting a thread directly.
 import { z } from 'zod';
 import { memberRef } from './common.ts';
-
-export const StartConversation = z.object({
-  memberId: z.uuid({ message: 'That member could not be found.' }),
-  listingId: z.uuid().nullish()
-});
 
 export const SendMessage = z.object({
   body: z
@@ -23,7 +19,20 @@ export const ProposeCall = z.object({
   proposedTime: z.iso.datetime({ offset: true, message: 'Please choose a date and time.' })
 });
 
-export const MessageKind = z.enum(['text', 'contact_shared', 'call_proposed', 'call_accepted', 'system']);
+export const MessageKind = z.enum([
+  'text',
+  'contact_shared',
+  'call_proposed',
+  'call_accepted',
+  'system',
+  // Written by the API when a proposal changes (002 FR-016, FR-020, FR-022a).
+  'detail_changed',
+  'accepted',
+  'declined',
+  'withdrawn',
+  'closed',
+  'messages_shared'
+]);
 
 export const Message = z.object({
   id: z.string(),
@@ -43,6 +52,9 @@ export const ConversationSummary = z.object({
   participants: z.array(memberRef),
   listing: z.object({ id: z.string(), title: z.string() }).nullable(),
   isMediation: z.boolean(),
+  proposalId: z.string().nullable(),
+  /** False once its proposal is declined, withdrawn, or closed, or for mediators reading shared messages. */
+  canWrite: z.boolean(),
   lastMessage: z.object({ preview: z.string(), createdAt: z.string(), author: memberRef.nullable() }).nullable(),
   unread: z.boolean()
 });
@@ -56,7 +68,7 @@ export const MessagesPage = z.object({
 export type MessagesPage = z.infer<typeof MessagesPage>;
 
 export const Summary = z.object({
-  unreadConversations: z.number(),
+  proposalsWithNews: z.number(),
   agreementsNeedingAttention: z.number(),
   unseenFlags: z.number()
 });

@@ -6,6 +6,7 @@ import { db } from '../db/index.ts';
 import {
   account,
   agreement,
+  proposal,
   invitation,
   listing,
   listingPhoto,
@@ -205,7 +206,7 @@ const CONTACT_REMOVED = 'Contact details were removed when this member left wuna
  *   its title and kind, closed, so the other member's agreement still says what it was about.
  * - Contact details this member shared in conversations are replaced with a short note.
  * - Messages, agreements, and requests for help stay visible to the other members involved.
- * - Unused invitation links stop working.
+ * - Unused invitation links stop working, and open proposals they made or received close.
  */
 export async function deleteAccount(memberId: string, password: string) {
   await requirePassword(memberId, password, 'password');
@@ -220,14 +221,17 @@ export async function deleteAccount(memberId: string, password: string) {
       .where(inArray(listingPhoto.listingId, myListings))
       .returning({ fileKey: listingPhoto.fileKey });
 
-    const withoutAgreements = and(
+    // Listings someone made a proposal on stay (title only), so their proposals still say what
+    // they were about; the others go.
+    const unused = and(
       eq(listing.ownerId, memberId),
-      notExists(tx.select({ one: rawSql`1` }).from(agreement).where(eq(agreement.listingId, listing.id)))
+      notExists(tx.select({ one: rawSql`1` }).from(agreement).where(eq(agreement.listingId, listing.id))),
+      notExists(tx.select({ one: rawSql`1` }).from(proposal).where(eq(proposal.listingId, listing.id)))
     );
-    await tx.delete(listing).where(withoutAgreements);
+    await tx.delete(listing).where(unused);
     await tx
       .update(listing)
-      .set({ description: null, area: null, status: 'closed', closedReason: 'removed', updatedAt: new Date() })
+      .set({ description: null, area: null, meetingPlace: null, status: 'closed', closedReason: 'removed', updatedAt: new Date() })
       .where(eq(listing.ownerId, memberId));
 
     await tx
@@ -265,4 +269,12 @@ export async function deleteAccount(memberId: string, password: string) {
 
   // Files are removed after the rows, so a failure here never leaves rows pointing at nothing.
   await deletePhotoFiles(photoKeys);
+  // Open proposals they made or received close, and the other member is told (002 FR-020a).
+  await closeOpenProposalsOf(memberId);
+}
+
+// Set by modules/proposals.ts, which imports this module (a direct import would be circular).
+let closeOpenProposalsOf: (memberId: string) => Promise<void> = async () => {};
+export function setProposalCloser(closer: typeof closeOpenProposalsOf) {
+  closeOpenProposalsOf = closer;
 }

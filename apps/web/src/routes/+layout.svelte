@@ -13,7 +13,7 @@
   const links = [
     { href: '/', label: 'Home' },
     { href: '/listings', label: 'Find' },
-    { href: '/messages', label: 'Messages' },
+    { href: '/proposals', label: 'Proposals' },
     { href: '/my-listings', label: 'My listings' },
     { href: '/agreements', label: 'Agreements' },
     { href: '/settings', label: 'Settings' },
@@ -46,10 +46,10 @@
                 class="inline-flex min-h-11 items-center rounded-md px-3 text-foreground no-underline hover:bg-accent aria-[current=page]:font-semibold aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8"
               >
                 {link.label}
-                {#if link.href === '/messages' && data.summary?.unreadConversations}
+                {#if link.href === '/proposals' && data.summary?.proposalsWithNews}
                   <span class="ml-1.5 rounded-md bg-muted px-1.5 text-sm font-medium">
-                    {data.summary.unreadConversations}<span class="sr-only">
-                      with new messages</span
+                    {data.summary.proposalsWithNews}<span class="sr-only">
+                      with something new</span
                     >
                   </span>
                 {/if}

@@ -23,7 +23,7 @@
       <li>your profile and contact details,</li>
       <li>your listings and their photos,</li>
       <li>your agreements and requests for help,</li>
-      <li>your conversations and messages,</li>
+      <li>your proposals and their messages,</li>
       <li>the invitations you made, and your notification settings.</li>
     </ul>
     <p class="text-muted-foreground">

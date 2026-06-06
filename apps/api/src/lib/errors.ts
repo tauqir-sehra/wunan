@@ -6,29 +6,33 @@ import type { z } from 'zod';
 import { log } from './log.ts';
 
 export type ErrorBody = {
-  error: { code: string; message: string; fields?: Record<string, string> };
+  error: { code: string; message: string; fields?: Record<string, string>; [detail: string]: unknown };
 };
 
 export class ApiError extends Error {
   readonly status: ContentfulStatusCode;
   readonly code: string;
   readonly fields: Record<string, string> | undefined;
+  /** Anything else a client needs to recover, e.g. the id of a proposal that already exists. */
+  readonly details: Record<string, unknown> | undefined;
 
   constructor(
     status: ContentfulStatusCode,
     code: string,
     message: string,
-    fields?: Record<string, string>
+    fields?: Record<string, string>,
+    details?: Record<string, unknown>
   ) {
     super(message);
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.details = details;
   }
 
   toBody(): ErrorBody {
     return {
-      error: { code: this.code, message: this.message, ...(this.fields ? { fields: this.fields } : {}) }
+      error: { ...this.details, code: this.code, message: this.message, ...(this.fields ? { fields: this.fields } : {}) }
     };
   }
 }

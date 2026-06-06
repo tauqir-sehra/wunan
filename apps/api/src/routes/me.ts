@@ -17,7 +17,7 @@ import { and, count, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { listing, listingFlag } from '../db/schema/index.ts';
 import { countNeedingAttention } from '../modules/agreements.ts';
-import { countUnreadConversations } from '../modules/messaging.ts';
+import { countThreadsWithNews } from '../modules/messaging.ts';
 import { createRouter } from '../app-router.ts';
 import { requireMember } from '../lib/require-member.ts';
 import { buildExport } from '../modules/export.ts';
@@ -107,7 +107,7 @@ meRoutes.openapi(
       .where(and(eq(listing.ownerId, memberId), isNull(listingFlag.seenByOwnerAt)));
     return c.json(
       {
-        unreadConversations: await countUnreadConversations(memberId),
+        proposalsWithNews: await countThreadsWithNews(memberId),
         agreementsNeedingAttention: await countNeedingAttention(memberId),
         unseenFlags: flags?.unseen ?? 0
       },

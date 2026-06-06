@@ -1,13 +1,15 @@
 <script lang="ts">
   import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
-  import FormField from '#lib/components/FormField.svelte';
   import ListingFields from '#lib/components/ListingFields.svelte';
   import Notice from '#lib/components/Notice.svelte';
+  import FieldProblems from '#lib/components/FieldProblems.svelte';
   import PhotoPicker from '#lib/components/PhotoPicker.svelte';
+  import PlaceField from '#lib/components/PlaceField.svelte';
   import Steps from '#lib/components/Steps.svelte';
-  import { duration, quantity, typeHints, typeLabels } from '#lib/format.ts';
-  import type { ListingType, Unit } from '@wunan/shared';
+  import { duration, handoverText, quantity, timesText, typeHints, typeLabels, unitLabel } from '#lib/format.ts';
+  import { placeValue } from '#lib/listing-form.ts';
+  import type { Handover, ListingType, Unit } from '@wunan/shared';
 
   let { data, form } = $props();
 
@@ -29,15 +31,14 @@
       'unit',
       'loanLength',
       'loanLengthUnit',
-      'wanted',
-      'wantedAmount',
-      'wantedUnit',
-      'openToOffers',
+      'handovers',
+      'accepts',
+      'availability',
       'sessionLength',
       'sessionLengthUnit',
       'sessionsAvailable'
     ],
-    3: ['area'],
+    3: ['area', 'area_text', 'meetingPlace', 'meetingPlace_text'],
     4: []
   };
   const hidden = $derived(
@@ -62,18 +63,38 @@
           : 'Loan length to be agreed'
       ]);
     }
+    const json = <T,>(name: string, fallback: T): T => {
+      try {
+        return values[name] ? (JSON.parse(values[name]) as T) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const handovers = json<Handover[]>('handovers', []);
+    lines.push([
+      'Handover',
+      handovers.length ? handovers.map((h) => handoverText(type, h, { lister: 'me', requester: 'the recipient' })).join(', ') : 'To be agreed'
+    ]);
     if (type === 'trade') {
-      const wanted = [values.wanted, values.openToOffers === 'on' ? 'open to offers' : '']
-        .filter(Boolean)
-        .join(', ');
-      lines.push(['In return', wanted]);
+      const accepts = json<{ description: string; amount?: string; unit?: Unit }[]>('accepts', []);
+      lines.push([
+        'In return',
+        accepts.length ? accepts.map((a) => (a.amount ? `${a.description} (${a.amount} ${a.unit ? unitLabel(a.unit) : ''})` : a.description)).join(', ') : 'Open to offers'
+      ]);
     }
     if (type === 'service') {
       if (values.sessionLength && values.sessionLengthUnit)
         lines.push(['Each time', duration(Number(values.sessionLength), values.sessionLengthUnit)]);
       lines.push(['Times available', values.sessionsAvailable || 'No limit']);
+      const times = json<{ weekday: number; startTime: string; endTime: string }[]>('availability', []);
+      lines.push(['When', times.length ? timesText(times) : 'To be agreed']);
     }
-    lines.push(['Area', values.area || 'Not shown']);
+    const label = (name: string) => {
+      const place = placeValue(values, name) as { label?: string } | string | undefined;
+      return typeof place === 'string' ? place : place?.label;
+    };
+    lines.push(['Area', label('area') ?? 'Not shown']);
+    if (label('meetingPlace')) lines.push(['Meeting place', label('meetingPlace')!]);
     return lines;
   });
 </script>
@@ -86,7 +107,13 @@
   <Steps current={step} {labels} />
 
   {#if form?.error}
-    <Notice kind="error"><p>{form.error}</p></Notice>
+    <Notice kind="error">
+      <p>{form.error}</p>
+      {#if step === 4 && Object.keys(fields).length}
+        <FieldProblems {fields} labels={{ area: 'Area', meetingPlace: 'Meeting place', handovers: 'How it happens', accepts: 'What you’d accept', availability: 'When it’s offered' }} />
+        <p>Use Back to fix them.</p>
+      {/if}
+    </Notice>
   {/if}
 
   <form method="POST" enctype="multipart/form-data" class="grid gap-6">
@@ -124,14 +151,21 @@
       <p class="text-muted-foreground">Only the title is needed. Add anything else that helps.</p>
       <ListingFields {type} {values} {fields} />
     {:else if step === 3}
-      <FormField
+      <PlaceField
         label="Area"
         name="area"
         optional
-        maxlength={60}
-        hint="Your neighbourhood, not your address. You can share your address later in a message."
-        value={values.area}
+        value={values.area || values.area_text}
         error={fields.area}
+        hint="Your neighbourhood, or your address if people pick up from you. Others see only the neighbourhood and city until you accept their proposal."
+      />
+      <PlaceField
+        label="Meeting place"
+        name="meetingPlace"
+        optional
+        value={values.meetingPlace || values.meetingPlace_text}
+        error={fields.meetingPlace}
+        hint="Needed if you offer to meet somewhere else. A public place works best, like a library or a café."
       />
     {:else if step === 4}
       <h2 class="text-lg font-medium">Check it over</h2>

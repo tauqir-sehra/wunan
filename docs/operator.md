@@ -92,6 +92,24 @@ Put the two keys in `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`, set `VAPID_SUBJE
 (`docker compose up -d`). Keep the same keys from then on: new keys make every member turn
 device notifications on again.
 
+### Place suggestions
+
+When members type an area, a meeting place, or where a handover happens, wunan suggests places
+(addresses, neighbourhoods, cities, businesses) from a [Photon](https://github.com/komoot/photon)
+place-search server. What is sent: **only the text the member typed**, from your server, plus the
+fixed bias below. Never who is typing, their address, or anything else about them, and wunan never
+writes the typed text to its logs.
+
+| Setting | What to put |
+|---------|-------------|
+| `PLACES_URL` | The Photon server. The default, `https://photon.komoot.io`, is a free public server run by komoot for fair use (a community's typing is fine; bulk use is not). Leave it **empty to turn suggestions off**: place fields then work as plain text. |
+| `PLACES_BIAS` | Optional `lat,lon` near your community, e.g. `51.5,-0.12`, so local places come first. |
+| `PLACES_BBOX` | Optional `minLon,minLat,maxLon,maxLat` box to keep suggestions inside your region. |
+
+To keep even the typed text on your own machines, run Photon yourself (it needs a few GB of disk
+for a country's data; see Photon's README for the data download) and point `PLACES_URL` at it,
+e.g. `http://photon:2322` if you add it as a service in `compose.yaml`.
+
 ## The encryption key
 
 `DATA_ENCRYPTION_KEY` encrypts members' private contact details (phone numbers and emails they

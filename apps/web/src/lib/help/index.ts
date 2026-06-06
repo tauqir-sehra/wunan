@@ -5,8 +5,8 @@ import Agreements from './Agreements.svelte';
 import Finding from './Finding.svelte';
 import Joining from './Joining.svelte';
 import Listing from './Listing.svelte';
-import Messages from './Messages.svelte';
 import Notifications from './Notifications.svelte';
+import Proposals from './Proposals.svelte';
 import YourData from './YourData.svelte';
 
 export type HelpTopic = { slug: string; title: string; summary: string; content: Component };
@@ -31,15 +31,15 @@ export const helpTopics: HelpTopic[] = [
     content: Finding
   },
   {
-    slug: 'messages',
-    title: 'Messages and contact details',
-    summary: 'Talking to members and sharing your phone number safely.',
-    content: Messages
+    slug: 'proposals',
+    title: 'Proposals and messages',
+    summary: 'Asking for something, talking it over, and agreeing.',
+    content: Proposals
   },
   {
     slug: 'agreements',
-    title: 'Recording an agreement',
-    summary: 'Keeping track of what you lent, gave or traded.',
+    title: 'Agreements and returns',
+    summary: 'What was agreed, and getting lent things back.',
     content: Agreements
   },
   {
