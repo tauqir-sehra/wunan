@@ -16,6 +16,6 @@ export const actions: Actions = {
       if (!(error instanceof ApiError)) throw error;
       return fail(error.status, { error: error.message });
     }
-    redirect(303, '/?welcome=1');
+    redirect(303, '/listings?welcome=1');
   }
 };

@@ -89,7 +89,7 @@ test('a member lists one of each kind, and photos lose their location data', asy
     await expect(p.locator('[aria-live="polite"]').filter({ hasText: 'Removed thing 2.' })).toHaveCount(1);
     await p.getByRole('checkbox', { name: 'At my place' }).check();
   }, { area: 'Riverside' });
-  await expect(page.getByText('Accepts: Leather boots')).toBeVisible();
+  await expect(page.getByRole('definition').filter({ hasText: 'Leather boots' })).toBeVisible();
   await expect(page.getByText('At my place')).toBeVisible();
 
   await createListing(page, 'Service', 'Bodywork session', async (p) => {
@@ -171,16 +171,18 @@ test("another member's request reaches the owner and leaves the listing as it is
   await signInAs(alexPage, alex);
   await alexPage.goto(url);
   await expect(alexPage.getByRole('link', { name: 'Ask for this' })).toBeVisible();
-  await alexPage.getByText('Raise a conflict about this posting to the person who listed this').click();
-  await alexPage.getByLabel('Your request').fill('Is this still available?');
-  await alexPage.getByRole('button', { name: 'Send request' }).click();
+  await alexPage.waitForLoadState('networkidle');
+  await alexPage.getByRole('button', { name: 'Raise an issue' }).click();
+  const issue = alexPage.getByRole('dialog', { name: 'Raise an issue with Sam' });
+  await issue.getByLabel('What would you like to ask?').fill('Is this still available?');
+  await issue.getByRole('button', { name: 'Send to Sam' }).click();
   await expect(alexPage.getByText('Your request was sent')).toBeVisible();
   await expectAccessible(alexPage, 'listing as another member');
   await alexContext.close();
 
   await page.goto('/my-listings');
-  await expect(page.getByRole('link', { name: '1 new request' })).toBeVisible();
-  await page.getByRole('link', { name: '1 new request' }).click();
+  await expect(page.getByRole('link', { name: '1 new request', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: '1 new request', exact: true }).click();
   await expect(page.getByText('Is this still available?')).toBeVisible();
   await expect(page.getByText('Available', { exact: true })).toBeVisible();
 });

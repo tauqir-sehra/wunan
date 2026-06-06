@@ -32,11 +32,13 @@
 
 <section class="grid max-w-2xl gap-6">
   <div class="grid gap-1">
-    <h1 class="text-2xl font-semibold">{titles[listing.type]}</h1>
+    <div class="flex items-start justify-between gap-3">
+      <h1 class="text-2xl font-semibold">{titles[listing.type]}</h1>
+      <HelpLink topic="proposals" label="Help with proposals" />
+    </div>
     <p class="text-muted-foreground">
       <a href="/listings/{listing.id}">{listing.title}</a> from {listing.owner.displayName}{#if amountLine(listing)} · {amountLine(listing)}{/if}
     </p>
-    <HelpLink topic="proposals" label="Help with proposals" />
   </div>
   {#if form?.error}<Notice kind="error"><p>{form.error}</p><FieldProblems fields={form.fields} {labels} /></Notice>{/if}
 

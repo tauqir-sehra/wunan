@@ -41,6 +41,7 @@ test('a member invites someone, who joins and shows the inviter on their profile
   await expect(alex.getByText("Welcome to wunan. You're now a member.")).toBeVisible();
 
   // Alex's profile shows who invited them; the founder's shows "Founding member".
+  await alex.locator('summary', { hasText: 'Alex' }).click(); // The account menu, under the member's name.
   await alex.getByRole('link', { name: 'Your profile' }).click();
   await expect(alex.getByRole('heading', { name: 'Alex', level: 1 })).toBeVisible();
   await expect(alex.getByRole('link', { name: 'Sam' })).toBeVisible();
@@ -76,11 +77,11 @@ test('settings save profile and private contact details', async ({ page }) => {
   await page.goto('/settings');
   await expectAccessible(page, 'settings');
   await page.getByLabel('About you').fill('I bake bread on Sundays.');
-  await page.getByRole('button', { name: 'Save profile' }).click();
-  await expect(page.getByText('Your profile is saved.')).toBeVisible();
   await page.getByLabel('Phone number').fill('07700 900123');
-  await page.getByRole('button', { name: 'Save contact details' }).click();
-  await expect(page.getByText('Your contact details are saved.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Save/ })).toHaveCount(1); // One button saves it all.
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Your settings are saved.')).toBeVisible();
+  await expect(page.getByLabel('About you')).toHaveValue('I bake bread on Sundays.');
   await expect(page.getByLabel('Phone number')).toHaveValue('07700 900123');
 });
 
@@ -90,7 +91,7 @@ test('if the sign-in runs out mid-form, signing in again sends what was typed', 
   await page.goto('/settings');
   await page.getByLabel('About you').fill('Kept through sign-in.');
   await context.clearCookies(); // The session runs out while the member is typing.
-  await page.getByRole('button', { name: 'Save profile' }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
 
   await expect(page.getByRole('heading', { name: 'Please sign in again' })).toBeVisible();
   await expectAccessible(page, 'sign in again');
@@ -98,6 +99,6 @@ test('if the sign-in runs out mid-form, signing in again sends what was typed', 
   await page.getByLabel('Password').fill(founder.password);
   await page.getByRole('button', { name: 'Sign in and send' }).click();
 
-  await expect(page.getByText('Your profile is saved.')).toBeVisible();
+  await expect(page.getByText('Your settings are saved.')).toBeVisible();
   await expect(page.getByLabel('About you')).toHaveValue('Kept through sign-in.');
 });

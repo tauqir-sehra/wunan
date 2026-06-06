@@ -38,9 +38,11 @@
 
 <section class="grid max-w-3xl gap-8">
   <div class="grid gap-1">
-    <h1 class="text-2xl font-semibold">Proposals</h1>
+    <div class="flex items-start justify-between gap-3">
+      <h1 class="text-2xl font-semibold">Proposals</h1>
+      <HelpLink topic="proposals" label="Help with proposals" />
+    </div>
     <p class="text-muted-foreground">Everything you're arranging with other members, with its messages.</p>
-    <HelpLink topic="proposals" label="Help with proposals" />
   </div>
 
   {#each groups as group (group.role)}

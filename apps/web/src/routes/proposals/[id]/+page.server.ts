@@ -5,15 +5,18 @@ import { redirect } from '@sveltejs/kit';
 import { apiFor, ApiError } from '#lib/api.ts';
 import { formAction, text } from '#lib/form-action.ts';
 import { loadOr404, memberLoad } from '#lib/load.ts';
-import type { MessagesPage, Proposal } from '@wunan/shared';
+import type { ContactDetails, MessagesPage, Proposal } from '@wunan/shared';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = memberLoad(async (event) => {
   const api = apiFor(event);
   const proposal = await loadOr404(() => api.get<Proposal>(`/api/v1/proposals/${encodeURIComponent(event.params.id)}`));
-  const page = await api.get<MessagesPage>(`/api/v1/conversations/${proposal.conversationId}/messages`);
+  const [page, contact] = await Promise.all([
+    api.get<MessagesPage>(`/api/v1/conversations/${proposal.conversationId}/messages`),
+    api.get<ContactDetails>('/api/v1/me/contact')
+  ]);
   await api.post(`/api/v1/conversations/${proposal.conversationId}/read`);
-  return { proposal, conversation: page.conversation, messages: [...page.items].reverse(), hasEarlier: page.nextCursor !== null };
+  return { proposal, contact, conversation: page.conversation, messages: [...page.items].reverse(), hasEarlier: page.nextCursor !== null };
 });
 
 const proposalPath = (id: string | undefined) => `/api/v1/proposals/${encodeURIComponent(id ?? '')}`;
@@ -55,6 +58,14 @@ export const actions: Actions = {
   proposeCall: formAction(async ({ event, form, api }) => {
     await api.post(`/api/v1/conversations/${await threadOf(api, event.params.id)}/calls`, { proposedTime: localDateTime(text(form, 'date'), text(form, 'time')) });
     return { proposed: true };
+  }),
+  // From the contact pop-up, after the member saw exactly what will be shared.
+  shareContact: formAction(async ({ event, form, api }) => {
+    await api.post(`/api/v1/conversations/${await threadOf(api, event.params.id)}/contact-share`, {
+      phone: form.get('phone') === 'yes',
+      email: form.get('email') === 'yes'
+    });
+    return { shared: true };
   }),
   acceptCall: formAction(async ({ event, form, api }) => {
     await api.post(`/api/v1/conversations/${await threadOf(api, event.params.id)}/calls/${encodeURIComponent(String(form.get('messageId') ?? ''))}/accept`);

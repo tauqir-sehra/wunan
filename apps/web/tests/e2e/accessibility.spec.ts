@@ -26,7 +26,7 @@ async function pagesOfACommunity() {
     paths: [
       '/', '/listings', '/listings?q=drill&type=lend', `/listings/${drill.id}`, '/listings/new', `/listings/${drill.id}/edit`,
       `/listings/${jam.id}/propose`, '/my-listings', '/proposals', `/proposals/${open.id}`, `/proposals/${deal.id}`,
-      `/threads/${open.conversationId}/share-contact`,
+      `/threads/${open.conversationId}/share-contact`, `/threads/${open.conversationId}/call`, `/listings/${jam.id}/issue`,
       '/agreements', `/agreements/${agreement.id}`, `/agreements/${agreement.id}/report`, '/invitations',
       `/members/${samId}`, `/members/${samId}/chain`, '/settings', '/settings/notifications', '/settings/export',
       '/settings/delete-account', '/help', '/help/joining', '/help/asking-for-help'
@@ -73,7 +73,7 @@ test('signed-out pages fit small screens', async ({ page }) => {
 test('the keyboard reaches everything, with a visible focus ring', async ({ page }) => {
   const sam = createFounder('Sam');
   await signInAs(page, sam);
-  await page.goto('/');
+  await page.goto('/listings');
 
   // The first Tab shows the skip link, which jumps to the page content.
   await page.keyboard.press('Tab');
@@ -84,7 +84,7 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
   await expect(page).toHaveURL(/#main$/);
 
   // Every navigation link can be reached with Tab and shows a focus ring.
-  await page.goto('/');
+  await page.goto('/listings');
   const seen = new Set<string>();
   for (let i = 0; i < 30; i += 1) {
     await page.keyboard.press('Tab');
@@ -99,7 +99,13 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
     expect(focused.ring, `"${focused.text}" has no visible focus ring`).toBe(true);
     seen.add(focused.text);
   }
-  for (const label of ['Home', 'Find', 'Proposals', 'My listings', 'Agreements', 'Settings', 'Help', 'Sign out']) {
-    expect([...seen].some((text) => text.startsWith(label)), `${label} reachable by keyboard`).toBe(true);
+  for (const label of ['Find', 'Proposals', 'My listings', 'Agreements', 'Invite', 'Share\u00a0something', 'Sam']) {
+    expect([...seen].some((text) => text.startsWith(label)), `${label} reachable by keyboard (reached: ${[...seen].join(' | ')})`).toBe(true);
+  }
+  // The account menu opens from the keyboard too.
+  await page.locator('summary', { hasText: 'Sam' }).focus();
+  await page.keyboard.press('Enter');
+  for (const label of ['Your profile', 'Settings', 'Help', 'Sign out']) {
+    await expect(page.getByRole('banner').getByRole('link', { name: label, exact: true }).first()).toBeVisible();
   }
 });

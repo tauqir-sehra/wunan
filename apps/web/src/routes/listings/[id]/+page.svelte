@@ -4,12 +4,15 @@
   import { Button } from '#lib/components/ui/button/index.ts';
   import FormField from '#lib/components/FormField.svelte';
   import Notice from '#lib/components/Notice.svelte';
-  import { acceptsLine, amountLine, handoverQuestion, handoverText, listingStatus, periodText, placeText, timesText, typeLabels } from '#lib/format.ts';
+  import PopupDialog from '#lib/components/PopupDialog.svelte';
+  import { amountLine, handoverQuestion, handoverText, listingStatus, periodText, placeText, quantity, timesText, typeLabels } from '#lib/format.ts';
+  import FlagIcon from '@lucide/svelte/icons/flag';
 
   let { data, form } = $props();
   const listing = $derived(data.listing);
   const isOwner = $derived(data.member?.id === listing.owner.id);
   const created = $derived(page.url.searchParams.has('created'));
+  const issueSent = $derived(page.url.searchParams.has('issueSent'));
   const photoProblems = $derived(page.url.searchParams.get('photoProblems'));
   const doneText: Record<string, string> = {
     pause: 'Your listing is paused. Nobody will find it in search until you make it available again.',
@@ -20,6 +23,28 @@
   };
   const askWords = { lend: 'Ask to borrow', gift: 'Ask for this', trade: 'Offer a trade', service: 'Ask for this service' } as const;
   const names = $derived({ lister: isOwner ? 'me' : listing.owner.displayName, requester: isOwner ? 'the recipient' : 'you' });
+  /** The listing's details as label and value, for the table beside the description. */
+  const details = $derived.by(() => {
+    const rows: [string, string][] = [];
+    const amount = amountLine(listing);
+    if (amount) rows.push([{ lend: 'Loan', gift: 'Amount', trade: 'Amount', service: 'Sessions' }[listing.type], amount]);
+    if (listing.type === 'trade') {
+      rows.push([
+        'In return',
+        listing.accepts.length
+          ? listing.accepts.map((a) => (a.amount ? `${a.description} (${quantity(a.amount, a.unit)})` : a.description)).join('\n')
+          : `Open to offers: ${listing.owner.displayName} hasn't listed anything specific`
+      ]);
+    }
+    rows.push([handoverQuestion[listing.type], listing.handovers.length ? listing.handovers.map((h) => handoverText(listing.type, h, names)).join('\n') : 'To be agreed']);
+    if (listing.area) rows.push(['Area', placeText(listing.area)!]);
+    if (listing.meetingPlace) rows.push(['Meeting place', placeText(listing.meetingPlace)!]);
+    if (listing.type === 'service' && listing.availability.length) rows.push(["When it's offered", timesText(listing.availability).replaceAll('; ', '\n')]);
+    if (listing.type === 'lend' && listing.takenPeriods.length) {
+      rows.push(['Already lent', listing.takenPeriods.map((p) => `${periodText(p.startsAt, p.endsAt)}${p.overdue ? ' (not back yet)' : ''}`).join('\n')]);
+    }
+    return rows;
+  });
   const since = $derived(new Date(listing.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
 </script>
 
@@ -32,6 +57,7 @@
   {#if photoProblems}
     <Notice kind="error"><p>Some photos couldn't be added. {photoProblems} You can try again from Edit.</p></Notice>
   {/if}
+  {#if issueSent && !form}<Notice><p>{doneText.flag}</p></Notice>{/if}
   {#if form?.done}
     <Notice><p>{doneText[form.done]}</p></Notice>
   {:else if form?.error}
@@ -44,47 +70,41 @@
       <Badge variant="outline">{listingStatus(listing)}</Badge>
     </div>
     <h1 class="text-3xl font-semibold">{listing.title}</h1>
-    {#if amountLine(listing)}<p class="text-lg">{amountLine(listing)}</p>{/if}
-    {#if acceptsLine(listing)}<p class="text-lg">{acceptsLine(listing)}</p>{/if}
+    <p class="text-sm text-muted-foreground">
+      Listed by <a href="/members/{listing.owner.id}">{listing.owner.displayName}</a> on {since}
+    </p>
   </header>
 
-  <dl class="grid gap-2 rounded-lg border bg-card p-4 sm:grid-cols-[12rem_1fr]">
-    <dt class="font-medium">{handoverQuestion[listing.type]}</dt>
-    <dd>{listing.handovers.length ? listing.handovers.map((h) => handoverText(listing.type, h, names)).join(', or ') : 'To be agreed'}</dd>
-    {#if listing.area}<dt class="font-medium">Area</dt><dd>{placeText(listing.area)}</dd>{/if}
-    {#if listing.meetingPlace}<dt class="font-medium">Meeting place</dt><dd>{placeText(listing.meetingPlace)}</dd>{/if}
-    {#if listing.type === 'service' && listing.availability.length}<dt class="font-medium">When it's offered</dt><dd>{timesText(listing.availability)}</dd>{/if}
-    {#if listing.type === 'lend' && listing.takenPeriods.length}
-      <dt class="font-medium">Already lent</dt>
-      <dd>
-        <ul>
-          {#each listing.takenPeriods as period (period.startsAt)}<li>{periodText(period.startsAt, period.endsAt)}{period.overdue ? ' (not back yet)' : ''}</li>{/each}
+  <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid content-start gap-4">
+      <!-- The owner's own words, set apart with large quotation marks (decorative only). -->
+      <figure class="relative rounded-lg border bg-card px-8 py-5" aria-label="Description">
+        <span class="pointer-events-none absolute top-0 left-2 font-serif text-5xl leading-none text-muted-foreground/40 select-none" aria-hidden="true">“</span>
+        {#if listing.description}
+          <p class="max-w-prose whitespace-pre-line">{listing.description}</p>
+        {:else}
+          <p class="text-muted-foreground">No description.</p>
+        {/if}
+        <span class="pointer-events-none absolute right-2 bottom-0 translate-y-3 font-serif text-5xl leading-none text-muted-foreground/40 select-none" aria-hidden="true">”</span>
+      </figure>
+      {#if listing.photos.length}
+        <ul class="grid grid-cols-2 gap-2">
+          {#each listing.photos as photo (photo.id)}
+            <li><img src="/photos/{photo.key}" alt={photo.alt ?? ''} class="w-full rounded-lg" loading="lazy" /></li>
+          {/each}
         </ul>
-      </dd>
-    {/if}
-  </dl>
-
-  {#if listing.photos.length}
-    <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {#each listing.photos as photo (photo.id)}
-        <li><img src="/photos/{photo.key}" alt={photo.alt ?? ''} class="w-full rounded-lg" loading="lazy" /></li>
-      {/each}
-    </ul>
-  {/if}
-
-  {#if listing.description}<p class="max-w-prose whitespace-pre-line">{listing.description}</p>{/if}
-
-  <section class="grid gap-1 rounded-lg border bg-card p-4" aria-labelledby="owner-heading">
-    <h2 id="owner-heading" class="font-semibold">Listed by</h2>
-    <p><a href="/members/{listing.owner.id}">{listing.owner.displayName}</a> on {since}</p>
-    <p class="text-muted-foreground">
-      {#if listing.owner.invitedBy}
-        Invited by <a href="/members/{listing.owner.invitedBy.id}">{listing.owner.invitedBy.displayName}</a>
-      {:else}
-        Founding member
       {/if}
-    </p>
-  </section>
+    </div>
+
+    <dl class="grid content-start overflow-hidden rounded-lg border text-sm" aria-label="Details">
+      {#each details as [label, value] (label)}
+        <div class="grid grid-cols-[minmax(7rem,40%)_1fr] gap-3 px-3 py-2.5 even:bg-muted/60">
+          <dt class="text-muted-foreground">{label}</dt>
+          <dd class="whitespace-pre-line">{value}</dd>
+        </div>
+      {/each}
+    </dl>
+  </div>
 
   {#if isOwner}
     <section class="grid gap-4" aria-labelledby="manage-heading">
@@ -134,22 +154,28 @@
       {/if}
     </section>
   {:else}
-    {#if listing.myOpenProposalId}
-      <div><Button href="/proposals/{listing.myOpenProposalId}">See your proposal</Button></div>
-    {:else if listing.status === 'available'}
-      <div><Button href="/listings/{listing.id}/propose">{askWords[listing.type]}</Button></div>
-    {/if}
-
-    <details class="grid gap-1 rounded-lg border bg-card p-4" open={Boolean(form?.fields?.request)}>
-      <summary class="min-h-11 cursor-pointer content-center font-medium">Raise a conflict about this posting to the person who listed this</summary>
-      <p class="mt-2 text-muted-foreground">
-        For example, to ask them to update or take down the listing. It goes only to them, and the
-        listing stays as it is.
-      </p>
-      <form method="POST" action="?/flag" class="mt-3 grid gap-3">
-        <FormField label="Your request" name="request" multiline required maxlength={500} value={form?.values?.request} error={form?.fields?.request} />
-        <div><Button type="submit" variant="outline">Send request</Button></div>
-      </form>
-    </details>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      {#if listing.myOpenProposalId}
+        <Button href="/proposals/{listing.myOpenProposalId}">See your proposal</Button>
+      {:else if listing.status === 'available'}
+        <Button href="/listings/{listing.id}/propose">{askWords[listing.type]}</Button>
+      {:else}
+        <span></span>
+      {/if}
+      <PopupDialog
+        label="Raise an issue"
+        icon={FlagIcon}
+        variant="ghost"
+        title="Raise an issue with {listing.owner.displayName}"
+        description="For example, to ask them to update or take down this listing. It goes only to {listing.owner.displayName}, and the listing stays as it is."
+        fallbackHref="/listings/{listing.id}/issue"
+        open={Boolean(form?.fields?.request)}
+      >
+          <form method="POST" action="?/flag" class="grid gap-4">
+            <FormField label="What would you like to ask?" name="request" multiline required maxlength={500} value={form?.values?.request} error={form?.fields?.request} />
+            <div><Button type="submit">Send to {listing.owner.displayName}</Button></div>
+          </form>
+      </PopupDialog>
+    </div>
   {/if}
 </article>

@@ -14,8 +14,10 @@
 <svelte:head><title>Ask for help · wunan</title></svelte:head>
 
 <section class="grid max-w-2xl gap-5">
-  <h1 class="text-2xl font-semibold">Ask for help</h1>
-  <HelpLink topic="asking-for-help" label="How asking for help works" />
+  <div class="flex items-start justify-between gap-3">
+    <h1 class="text-2xl font-semibold">Ask for help</h1>
+    <HelpLink topic="asking-for-help" label="How asking for help works" />
+  </div>
   <p>{agreementSentence(a)}</p>
   <p class="text-muted-foreground">
     If something went wrong, the person who invited {other.displayName} will be asked to help. You'll

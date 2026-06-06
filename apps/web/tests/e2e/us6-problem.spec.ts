@@ -62,7 +62,7 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
   await alexPage.goto(reportUrl);
   await expect(alexPage.getByRole('heading', { name: 'Asking for help: Drill' })).toBeVisible();
   await alexPage.goto('/listings/new');
-  await expect(alexPage.getByRole('heading', { name: 'Share something' })).toBeVisible();
+  await expect(alexPage.getByRole('heading', { name: 'Share something', level: 1 })).toBeVisible();
   await alexContext.close();
 
   // Settling it keeps the note with the agreement.

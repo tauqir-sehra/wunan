@@ -20,5 +20,5 @@
     <h1 class="text-2xl font-semibold">Sorry, something went wrong</h1>
     <p>It's not something you did. Please try again in a moment.</p>
   {/if}
-  <div><Button href="/">Go to the home page</Button></div>
+  <div><Button href="/listings">Go to Find</Button></div>
 </section>

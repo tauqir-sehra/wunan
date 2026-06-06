@@ -36,8 +36,10 @@
   {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
 
   <header class="grid gap-2">
-    <h1 class="text-2xl font-semibold">Asking for help: {r.listingTitle}</h1>
-    <HelpLink topic="asking-for-help" label="How asking for help works" />
+    <div class="flex items-start justify-between gap-3">
+      <h1 class="text-2xl font-semibold">Asking for help: {r.listingTitle}</h1>
+      <HelpLink topic="asking-for-help" label="How asking for help works" />
+    </div>
     <p class="text-muted-foreground">
       {r.reporter.displayName} asked for help with {r.reportedMember.displayName} ·
       {r.status === 'open' ? 'Still open' : 'Settled'}

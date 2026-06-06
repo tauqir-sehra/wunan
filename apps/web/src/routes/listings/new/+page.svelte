@@ -102,8 +102,10 @@
 <svelte:head><title>New listing · wunan</title></svelte:head>
 
 <section class="grid max-w-2xl gap-6">
-  <h1 class="text-2xl font-semibold">Share something</h1>
-  <HelpLink topic="listing" label="Help with listing something" />
+  <div class="flex items-start justify-between gap-3">
+    <h1 class="text-2xl font-semibold">Share something</h1>
+    <HelpLink topic="listing" label="Help with listing something" />
+  </div>
   <Steps current={step} {labels} />
 
   {#if form?.error}

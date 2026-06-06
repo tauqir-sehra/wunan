@@ -26,8 +26,10 @@
   {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
 
   <header class="grid gap-2">
-    <h1 class="text-2xl font-semibold">Agreement</h1>
-    <HelpLink topic="agreements" label="Help with agreements" />
+    <div class="flex items-start justify-between gap-3">
+      <h1 class="text-2xl font-semibold">Agreement</h1>
+      <HelpLink topic="agreements" label="Help with agreements" />
+    </div>
     <p class="text-lg">{agreementSentence(a)}</p>
     <p class="text-muted-foreground">Agreed on {fullDay(a.createdAt)}</p>
     <p>

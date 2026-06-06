@@ -1,17 +1,10 @@
 <script lang="ts">
-  import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
-  import SettingsNav from '#lib/components/SettingsNav.svelte';
 </script>
 
 <svelte:head><title>Your data · Settings · wunan</title></svelte:head>
 
 <section class="grid gap-8">
-  <div class="grid gap-4">
-    <h1 class="text-2xl font-semibold">Settings</h1>
-    <HelpLink topic="your-data" label="Help with your data" />
-    <SettingsNav />
-  </div>
 
   <section class="grid max-w-xl gap-4" aria-labelledby="export-heading">
     <h2 id="export-heading" class="text-xl font-semibold">Download your data</h2>

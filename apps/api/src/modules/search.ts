@@ -3,7 +3,7 @@
 // unless asked for lent-out ones too. Newest first, a page at a time. The area filter looks only at
 // what others can see of an area (neighbourhood, city, or typed text), never a street address.
 import type { SearchListingsQuery } from '@wunan/shared';
-import { and, desc, eq, lt, not, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, not, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { listing } from '../db/schema/index.ts';
 import { describe, lentOutNow } from './listings.ts';
@@ -28,7 +28,8 @@ export async function searchListings(query: SearchListingsQuery, viewerId: strin
   const conditions: SQL[] = [eq(listing.status, 'available')];
   if (!query.includeLent) conditions.push(not(lentOutNow));
   if (query.q) conditions.push(sql`${listing.searchVector} @@ websearch_to_tsquery('english', ${query.q})`);
-  if (query.type) conditions.push(eq(listing.type, query.type));
+  // Every kind chosen is the same as no filter.
+  if (query.type && query.type.length < 4) conditions.push(inArray(listing.type, query.type));
   if (query.area) {
     const pattern = likePattern(query.area);
     conditions.push(sql`(${listing.areaNeighbourhood} ilike ${pattern} or ${listing.areaCity} ilike ${pattern}

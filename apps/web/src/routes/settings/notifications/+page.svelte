@@ -1,9 +1,7 @@
 <script lang="ts">
-  import HelpLink from '#lib/components/HelpLink.svelte';
   import { invalidateAll } from '$app/navigation';
   import { Button } from '#lib/components/ui/button/index.ts';
   import Notice from '#lib/components/Notice.svelte';
-  import SettingsNav from '#lib/components/SettingsNav.svelte';
   import { day } from '#lib/format.ts';
 
   let { data, form } = $props();
@@ -204,11 +202,6 @@
 <svelte:head><title>Notifications · Settings · wunan</title></svelte:head>
 
 <section class="grid gap-8">
-  <div class="grid gap-4">
-    <h1 class="text-2xl font-semibold">Settings</h1>
-    <HelpLink topic="notifications" label="Help with notifications" />
-    <SettingsNav />
-  </div>
 
   {#if form?.saved === 'preferences'}
     <Notice><p>Your notification settings are saved.</p></Notice>

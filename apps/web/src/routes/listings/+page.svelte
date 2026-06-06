@@ -4,14 +4,17 @@
   import { Input } from '#lib/components/ui/input/index.ts';
   import { Label } from '#lib/components/ui/label/index.ts';
   import ListingCard from '#lib/components/ListingCard.svelte';
+  import { page } from '$app/state';
+  import Notice from '#lib/components/Notice.svelte';
   import { typeLabels } from '#lib/format.ts';
+  import type { ListingType } from '@wunan/shared';
 
   let { data } = $props();
   const f = $derived(data.filters);
   const active = $derived(
     [
       f.q && `Words: “${f.q}”`,
-      f.type && `Kind: ${typeLabels[f.type as keyof typeof typeLabels] ?? f.type}`,
+      data.kinds.length < 4 && `Kind: ${data.kinds.map((k) => typeLabels[k]).join(', ')}`,
       f.area && `Area: ${f.area}`,
       f.includeLent && 'Including lent out'
     ].filter(Boolean) as string[]
@@ -21,8 +24,11 @@
 <svelte:head><title>Find · wunan</title></svelte:head>
 
 <section class="grid gap-6">
-  <h1 class="text-2xl font-semibold">Find something</h1>
-  <HelpLink topic="finding" label="Help with finding things" />
+  {#if page.url.searchParams.has('welcome')}<Notice><p>Welcome to wunan. You're now a member.</p></Notice>{/if}
+  <div class="flex items-start justify-between gap-3">
+    <h1 class="text-2xl font-semibold">Find something</h1>
+    <HelpLink topic="finding" label="Help with finding things" />
+  </div>
 
   <form
     method="GET"
@@ -43,15 +49,9 @@
     <fieldset class="grid min-w-0 gap-2">
       <legend class="text-base font-medium">Kind</legend>
       <div class="flex flex-wrap gap-x-5 gap-y-1">
-        {#each [['', 'Any'], ...Object.entries(typeLabels)] as [value, label] (value)}
+        {#each Object.entries(typeLabels) as [value, label] (value)}
           <label class="flex min-h-11 items-center gap-2">
-            <input
-              type="radio"
-              name="type"
-              {value}
-              checked={f.type === value}
-              class="size-5 accent-primary"
-            />
+            <input type="checkbox" name="type" {value} checked={data.kinds.includes(value as ListingType)} class="size-5 accent-primary" />
             {label}
           </label>
         {/each}

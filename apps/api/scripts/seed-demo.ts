@@ -149,10 +149,10 @@ console.log(`Seeded in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
 
 // SC-006: filtered searches answer in under 2 seconds.
 const queries = [
-  { q: 'drill', type: 'lend' as const },
-  { q: 'rice', type: 'gift' as const, area: 'Riverside' },
+  { q: 'drill', type: ['lend' as const] },
+  { q: 'rice', type: ['gift' as const], area: 'Riverside' },
   { q: 'bike repair' },
-  { type: 'service' as const, area: 'Old Town' },
+  { type: ['service' as const, 'trade' as const], area: 'Old Town' },
   { q: 'apples', includeLent: true },
   {}
 ];

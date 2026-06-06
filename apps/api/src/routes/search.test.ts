@@ -38,6 +38,9 @@ describe('search', () => {
     await make({ type: 'lend', title: 'Ladder', area: 'Riverside' });
     expect(titles(await search(token, 'type=gift&area=river'))).toEqual(['Rice']);
     expect(titles(await search(token, 'type=trade'))).toEqual([]);
+    // Several kinds at once, or all of them (the same as none).
+    expect(titles(await search(token, 'type=gift,lend&area=river')).sort()).toEqual(['Ladder', 'Rice']);
+    expect(titles(await search(token, 'type=lend,gift,trade,service')).length).toBe(3);
   });
 
   it('shows only available listings unless lent-out ones are asked for', async () => {

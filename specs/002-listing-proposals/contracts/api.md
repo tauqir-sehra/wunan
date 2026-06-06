@@ -70,7 +70,7 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /listings` | member | Search. Query: `q`, `type` (`lend`/`gift`/`trade`/`service`), `area` (matches neighbourhood, city, or display text), `includeLent`, `cursor`, `limit`. Available, not-lent-out listings only by default. Each item has `lentOut` (bool). |
+| `GET /listings` | member | Search. Query: `q`, `type` (one or more of `lend`/`gift`/`trade`/`service`, comma-separated; none = all), `area` (matches neighbourhood, city, or display text), `includeLent`, `cursor`, `limit`. Available, not-lent-out listings only by default. Each item has `lentOut` (bool). |
 | `POST /listings` | member | Create. Body is a discriminated union on `type` (fields per data-model): adds `handovers`, `area` and `meetingPlace` (place objects), `accepts` (Trade, ≤10 `{ description, amount?, unit? }`), `availability` (Service, ≤14 `{ weekday, startTime, endTime }`). Only `type` and `title` required; `area` required with `at_lister`, `meetingPlace` with `elsewhere`. |
 | `GET /listings/{id}` | member | Full listing with photos (`alt`, `url`), owner and owner's inviter, `handovers`, places (per Conventions), `accepts`, `availability`, `lentOut`, and for Lend `takenPeriods: [{ startsAt, endsAt, overdue }]`. Caller's own open proposal id as `myOpenProposalId`. Owner also gets `flags` and `openProposalCount`. |
 | `PATCH /listings/{id}` | owner | Edit fields; `type` cannot change. `accepts` and `availability` are replaced as a whole. |

@@ -15,7 +15,8 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
   await robin.goto(`/listings/${drill.id}`);
   await expect(robin.getByText('Riverside, Springfield')).toBeVisible();
   await expect(robin.getByText('Mill Street')).toHaveCount(0);
-  await expect(robin.getByText('Picked up from Sam, or Online')).toBeVisible();
+  const details = robin.getByRole('definition').filter({ hasText: 'Picked up from Sam' });
+  await expect(details).toContainText('Online');
   await robin.getByRole('link', { name: 'Ask to borrow' }).click();
   await expectAccessible(robin, 'propose');
   await robin.getByLabel("Anything you'd rather talk about first?").fill('Could I borrow it this weekend?');
@@ -34,7 +35,7 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
   await expectAccessible(sam, 'proposals list');
   await sam.goto(proposalUrl);
   await expect(sam.getByText('Still to settle before you can accept')).toBeVisible();
-  await expect(sam.getByRole('button', { name: 'Accept' })).toHaveCount(0);
+  await expect(sam.getByRole('button', { name: 'Accept' })).toBeDisabled();
   await expectAccessible(sam, 'proposal (lister)');
 
   // Robin fills in the details; Sam's open page shows the change without reloading.

@@ -1,27 +1,44 @@
 <!--
   The app shell: skip link, one consistent header navigation, and the main area. The current page
-  is marked with aria-current and an underline, never colour alone (constitution IV, V).
+  is marked with aria-current and in bold, never colour alone (constitution IV, V). On phones the
+  links fold into a "Menu" disclosure; on wide screens your profile, settings, help and signing out
+  sit under your name. Both work without JavaScript. "Share something" is always in view.
 -->
 <script lang="ts">
   import '../app.css';
+  import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
+  import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+  import MenuIcon from '@lucide/svelte/icons/menu';
+  import PlusIcon from '@lucide/svelte/icons/plus';
   import ReauthForm from '#lib/components/ReauthForm.svelte';
   import type { Reauth } from '#lib/form-action.ts';
 
   let { data, children } = $props();
 
-  const links = [
-    { href: '/', label: 'Home' },
+  type NavLink = { href: string; label: string; count?: number; countText?: string };
+  const main = $derived<NavLink[]>([
     { href: '/listings', label: 'Find' },
-    { href: '/proposals', label: 'Proposals' },
-    { href: '/my-listings', label: 'My listings' },
-    { href: '/agreements', label: 'Agreements' },
+    { href: '/proposals', label: 'Proposals', count: data.summary?.proposalsWithNews, countText: 'with something new' },
+    { href: '/my-listings', label: 'My listings', count: data.summary?.unseenFlags, countText: 'new requests' },
+    { href: '/agreements', label: 'Agreements', count: data.summary?.agreementsNeedingAttention, countText: 'need a look' },
+    { href: '/invitations', label: 'Invite' }
+  ]);
+  const account = $derived<NavLink[]>([
+    { href: `/members/${data.member?.id ?? ''}`, label: 'Your profile' },
     { href: '/settings', label: 'Settings' },
     { href: '/help', label: 'Help' }
-  ];
+  ]);
 
   const isCurrent = (href: string) =>
-    href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+    href === '/listings' ? page.url.pathname === '/listings' : page.url.pathname.startsWith(href);
+  // The menus close once a link in them has been followed.
+  let menuOpen = $state(false);
+  let accountOpen = $state(false);
+  afterNavigate(() => {
+    menuOpen = false;
+    accountOpen = false;
+  });
   const reauth = $derived((page.form as { reauth?: Reauth } | null)?.reauth);
 </script>
 
@@ -32,40 +49,72 @@
   Skip to main content
 </a>
 
-<header class="border-b bg-card">
-  <div class="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-    <a href="/" class="text-xl font-semibold text-foreground no-underline">wunan</a>
+<header class="relative border-b bg-card">
+  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
+    <a href="/listings" class="mr-2 inline-flex min-h-11 items-center text-xl font-semibold text-foreground no-underline">wunan</a>
     {#if data.member}
-      <nav aria-label="Main" class="flex-1">
-        <ul class="flex flex-wrap gap-x-1 gap-y-1">
-          {#each links as link (link.href)}
-            <li>
-              <a
-                href={link.href}
-                aria-current={isCurrent(link.href) ? 'page' : undefined}
-                class="inline-flex min-h-11 items-center rounded-md px-3 text-foreground no-underline hover:bg-accent aria-[current=page]:font-semibold aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8"
-              >
-                {link.label}
-                {#if link.href === '/proposals' && data.summary?.proposalsWithNews}
-                  <span class="ml-1.5 rounded-md bg-muted px-1.5 text-sm font-medium">
-                    {data.summary.proposalsWithNews}<span class="sr-only">
-                      with something new</span
-                    >
-                  </span>
-                {/if}
-              </a>
-            </li>
-          {/each}
+      {#snippet navLink(link: NavLink, extra: string)}
+        <a
+          href={link.href}
+          aria-current={isCurrent(link.href) ? 'page' : undefined}
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 whitespace-nowrap text-foreground no-underline hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:font-semibold {extra}"
+        >
+          {link.label}
+          {#if link.count}
+            <span class="rounded-full bg-primary px-1.5 text-xs leading-5 font-semibold text-primary-foreground">
+              {link.count}<span class="sr-only"> {link.countText}</span>
+            </span>
+          {/if}
+        </a>
+      {/snippet}
+
+      <!-- Wide screens: one row of the main places, then your account in a small menu. -->
+      <nav aria-label="Main" class="hidden lg:block">
+        <ul class="flex items-center gap-0.5">
+          {#each main as link (link.href)}<li>{@render navLink(link, '')}</li>{/each}
         </ul>
       </nav>
-      <a href="/sign-out" class="inline-flex min-h-11 items-center px-2 text-muted-foreground"
-        >Sign out</a
+
+      <a
+        href="/listings/new"
+        class="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md bg-primary px-3 font-medium whitespace-nowrap text-primary-foreground no-underline hover:bg-primary/90"
       >
+        <PlusIcon class="size-5" aria-hidden="true" />
+        Share<span class="hidden sm:inline">&nbsp;something</span>
+      </a>
+
+      <details class="relative hidden lg:block" bind:open={accountOpen}>
+        <summary class="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md px-3 whitespace-nowrap hover:bg-accent [&::-webkit-details-marker]:hidden">
+          {data.member.displayName}
+          <ChevronDownIcon class="size-4" aria-hidden="true" />
+        </summary>
+        <ul class="absolute right-0 z-40 mt-1 grid min-w-48 gap-0.5 rounded-md border bg-card p-1 shadow-sm">
+          {#each account as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
+          <li class="border-t pt-0.5"><a href="/sign-out" class="inline-flex min-h-11 w-full items-center rounded-md px-3 text-muted-foreground hover:bg-accent">Sign out</a></li>
+        </ul>
+      </details>
+
+      <!-- Narrower screens: everything under "Menu" (works without JavaScript). -->
+      <details class="lg:hidden" bind:open={menuOpen}>
+        <summary class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md border px-3 font-medium [&::-webkit-details-marker]:hidden">
+          <MenuIcon class="size-5" aria-hidden="true" />
+          Menu
+          {#if main.some((l) => l.count)}<span class="size-2 rounded-full bg-primary" aria-hidden="true"></span>{/if}
+        </summary>
+        <nav aria-label="Main" class="absolute inset-x-0 z-40 mt-2 border-b bg-card px-4 pb-4 shadow-sm">
+          <ul class="grid gap-0.5">
+            {#each main as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
+            <li class="mt-1 border-t pt-1"></li>
+            {#each account as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
+            <li><a href="/sign-out" class="inline-flex min-h-11 w-full items-center rounded-md px-3 text-muted-foreground hover:bg-accent">Sign out</a></li>
+          </ul>
+        </nav>
+      </details>
     {/if}
   </div>
 </header>
 
-<main id="main" tabindex="-1" class="mx-auto max-w-4xl px-4 py-8 outline-none">
+<main id="main" tabindex="-1" class="mx-auto max-w-5xl px-4 py-8 outline-none">
   {#if reauth}
     <ReauthForm {reauth} />
   {:else}

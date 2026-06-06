@@ -1,9 +1,7 @@
 <script lang="ts">
-  import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import FormField from '#lib/components/FormField.svelte';
   import Notice from '#lib/components/Notice.svelte';
-  import SettingsNav from '#lib/components/SettingsNav.svelte';
   import { when } from '#lib/format.ts';
 
   let { data, form } = $props();
@@ -12,11 +10,6 @@
 <svelte:head><title>Leave wunan · Settings · wunan</title></svelte:head>
 
 <section class="grid gap-8">
-  <div class="grid gap-4">
-    <h1 class="text-2xl font-semibold">Settings</h1>
-    <HelpLink topic="your-data" label="Help with your data and leaving" />
-    <SettingsNav />
-  </div>
 
   {#if form?.error && !form?.fields?.password}
     <Notice kind="error"><p>{form.error}</p></Notice>

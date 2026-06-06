@@ -2,11 +2,11 @@
   import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import ListingCard from '#lib/components/ListingCard.svelte';
+  import PlusIcon from '@lucide/svelte/icons/plus';
 
   let { data } = $props();
   const groups = [
     { status: 'available', heading: 'Available' },
-    { status: 'lent_out', heading: 'Lent out' },
     { status: 'paused', heading: 'Paused' },
     { status: 'closed', heading: 'Closed' }
   ] as const;
@@ -15,11 +15,13 @@
 <svelte:head><title>My listings · wunan</title></svelte:head>
 
 <section class="grid gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-2xl font-semibold">My listings</h1>
-    <Button href="/listings/new">Share something</Button>
+  <div class="flex items-start justify-between gap-3">
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <h1 class="text-2xl font-semibold">My listings</h1>
+      <Button href="/listings/new" variant="outline" size="sm" class="whitespace-normal"><PlusIcon class="size-4" aria-hidden="true" />Add something to share</Button>
+    </div>
+    <HelpLink topic="listing" label="Help with your listings" />
   </div>
-  <HelpLink topic="listing" label="Help with your listings" />
 
   {#if data.listings.length === 0}
     <p class="text-muted-foreground">

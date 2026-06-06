@@ -12,7 +12,7 @@ test('an offer is chosen from the list, or described when open to offers', async
   await signInAs(page, ana);
 
   await page.goto(`/listings/${starter.id}`);
-  await expect(page.getByText('Accepts: Eggs (6 items), Honey')).toBeVisible();
+  await expect(page.getByRole('definition').filter({ hasText: 'Eggs (6 items)' })).toContainText('Honey');
   await page.getByRole('link', { name: 'Offer a trade' }).click();
   await page.waitForLoadState('networkidle');
   await page.getByRole('checkbox', { name: /Eggs/ }).check();

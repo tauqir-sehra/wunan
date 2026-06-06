@@ -31,8 +31,10 @@
 
 <section class="grid gap-6">
   <div class="grid gap-2">
-    <h1 class="text-2xl font-semibold">Invite someone</h1>
-    <HelpLink topic="joining" label="How invitations work" />
+    <div class="flex items-start justify-between gap-3">
+      <h1 class="text-2xl font-semibold">Invite someone</h1>
+      <HelpLink topic="joining" label="How invitations work" />
+    </div>
     <p class="text-muted-foreground">
       Invite people you know and trust. Your name will show on their profile as the person who
       invited them, and you're the first person they can ask for help.

@@ -4,7 +4,7 @@ import { redirect } from '@sveltejs/kit';
 import { apiFor } from '#lib/api.ts';
 import { formAction, text } from '#lib/form-action.ts';
 import { loadOr404, memberLoad } from '#lib/load.ts';
-import type { MessagesPage } from '@wunan/shared';
+import type { ContactDetails, MessagesPage } from '@wunan/shared';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = memberLoad(async (event) => {
@@ -13,7 +13,8 @@ export const load: PageServerLoad = memberLoad(async (event) => {
   const page = await loadOr404(() => api.get<MessagesPage>(`/api/v1/conversations/${id}/messages`));
   if (page.conversation.proposalId && page.conversation.canWrite) redirect(303, `/proposals/${page.conversation.proposalId}`);
   if (page.conversation.canWrite) await api.post(`/api/v1/conversations/${id}/read`);
-  return { conversation: page.conversation, messages: [...page.items].reverse(), hasEarlier: page.nextCursor !== null };
+  const contact = page.conversation.canWrite ? await api.get<ContactDetails>('/api/v1/me/contact') : { sharePhone: null, shareEmail: null };
+  return { contact, conversation: page.conversation, messages: [...page.items].reverse(), hasEarlier: page.nextCursor !== null };
 });
 
 const base = (id: string | undefined) => `/api/v1/conversations/${encodeURIComponent(id ?? '')}`;
@@ -33,6 +34,10 @@ export const actions: Actions = {
   proposeCall: formAction(async ({ event, form, api }) => {
     await api.post(`${base(event.params.id)}/calls`, { proposedTime: localDateTime(text(form, 'date'), text(form, 'time')) });
     return { proposed: true };
+  }),
+  shareContact: formAction(async ({ event, form, api }) => {
+    await api.post(`${base(event.params.id)}/contact-share`, { phone: form.get('phone') === 'yes', email: form.get('email') === 'yes' });
+    return { shared: true };
   }),
   acceptCall: formAction(async ({ event, form, api }) => {
     await api.post(`${base(event.params.id)}/calls/${encodeURIComponent(String(form.get('messageId') ?? ''))}/accept`);

@@ -11,7 +11,16 @@ const blankToUndefined = (value: unknown) => (typeof value === 'string' && value
 
 export const SearchListingsQuery = z.object({
   q: z.preprocess(blankToUndefined, z.string().trim().max(200, 'Please use fewer words.').optional()),
-  type: z.preprocess(blankToUndefined, ListingType.optional()),
+  /** One kind, or several separated by commas ("lend,gift"); none means every kind. */
+  type: z.preprocess(
+    (value) => {
+      const list = (Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [])
+        .map((v) => String(v).trim())
+        .filter(Boolean);
+      return list.length ? [...new Set(list)] : undefined;
+    },
+    z.array(ListingType).optional()
+  ),
   area: z.preprocess(blankToUndefined, z.string().trim().max(60).optional()),
   includeLent: flag,
   cursor: z.preprocess(blankToUndefined, z.string().max(200).optional()),
