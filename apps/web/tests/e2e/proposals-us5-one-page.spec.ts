@@ -2,13 +2,21 @@
 // details are arranged there (quickstart 8; 001 FR-018a to FR-020).
 import { expect, test } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
-import { createFounder, createInvitedMember, createListingFor, proposeOn } from './helpers/members.ts';
+import {
+  createFounder,
+  createInvitedMember,
+  createOfferingFor,
+  proposeOn
+} from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
 
-test('messages arrive live on an open proposal; calls and contact details are arranged there', async ({ page: sam, browser }) => {
+test('messages arrive live on an open proposal; calls and contact details are arranged there', async ({
+  page: sam,
+  browser
+}) => {
   const samMember = createFounder('Sam');
   const alexMember = await createInvitedMember(samMember, 'Alex');
-  const drill = await createListingFor(samMember, { type: 'lend', title: 'Drill' });
+  const drill = await createOfferingFor(samMember, { type: 'lend', title: 'Drill' });
   const made = await proposeOn(alexMember, drill.id);
   const alexContext = await browser.newContext();
   const alex = await alexContext.newPage();
@@ -16,7 +24,7 @@ test('messages arrive live on an open proposal; calls and contact details are ar
   await signInAs(sam, samMember);
 
   // Sam sees the count in the navigation, then opens the proposal.
-  await sam.goto('/listings');
+  await sam.goto('/offerings');
   await expect(sam.getByRole('link', { name: /Proposals\s*1 with something new/ })).toBeVisible();
   await sam.goto(`/proposals/${made.id}`);
   await expect(sam.getByText('Is this still available?')).toBeVisible();
@@ -25,17 +33,28 @@ test('messages arrive live on an open proposal; calls and contact details are ar
   await alex.goto(`/proposals/${made.id}`);
   await alex.getByLabel('Write a message').fill('Saturday morning would be great.');
   await alex.getByRole('button', { name: 'Send' }).click();
-  await expect(sam.getByRole('list', { name: 'Messages' }).getByText('Saturday morning would be great.')).toBeVisible({ timeout: 4000 });
-  await expect(sam.locator('[aria-live="polite"]').filter({ hasText: 'New message from Alex' })).toHaveCount(1);
+  await expect(
+    sam.getByRole('list', { name: 'Messages' }).getByText('Saturday morning would be great.')
+  ).toBeVisible({ timeout: 4000 });
+  await expect(
+    sam.locator('[aria-live="polite"]').filter({ hasText: 'New message from Alex' })
+  ).toHaveCount(1);
 
   // Sam suggests a call time; Alex accepts it.
+  // The pop-up's form updates the page in place: it closes, and the page stays where it was.
+  await sam.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const scrolled = await sam.evaluate(() => window.scrollY);
   await sam.getByRole('button', { name: 'Suggest a call' }).click();
   const callDialog = sam.getByRole('dialog', { name: 'Suggest a time to call' });
   await expectAccessible(sam, 'call time pop-up');
-  await callDialog.getByLabel('Day').fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  await callDialog
+    .getByLabel('Day')
+    .fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
   await callDialog.getByLabel('Time').fill('10:30');
   await callDialog.getByRole('button', { name: 'Suggest this time' }).click();
   await expect(sam.getByText('Your suggested time was sent.')).toBeVisible();
+  await expect(callDialog).toBeHidden();
+  expect(await sam.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(scrolled - 50);
   await alex.reload();
   await alex.getByRole('button', { name: 'Accept this time' }).click();
   await expect(alex.getByText('You accepted the call time.')).toBeVisible();
@@ -53,14 +72,19 @@ test('messages arrive live on an open proposal; calls and contact details are ar
   await expect(shareDialog.getByText('Phone: 07700 900123')).toBeVisible();
   await shareDialog.getByRole('button', { name: 'Yes, share it' }).click();
   await expect(alex.getByText('Your contact details were shared.')).toBeVisible();
-  await expect(sam.getByRole('list', { name: 'Messages' }).getByText('Phone: 07700 900123')).toBeVisible({ timeout: 4000 });
+  await expect(
+    sam.getByRole('list', { name: 'Messages' }).getByText('Phone: 07700 900123')
+  ).toBeVisible({ timeout: 4000 });
   await alexContext.close();
 });
 
-test('a message typed while the sign-in ran out is sent after signing in again', async ({ page, context }) => {
+test('a message typed while the sign-in ran out is sent after signing in again', async ({
+  page,
+  context
+}) => {
   const sam = createFounder('Sam');
   const alex = await createInvitedMember(sam, 'Alex');
-  const rice = await createListingFor(sam, { type: 'gift', title: 'Rice' });
+  const rice = await createOfferingFor(sam, { type: 'gift', title: 'Rice' });
   const made = await proposeOn(alex, rice.id);
   await signInAs(page, alex);
   await page.goto(`/proposals/${made.id}`);

@@ -11,10 +11,18 @@ export const load: PageServerLoad = memberLoad(async (event) => {
   const api = apiFor(event);
   const id = encodeURIComponent(event.params.id);
   const page = await loadOr404(() => api.get<MessagesPage>(`/api/v1/conversations/${id}/messages`));
-  if (page.conversation.proposalId && page.conversation.canWrite) redirect(303, `/proposals/${page.conversation.proposalId}`);
+  if (page.conversation.proposalId && page.conversation.canWrite)
+    redirect(303, `/proposals/${page.conversation.proposalId}`);
   if (page.conversation.canWrite) await api.post(`/api/v1/conversations/${id}/read`);
-  const contact = page.conversation.canWrite ? await api.get<ContactDetails>('/api/v1/me/contact') : { sharePhone: null, shareEmail: null };
-  return { contact, conversation: page.conversation, messages: [...page.items].reverse(), hasEarlier: page.nextCursor !== null };
+  const contact = page.conversation.canWrite
+    ? await api.get<ContactDetails>('/api/v1/me/contact')
+    : { sharePhone: null, shareEmail: null };
+  return {
+    contact,
+    conversation: page.conversation,
+    messages: [...page.items].reverse(),
+    hasEarlier: page.nextCursor !== null
+  };
 });
 
 const base = (id: string | undefined) => `/api/v1/conversations/${encodeURIComponent(id ?? '')}`;
@@ -32,15 +40,22 @@ export const actions: Actions = {
     return { sent: true };
   }),
   proposeCall: formAction(async ({ event, form, api }) => {
-    await api.post(`${base(event.params.id)}/calls`, { proposedTime: localDateTime(text(form, 'date'), text(form, 'time')) });
+    await api.post(`${base(event.params.id)}/calls`, {
+      proposedTime: localDateTime(text(form, 'date'), text(form, 'time'))
+    });
     return { proposed: true };
   }),
   shareContact: formAction(async ({ event, form, api }) => {
-    await api.post(`${base(event.params.id)}/contact-share`, { phone: form.get('phone') === 'yes', email: form.get('email') === 'yes' });
+    await api.post(`${base(event.params.id)}/contact-share`, {
+      phone: form.get('phone') === 'yes',
+      email: form.get('email') === 'yes'
+    });
     return { shared: true };
   }),
   acceptCall: formAction(async ({ event, form, api }) => {
-    await api.post(`${base(event.params.id)}/calls/${encodeURIComponent(String(form.get('messageId') ?? ''))}/accept`);
+    await api.post(
+      `${base(event.params.id)}/calls/${encodeURIComponent(String(form.get('messageId') ?? ''))}/accept`
+    );
     return { accepted: true };
   })
 };

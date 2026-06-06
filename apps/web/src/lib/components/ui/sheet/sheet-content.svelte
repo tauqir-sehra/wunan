@@ -31,8 +31,10 @@
     side = 'right',
     children,
     ...restProps
-  }: WithoutChildrenOrChild<SheetPrimitive.ContentProps> & { side?: Side; children: Snippet } =
-    $props();
+  }: WithoutChildrenOrChild<SheetPrimitive.ContentProps> & {
+    side?: Side;
+    children: Snippet;
+  } = $props();
 </script>
 
 <SheetPrimitive.Portal>

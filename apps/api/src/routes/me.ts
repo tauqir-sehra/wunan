@@ -15,7 +15,8 @@ import {
 } from '@wunan/shared';
 import { and, count, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { listing, listingFlag } from '../db/schema/index.ts';
+import { offering, flag } from '../db/schema/index.ts';
+import { countUnseenRequestFlags } from '../modules/requests.ts';
 import { countNeedingAttention } from '../modules/agreements.ts';
 import { countThreadsWithNews } from '../modules/messaging.ts';
 import { createRouter } from '../app-router.ts';
@@ -102,14 +103,15 @@ meRoutes.openapi(
     const memberId = c.get('member').id;
     const [flags] = await db
       .select({ unseen: count() })
-      .from(listingFlag)
-      .innerJoin(listing, eq(listing.id, listingFlag.listingId))
-      .where(and(eq(listing.ownerId, memberId), isNull(listingFlag.seenByOwnerAt)));
+      .from(flag)
+      .innerJoin(offering, eq(offering.id, flag.offeringId))
+      .where(and(eq(offering.ownerId, memberId), isNull(flag.seenAt)));
     return c.json(
       {
         proposalsWithNews: await countThreadsWithNews(memberId),
         agreementsNeedingAttention: await countNeedingAttention(memberId),
-        unseenFlags: flags?.unseen ?? 0
+        unseenFlags: flags?.unseen ?? 0,
+        unseenRequestFlags: await countUnseenRequestFlags(memberId)
       },
       200
     );

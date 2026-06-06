@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Proposals for Listings
+# Specification Quality Checklist: Proposals for Offerings
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-06-05

@@ -1,6 +1,7 @@
 // Decides whether and how to tell a member about something (contracts/notifications.md).
 // Calm rules: only the types a member turned on, no urgency, short previews, and at most one
-// notification per conversation per hour (constitution V).
+// notification per conversation per hour (constitution V). Requests and public threads are kept
+// infrequent the same way, keyed by the request or offering (003 FR-023e).
 import { and, eq, gt } from 'drizzle-orm';
 import { config } from '../config.ts';
 import { db } from '../db/index.ts';
@@ -20,6 +21,8 @@ export type Notice = {
   /** Path in the web app, e.g. "/messages/123". */
   url: string;
   conversationId?: string;
+  /** At most one notice about this request or offering per `minutes` for each member. */
+  throttle?: { subjectId: string; minutes: number };
 };
 
 const PREVIEW_LIMIT = 100;
@@ -62,10 +65,28 @@ export async function notify(memberId: string, type: NotificationType, notice: N
     if (recent) return;
   }
 
-  const calmNotice = { ...notice, title: calm(notice.title, 120), body: calm(notice.body) };
+  if (notice.throttle) {
+    const since = new Date(Date.now() - notice.throttle.minutes * 60_000);
+    const [recent] = await db
+      .select({ id: notificationLog.id })
+      .from(notificationLog)
+      .where(
+        and(
+          eq(notificationLog.memberId, memberId),
+          eq(notificationLog.type, type),
+          eq(notificationLog.subjectId, notice.throttle.subjectId),
+          gt(notificationLog.sentAt, since)
+        )
+      )
+      .limit(1);
+    if (recent) return;
+  }
+
+  const { throttle, ...rest } = notice;
+  const calmNotice = { ...rest, title: calm(notice.title, 120), body: calm(notice.body) };
   await db
     .insert(notificationLog)
-    .values({ memberId, type, conversationId: notice.conversationId ?? null });
+    .values({ memberId, type, conversationId: notice.conversationId ?? null, subjectId: throttle?.subjectId ?? null });
 
   // A failed channel is logged, never shown as an error to whoever caused the notification.
   if (wantsEmail) {

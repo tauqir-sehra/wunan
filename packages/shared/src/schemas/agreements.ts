@@ -2,7 +2,7 @@
 // An agreement is confirmed from the start; owners mark loans returned.
 import { z } from 'zod';
 import { memberRef } from './common.ts';
-import { Handover, ListingType, SessionLengthUnit, Unit } from './listings.ts';
+import { Handover, OfferingType, SessionLengthUnit, Unit } from './offerings.ts';
 import { PlaceView } from './places.ts';
 
 export const AgreementOutcome = z.enum(['lent', 'gifted', 'traded', 'provided']);
@@ -18,7 +18,7 @@ export type AgreementOfferSnapshot = z.infer<typeof AgreementOfferSnapshot>;
 export const Agreement = z.object({
   id: z.string(),
   proposalId: z.string(),
-  listing: z.object({ id: z.string(), title: z.string(), type: ListingType, unit: Unit.nullable() }),
+  offering: z.object({ id: z.string(), title: z.string(), type: OfferingType, unit: Unit.nullable() }),
   owner: memberRef,
   otherMember: memberRef,
   outcome: AgreementOutcome,

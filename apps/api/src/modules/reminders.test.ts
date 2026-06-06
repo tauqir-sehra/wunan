@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { agreement, notificationPreference } from '../db/schema/index.ts';
 import { localToInstant } from '../lib/time.ts';
 import { testOutbox } from '../notify/email.ts';
-import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, signIn } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, signIn } from '../test/setup.ts';
 import { runReminders } from './reminders.ts';
 
 /** A loan due back on `returnDue` (local date, end of the day before it starts again). */
@@ -14,7 +14,7 @@ async function loan(returnDue: string) {
   const alex = await createInvitedMember(sam, 'Alex');
   for (const memberId of [sam.id, alex.id]) await db.insert(notificationPreference).values({ memberId, type: 'reminder', email: true });
   const token = await signIn(sam);
-  const drill = await createListing(token, { type: 'lend', title: 'Drill' });
+  const drill = await createOffering(token, { type: 'lend', title: 'Drill' });
   const { agreementId } = await agree(token, await signIn(alex), drill.id, completeDetails('lend'));
   // Move the loan so it ends at noon on `returnDue`.
   const ends = localToInstant(returnDue, '12:00');

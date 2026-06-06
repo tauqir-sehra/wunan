@@ -19,34 +19,54 @@
       <h1 class="text-2xl font-semibold">{names}</h1>
       <HelpLink topic="asking-for-help" label="Help with asking for help" />
     </div>
-    {#if c.listing}<p class="text-muted-foreground">About <a href="/listings/{c.listing.id}">{c.listing.title}</a></p>{/if}
+    {#if c.offering}<p class="text-muted-foreground">
+        About <a href="/offerings/{c.offering.id}">{c.offering.title}</a>
+      </p>{/if}
   </header>
 
-  <section class="grid gap-4" aria-labelledby="messages-heading">
+  <section id="messages" class="grid gap-4" aria-labelledby="messages-heading">
     <div class="flex items-center gap-1">
       <h2 id="messages-heading" class="text-xl font-semibold">Messages</h2>
-      <a href={page.url.pathname} aria-label="Check for new messages" title="Check for new messages" class="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
+      <a
+        href="{page.url.pathname}#messages"
+        aria-label="Check for new messages"
+        title="Check for new messages"
+        class="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
         <RefreshCwIcon class="size-4" aria-hidden="true" />
       </a>
     </div>
-    {#if data.hasEarlier}<p class="text-sm text-muted-foreground">Showing the latest 50 messages.</p>{/if}
+    {#if data.hasEarlier}<p class="text-sm text-muted-foreground">
+        Showing the latest 50 messages.
+      </p>{/if}
     {#if data.messages.length === 0}<p class="text-muted-foreground">No messages yet.</p>{/if}
     {#key data.messages}
       <MessageList messages={data.messages} meId={data.member?.id ?? ''} conversationId={c.id} />
     {/key}
 
     {#if !c.canWrite}
-      <Notice><p>You can read these messages because they were shared with you to help. Only the two people in the agreement can write here.</p></Notice>
+      <Notice
+        ><p>
+          You can read these messages because they were shared with you to help. Only the two people
+          in the agreement can write here.
+        </p></Notice
+      >
     {:else}
       {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
-      {#if form?.proposed}<Notice><p>Your suggested time was sent.</p></Notice>{/if}
-      {#if form?.accepted}<Notice><p>You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.</p></Notice>{/if}
-      {#if form?.shared}<Notice><p>Your contact details were shared.</p></Notice>{/if}
       <MessageComposer
         conversationId={c.id}
         otherNames={names}
         contact={data.contact}
         sent={Boolean(form?.sent)}
+        status={form?.sent
+          ? 'Your message is sent.'
+          : form?.proposed
+            ? 'Your suggested time was sent.'
+            : form?.shared
+              ? 'Your contact details were shared.'
+              : form?.accepted
+                ? 'You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.'
+                : ''}
         values={form?.values ?? {}}
         fields={form?.fields ?? {}}
       />

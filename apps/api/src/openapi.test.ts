@@ -4,11 +4,14 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { api } from './test/setup.ts';
 
-const contract = readFileSync(new URL('../../../specs/002-listing-proposals/contracts/api.md', import.meta.url), 'utf8');
+// 003 adds to 002's contract, so both are read.
+const contract = ['002-listing-proposals', '003-member-requests']
+  .map((feature) => readFileSync(new URL(`../../../specs/${feature}/contracts/api.md`, import.meta.url), 'utf8'))
+  .join('\n');
 
 /**
  * Reads the endpoint column of the contract's tables. One cell can list several endpoints:
- * "`GET /me`, `PATCH /me`", or shorthand siblings: "`POST /listings/{id}/pause`, `/resume`".
+ * "`GET /me`, `PATCH /me`", or shorthand siblings: "`POST /offerings/{id}/pause`, `/resume`".
  */
 function contractEndpoints() {
   const endpoints: string[] = [];

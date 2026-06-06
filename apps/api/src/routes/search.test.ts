@@ -1,4 +1,4 @@
-// Finding listings (US3; FR-015 to FR-017).
+// Finding offerings (US3; FR-015 to FR-017).
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
@@ -8,10 +8,10 @@ import { agree, api, completeDetails, createFounder, createInvitedMember, signIn
 async function setup() {
   const founder = await createFounder();
   const token = await signIn(founder);
-  const make = async (body: Record<string, unknown>) => (await api('POST', '/api/v1/listings', { token, body })).body;
+  const make = async (body: Record<string, unknown>) => (await api('POST', '/api/v1/offerings', { token, body })).body;
   return { founder, token, make };
 }
-const search = (token: string, query: string) => api('GET', `/api/v1/listings?${query}`, { token });
+const search = (token: string, query: string) => api('GET', `/api/v1/offerings?${query}`, { token });
 const titles = (result: { body: { items: { title: string }[] } }) => result.body.items.map((item) => item.title);
 
 describe('search', () => {
@@ -43,14 +43,14 @@ describe('search', () => {
     expect(titles(await search(token, 'type=lend,gift,trade,service')).length).toBe(3);
   });
 
-  it('shows only available listings unless lent-out ones are asked for', async () => {
+  it('shows only available offerings unless lent-out ones are asked for', async () => {
     const { founder, token, make } = await setup();
     const available = await make({ type: 'gift', title: 'Available rice' });
     const paused = await make({ type: 'gift', title: 'Paused rice' });
     const closed = await make({ type: 'gift', title: 'Closed rice' });
     const lent = await make({ type: 'lend', title: 'Lent drill' });
-    await api('POST', `/api/v1/listings/${paused.id}/pause`, { token });
-    await api('POST', `/api/v1/listings/${closed.id}/remove`, { token });
+    await api('POST', `/api/v1/offerings/${paused.id}/pause`, { token });
+    await api('POST', `/api/v1/offerings/${closed.id}/remove`, { token });
     // A loan that started yesterday and isn't back yet.
     const borrower = await createInvitedMember(founder, 'Alex');
     const { agreementId } = await agree(token, await signIn(borrower), lent.id, completeDetails('lend'));
@@ -77,6 +77,6 @@ describe('search', () => {
     const { token, make } = await setup();
     await make({ type: 'gift', title: 'Rice' });
     expect((await search(token, 'q=%22%22%20-')).status).toBe(200);
-    expect((await api('GET', '/api/v1/listings')).status).toBe(401);
+    expect((await api('GET', '/api/v1/offerings')).status).toBe(401);
   });
 });

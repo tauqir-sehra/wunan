@@ -10,7 +10,7 @@ async function pair() {
   const alex = await createInvitedMember(sam, 'Alex');
   const samToken = await signIn(sam);
   const alexToken = await signIn(alex);
-  const { body: drill } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'lend', title: 'Drill' } });
+  const { body: drill } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'lend', title: 'Drill' } });
   const started = await propose(alexToken, drill.id);
   return { sam, alex, samToken, alexToken, drill, proposalId: started.id, conversationId: started.conversationId };
 }
@@ -41,10 +41,10 @@ describe('conversations', () => {
     const { samToken, alexToken, conversationId } = await pair();
     await send(alexToken, conversationId, 'Is Saturday okay?');
     const list = await api('GET', '/api/v1/proposals', { token: samToken });
-    expect(list.body.items[0]).toMatchObject({ unread: true, listing: { title: 'Drill' }, lastMessagePreview: 'Is Saturday okay?' });
+    expect(list.body.items[0]).toMatchObject({ unread: true, offering: { title: 'Drill' }, lastMessagePreview: 'Is Saturday okay?' });
     expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.proposalsWithNews).toBe(1);
     const page = await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: samToken });
-    expect(page.body.conversation).toMatchObject({ listing: { title: 'Drill' }, canWrite: true });
+    expect(page.body.conversation).toMatchObject({ offering: { title: 'Drill' }, canWrite: true });
 
     await api('POST', `/api/v1/conversations/${conversationId}/read`, { token: samToken });
     expect((await api('GET', '/api/v1/proposals', { token: samToken })).body.items[0].unread).toBe(false);

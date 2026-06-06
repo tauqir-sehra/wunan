@@ -1,6 +1,6 @@
 <h2>Searching</h2>
 <p>
-  Go to <a href="/listings">Find</a> and type what you're looking for, like "ladder" or "rice". Different
+  Go to <a href="/offerings">Find</a> and type what you're looking for, like "ladder" or "rice". Different
   forms of a word are found too, so "apples" also finds "apple".
 </p>
 <p>
@@ -14,6 +14,13 @@
 
 <h2>When you find something</h2>
 <p>
-  Open the listing and press "Ask to borrow", "Ask for this", "Offer a trade" or "Ask for this
+  Open the offering and press "Ask to borrow", "Ask for this", "Offer a trade" or "Ask for this
   service". See <a href="/help/proposals">Proposals and messages</a>.
+</p>
+
+<h2>When nobody has it</h2>
+<p>
+  Press "Request something" at the top of any page to ask for it. Requests are on their own
+  <a href="/requests">Requests</a> page, not in Find. See
+  <a href="/help/requests">Asking for things</a>.
 </p>

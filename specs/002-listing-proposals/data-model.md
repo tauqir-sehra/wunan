@@ -1,4 +1,4 @@
-# Data Model: Proposals for Listings
+# Data Model: Proposals for Offerings
 
 Changes to the [001 data model](../001-community-resource-sharing/data-model.md). Tables not
 listed here are unchanged. Conventions are the same: Drizzle tables in `apps/api/src/db/schema/`,
@@ -8,8 +8,8 @@ single initial one (research §9).
 
 ## Place (value type, `jsonb`)
 
-Shared Zod schema `placeSchema` in `packages/shared/src/schemas/places.ts`. Used by listing areas,
-listing meeting places, proposals, and agreements.
+Shared Zod schema `placeSchema` in `packages/shared/src/schemas/places.ts`. Used by offering areas,
+offering meeting places, proposals, and agreements.
 
 | Field | Type | Rules |
 |-------|------|-------|
@@ -20,10 +20,10 @@ listing meeting places, proposals, and agreements.
 | lat, lon | number, optional | Only for `suggestion` |
 
 What others see is decided by `viewPlace()` in `apps/api/src/modules/places.ts` (research §2): a
-listing place becomes `{ display }` ("neighbourhood, city", or the typed label) for anyone but the
+offering place becomes `{ display }` ("neighbourhood, city", or the typed label) for anyone but the
 owner and accepted requesters.
 
-## listing (changed)
+## offering (changed)
 
 | Field | Change | Rules |
 |-------|--------|-------|
@@ -38,48 +38,48 @@ owner and accepted requesters.
 
 Search vector: title (A), description and accepted-thing descriptions (B). Because accepted things
 live in another table, the vector becomes a plain `tsvector` column updated by
-`modules/listings.ts` whenever the listing or its accepted things are saved.
+`modules/offerings.ts` whenever the offering or its accepted things are saved.
 
-Check constraints updated: `listing_fields_match_type` (no `trade_accept` rule here; enforced in the
+Check constraints updated: `offering_fields_match_type` (no `trade_accept` rule here; enforced in the
 module), area required for `at_lister`, meeting place required for `elsewhere`.
 
 ## trade_accept (new)
 
-What a Trade listing accepts in return (FR-005). None = open to offers (FR-006).
+What a Trade offering accepts in return (FR-005). None = open to offers (FR-006).
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing, cascade | Listing must be `trade` |
-| position | smallint | 0–9; order shown; ≤10 per listing |
+| offering_id | FK → offering, cascade | Offering must be `trade` |
+| position | smallint | 0–9; order shown; ≤10 per offering |
 | description | text, 1–100 chars | Required |
 | amount | numeric(12,3), nullable | > 0; with `unit` |
 | unit | unit enum, nullable | Set exactly when `amount` is |
 
 ## service_availability (new)
 
-Weekly times a Service listing is offered (FR-009), in the community time zone.
+Weekly times a Service offering is offered (FR-009), in the community time zone.
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing, cascade | Listing must be `service` |
+| offering_id | FK → offering, cascade | Offering must be `service` |
 | weekday | smallint | 1 (Monday) – 7 (Sunday) |
-| start_time, end_time | time | `start_time < end_time`; ≤14 rows per listing |
+| start_time, end_time | time | `start_time < end_time`; ≤14 rows per offering |
 
 ## proposal (new)
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing, restrict | |
-| requester_id | FK → member | Never the listing owner (FR-010) |
+| offering_id | FK → offering, restrict | |
+| requester_id | FK → member | Never the offering owner (FR-010) |
 | status | enum | `open`, `accepted`, `declined`, `withdrawn`, `closed` |
 | closed_reason | enum, nullable | `nothing_left`, `quiet`, `member_left`; set exactly when `status = closed` |
 | version | integer, default 1 | +1 on each detail change; accept must send the version shown (research §3) |
 | starts_at | timestamptz, nullable | "When" (pickup, trade, or service time) |
 | has_time | boolean, default false | False = date only (midnight, community time zone) |
-| handover | handover enum, nullable | Must be one of the listing's `handovers` when it has any |
-| place | place `jsonb`, nullable | Not stored for `at_lister` (read from listing) or `online` (research §6) |
-| loan_length, loan_length_unit | integer > 0, enum (hours/days/weeks), nullable | Lend only; ≤ listing's maximum loan length |
-| amount | numeric(12,3) > 0, nullable | Gift/Trade with an amount; starts at listing's `remaining` (FR-012, FR-013) |
+| handover | handover enum, nullable | Must be one of the offering's `handovers` when it has any |
+| place | place `jsonb`, nullable | Not stored for `at_lister` (read from offering) or `online` (research §6) |
+| loan_length, loan_length_unit | integer > 0, enum (hours/days/weeks), nullable | Lend only; ≤ offering's maximum loan length |
+| amount | numeric(12,3) > 0, nullable | Gift/Trade with an amount; starts at offering's `remaining` (FR-012, FR-013) |
 | own_offer | text ≤300, nullable | Trade with no accepted things: what the requester offers (FR-013) |
 | own_offer_amount, own_offer_unit | numeric > 0, unit enum, nullable | Optional, with `own_offer` |
 | session_length, session_length_unit | integer > 0, enum, nullable | Service only (FR-014) |
@@ -89,11 +89,11 @@ Weekly times a Service listing is offered (FR-009), in the community time zone.
 | accepted_at | timestamptz, nullable | |
 | updated_at | timestamptz | |
 
-Indexes: unique (`listing_id`, `requester_id`) where `status = 'open'` (one open proposal per
-requester per listing); (`requester_id`, `status`); (`listing_id`, `status`); (`status`,
+Indexes: unique (`offering_id`, `requester_id`) where `status = 'open'` (one open proposal per
+requester per offering); (`requester_id`, `status`); (`offering_id`, `status`); (`status`,
 `last_activity_at`) for the quiet-close job.
 
-Fields not matching the listing's type must be null (check constraint plus Zod discriminated union).
+Fields not matching the offering's type must be null (check constraint plus Zod discriminated union).
 
 ### proposal_offer (new)
 
@@ -102,11 +102,11 @@ The accepted things a Trade requester chose (FR-013).
 | Field | Type | Rules |
 |-------|------|-------|
 | proposal_id | FK → proposal, cascade | |
-| trade_accept_id | FK → trade_accept, cascade | Must belong to the proposal's listing; unique per proposal |
+| trade_accept_id | FK → trade_accept, cascade | Must belong to the proposal's offering; unique per proposal |
 | amount | numeric(12,3) > 0, nullable | How much of it; ≤ the accepted thing's amount when it has one |
 
-A Trade proposal offers either `proposal_offer` rows (listing has accepted things) or `own_offer`
-(listing open to offers), never both.
+A Trade proposal offers either `proposal_offer` rows (offering has accepted things) or `own_offer`
+(offering open to offers), never both.
 
 ### Proposal states
 
@@ -123,12 +123,12 @@ only with none:
 - a required detail is empty: when, handover, place (unless `online` or `at_lister`), and per type:
   loan length (Lend), amount (Gift/Trade with an amount), offer (Trade with accepted things),
   session length and sessions (Service);
-- handover not among the listing's handovers; loan length over the maximum; amount over
-  `remaining`; sessions over `sessions_remaining`; session length over the listing's;
-- service time outside availability; service meeting place (`elsewhere`) outside the listing's area; a drop-off place (`to_requester`) is never checked (research §2, §5);
+- handover not among the offering's handovers; loan length over the maximum; amount over
+  `remaining`; sessions over `sessions_remaining`; session length over the offering's;
+- service time outside availability; service meeting place (`elsewhere`) outside the offering's area; a drop-off place (`to_requester`) is never checked (research §2, §5);
 - `starts_at` in the past;
 - Lend: loan period overlaps a loan not yet returned (FR-011a);
-- listing not `available`.
+- offering not `available`.
 
 ## agreement (changed)
 
@@ -136,9 +136,9 @@ only with none:
 |-------|--------|-------|
 | proposal_id | new, FK → proposal, unique | Every agreement comes from an accepted proposal (FR-018) |
 | owner_id, other_member_id | kept | Lister and requester |
-| starts_at, has_time, handover, place | new | Copied from the proposal at acceptance; `place` copied from the listing for `at_lister` |
+| starts_at, has_time, handover, place | new | Copied from the proposal at acceptance; `place` copied from the offering for `at_lister` |
 | loan_starts_at, loan_ends_at | new, timestamptz, nullable | Lend only; `starts_at` and `starts_at` + loan length |
-| loan_period | new, generated `tstzrange(loan_starts_at, loan_ends_at)` | Exclusion constraint: no two loans of the same listing with `returned_at is null` overlap (research §4) |
+| loan_period | new, generated `tstzrange(loan_starts_at, loan_ends_at)` | Exclusion constraint: no two loans of the same offering with `returned_at is null` overlap (research §4) |
 | return_due | **removed** | Reminders use `loan_ends_at` |
 | sessions, amount | kept | Copied from the proposal |
 | session_length, session_length_unit, offer | new | Copied (offer as `jsonb` snapshot: chosen things with amounts, or own offer) |
@@ -149,7 +149,7 @@ only with none:
 
 | Field | Change | Rules |
 |-------|--------|-------|
-| listing_id | **removed** | |
+| offering_id | **removed** | |
 | proposal_id | new, FK → proposal, cascade, unique, nullable | |
 | problem_report_id | kept | |
 

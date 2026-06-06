@@ -2,7 +2,8 @@
 <p>
   Everything is waiting for you in wunan, so you never have to turn notifications on. If you'd like
   them, go to <a href="/settings/notifications">Settings, Notifications</a>. For each kind (new
-  messages, agreements, return reminders, requests for help, requests about your listings), you can
+  messages, agreements, return reminders, requests for help, requests about your offerings, someone
+  offering something for your request, and public messages on your requests and offerings), you can
   choose email, your devices, both, or neither.
 </p>
 
@@ -13,6 +14,7 @@
   wunan to your Home Screen (Share, then "Add to Home Screen") and open it from there.
 </p>
 <p>
-  Notifications make no sound. For a conversation, you get at most one an hour. They never include
-  photos or contact details. You can remove a device at any time.
+  Notifications make no sound. For a conversation, you get at most one an hour; for the public
+  messages on one request or offering, at most one a day. They never include photos or contact
+  details. You can remove a device at any time.
 </p>

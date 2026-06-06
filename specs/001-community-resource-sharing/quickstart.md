@@ -39,13 +39,13 @@ Use two browser windows (one private) to act as two members.
 
 1. **Join by invitation (US1)**: Founder → Invitations → Create → copy link. In the private window,
    join as "Alex" (leave the email checkbox unticked), open the confirmation email in Mailpit, and confirm. Alex's profile shows "Invited by" the founder; the founder's shows "Founding
-   member". Re-open the link → "no longer valid". Signed out, `/listings` redirects to sign-in.
+   member". Re-open the link → "no longer valid". Signed out, `/offerings` redirects to sign-in.
    Trying to sign up directly through `/api/auth/sign-up/email` without an invite is refused.
 2. **List a resource (US2)**: As founder, create a Gift "Rice", 5 kg, area "Riverside", one phone
    photo taken with location on. Also create a Lend "Drill" (1 item, up to 3 days) and a Trade
    "Sneakers" (1 item) wanting "leather boots" — then try a Trade with neither "wanted" nor
    "Open to offers": a plain error asks for one. Create a Service "Bodywork session", 1 hour,
-   available 3 times → listing shows "1 hour · 3 sessions available". Listing shows "5 kg available" and "Riverside" only.
+   available 3 times → offering shows "1 hour · 3 sessions available". Offering shows "5 kg available" and "Riverside" only.
    Download the photo: no location metadata. Repeat with JavaScript disabled: still works.
 3. **Find it (US3)**: As Alex, search "rices" → finds "Rice". Filter Gift → found. Filter Trade →
    calm empty state with "Clear filters".
@@ -61,11 +61,11 @@ Use two browser windows (one private) to act as two members.
    Record lending the drill (the date picker starts at today). To see a reminder, set its return date in the past
    (`update agreement set return_due = current_date - 1` in the dev database), then run
    `npm run reminders:once -w apps/api` twice → exactly one reminder to each member (in Mailpit, if they turned reminder emails on). Mark returned → drill available again. Record 1 bodywork session for Alex → "2 sessions
-   available"; record 2 more → listing closes.
+   available"; record 2 more → offering closes.
 7. **Problem (US6)**: Report a problem on the drill agreement → Alex's inviter (founder) is notified
    and a three-way conversation opens. Escalate → founders (final step); escalate no longer offered.
    Report can stay open; Alex's access is unchanged.
-8. **Flag (FR-013a)**: Alex flags "Rice" with a request → founder notified; listing still visible.
+8. **Flag (FR-013a)**: Alex flags "Rice" with a request → founder notified; offering still visible.
 9. **Export & delete (FR-032)**: Alex exports → ZIP matches [contracts/export-format.md](contracts/export-format.md).
     Alex deletes the account → profile shows "Alex (no longer a member)"; agreement still visible to founder.
 10. **Sign-in runs out mid-form (constitution V)**: As Alex, open a conversation and type a message.
@@ -79,12 +79,12 @@ Using only `curl` (no web app), prove a native client could use the backend:
 ```bash
 curl -s -X POST localhost:3000/api/auth/sign-in/email -H 'content-type: application/json' \
   -d '{"email":"founder@example.org","password":"…"}' -D - | grep -i set-auth-token
-curl -s localhost:3000/api/v1/listings?q=rice -H "authorization: Bearer $TOKEN"
-curl -s localhost:3000/api/v1/listings                       # → 401 with plain-language message
+curl -s localhost:3000/api/v1/offerings?q=rice -H "authorization: Bearer $TOKEN"
+curl -s localhost:3000/api/v1/offerings                       # → 401 with plain-language message
 curl -s -X POST localhost:3000/api/auth/sign-up/email -d '{}' # → refused (invite-only)
 ```
 
-Expected: sign-in returns a token; search returns the Rice listing as JSON; unauthenticated calls
+Expected: sign-in returns a token; search returns the Rice offering as JSON; unauthenticated calls
 are refused with the standard error shape.
 
 ## Accessibility and calm-design checks (SC-007, constitution IV and V)
@@ -103,7 +103,7 @@ On every page touched above:
 ## Performance check (SC-006)
 
 ```bash
-npm run seed:demo -w apps/api -- --members 5000 --listings 20000   # development only
+npm run seed:demo -w apps/api -- --members 5000 --offerings 20000   # development only
 ```
 
 Search a common word with filters: the page loads in under 2 seconds.

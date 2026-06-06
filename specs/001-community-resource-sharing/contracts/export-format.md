@@ -5,7 +5,7 @@
 ```text
 my-wunan-data.json
 README.txt          # plain-language explanation of each section
-photos/<listing-id>-<position>.webp
+photos/<offering-id>-<position>.webp
 ```
 
 `my-wunan-data.json` (UTF-8, pretty-printed, dates in ISO 8601):
@@ -20,7 +20,7 @@ photos/<listing-id>-<position>.webp
     "share_phone": "", "share_email": ""
   },
   "invitations": [{ "created": "", "status": "used", "used_by": "display name" }],
-  "listings": [{
+  "offerings": [{
     "id": "", "type": "lend|gift|trade|service", "title": "", "description": "",
     "amount": null, "unit": null, "remaining": null,
     "loan_length": null, "loan_length_unit": null,
@@ -31,7 +31,7 @@ photos/<listing-id>-<position>.webp
     "status": "", "created": "", "photos": ["photos/1-1.webp"]
   }],
   "agreements": [{
-    "listing_title": "", "role": "owner|other", "other_member": "", "outcome": "",
+    "offering_title": "", "role": "owner|other", "other_member": "", "outcome": "",
     "amount": null, "sessions": null, "return_due": null, "returned_at": null,
     "confirmation": "", "note": "", "recorded": ""
   }],
@@ -40,16 +40,28 @@ photos/<listing-id>-<position>.webp
     "outcome_note": "", "created": ""
   }],
   "conversations": [{
-    "with": ["display names"], "listing_title": null, "asking_for_help": false,
+    "with": ["display names"], "offering_title": null, "asking_for_help": false,
     "messages": [{ "from": "me or a display name", "sent": "", "kind": "", "body": "", "proposed_time": "(call messages only)" }]
   }],
-  "flags_sent": [{ "listing_title": "", "request": "", "sent": "" }],
-  "flags_received": [{ "listing_title": "", "from": "", "request": "", "sent": "" }],
+  "requests": [{
+    "kind": "borrow | receive | trade | service", "title": "", "description": null,
+    "needed_after": null, "needed_by": null, "area": "", "handovers": [],
+    "loan_length": null, "loan_length_unit": null, "amount": null, "unit": null,
+    "could_give_back": [{ "description": "", "amount": null, "unit": null }],
+    "session_length": null, "session_length_unit": null, "sessions": null,
+    "times_that_suit": [{ "weekday": 1, "from": "10:00", "to": "12:00" }],
+    "status": "open | closed", "closed_reason": null,
+    "linked_offerings": [{ "offering_id": "", "title": "" }], "created": ""
+  }],
+  "public_messages": [{ "id": "", "on": { "request or offering": "id", "title": "" }, "body": "", "removed": false, "createdAt": "" }],
+  "flags_sent": [{ "offering_title | request_title | public_message": "", "request": "", "sent": "" }],
+  "flags_received": [{ "offering_title | request_title | public_message": "", "from": "", "request": "", "sent": "" }],
   "notification_preferences": [{ "type": "message", "email": true, "device": false }]
 }
 ```
 
-Photos are numbered from 1 in display order. A member who has left appears as "<name> (no longer a
+`requests` and `public_messages` were added in 003; flags can now be about an offering, a request,
+or a public message. Photos are numbered from 1 in display order. A member who has left appears as "<name> (no longer a
 member)".
 
 Other members appear by display name only, never by email or private contact details (except

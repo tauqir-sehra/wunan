@@ -10,8 +10,8 @@
 themselves. Users list resources they would like to share (tools to lend, leftover food, bulk
 purchases to split, excess items, services, accommodation), with duration/amount limits, quantity,
 photos, optional location, handoff method, and what they would accept in return (money, a trade,
-negotiable, or a gift). Other users search listings, then arrange a call, exchange contact info, or
-negotiate via direct messages. Once agreed, the listing is marked lent out, gifted, or its remaining
+negotiable, or a gift). Other users search offerings, then arrange a call, exchange contact info, or
+negotiate via direct messages. Once agreed, the offering is marked lent out, gifted, or its remaining
 amount updated. Members join only by invitation from existing members, forming chains of trust; the
 inviter is accountable for mediating conflicts involving their invitees. Every profile shows who
 invited that member."
@@ -28,8 +28,8 @@ invited that member."
   and no punishment. Unresolved conflicts may stay unresolved. (Future version: show the number of
   unresolved conflicts on a member's profile.)
 - Q: How should members sign in? → A: Email and password, with an emailed password-reset link.
-- Q: If a listing is harmful or inappropriate, can anyone other than its owner hide it? → A: No.
-  Members can flag a listing with a request to the owner; only the owner can take a listing down.
+- Q: If an offering is harmful or inappropriate, can anyone other than its owner hide it? → A: No.
+  Members can flag an offering with a request to the owner; only the owner can take an offering down.
 - Q: Which modern stack should wunan be built on? → A: SvelteKit + TypeScript + PostgreSQL. (Project
   direction: use a modern stack; avoid unnecessary dependencies, but wunan need not be
   technologically minimal. Applied in the plan, not in the requirements.)
@@ -41,16 +41,16 @@ invited that member."
   volunteer running it is expected to have server experience.
 - Q: Does wunan need to work in languages other than English? → A: English only, with no
   preparation for translation.
-- Q: How detailed should listings be in this first version? → A: Simplified to three offering types:
+- Q: How detailed should offerings be in this first version? → A: Simplified to three offering types:
   Lend, Gift, Trade. Each can have an amount with a unit chosen from a list. Lend can have a maximum
   loan length; Gift tracks the remaining amount; Trade describes what's wanted in return (optionally
   with an amount and unit) or is marked "open to offers". Categories, money terms, structured
   handoff options, and availability dates are dropped for now; handoff details go in the
   description or messages.
-- Q: Should services be their own listing type? → A: Yes, a fourth type, Service, with how long each
+- Q: Should services be their own offering type? → A: Yes, a fourth type, Service, with how long each
   session lasts and how many times it is available.
 - Q: Should members be able to block each other? → A: No. There is no blocking; every member can
-  message any other member and see all listings.
+  message any other member and see all offerings.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -77,50 +77,50 @@ the new profile and sees the inviter's name linked.
    that the invitation is no longer valid and to ask the person who sent it for a new one.
 4. **Given** any member's profile, **When** another member views it, **Then** they see the member's
    name, who invited them (linked), when they joined, and the members they have invited.
-5. **Given** someone who is not a member, **When** they try to view listings or profiles, **Then**
+5. **Given** someone who is not a member, **When** they try to view offerings or profiles, **Then**
    they are asked to sign in and see no community content.
 
 ---
 
 ### User Story 2 - List a resource to share (Priority: P1)
 
-A member creates a listing for something they want to share, choosing one of four offering types:
+A member creates an offering for something they want to share, choosing one of four offering types:
 **Lend** (e.g., a drill for up to 3 days), **Gift** (e.g., 5 kg of rice to give away), **Trade**
 (e.g., a pair of sneakers for leather boots, or open to offers), or **Service** (e.g., a 1-hour
 bodywork session, available 3 times). They give it a title, can
 add an amount with a unit, a description, photos, and an approximate area.
 
-**Why this priority**: Listings are the core content; without them there is nothing to find or share.
+**Why this priority**: Offerings are the core content; without them there is nothing to find or share.
 
-**Independent Test**: A member creates a listing with only the required fields, then another with all
+**Independent Test**: A member creates an offering with only the required fields, then another with all
 optional fields, and both appear correctly to other members.
 
 **Acceptance Scenarios**:
 
-1. **Given** a member, **When** they start a new listing, **Then** they first choose Lend, Gift,
+1. **Given** a member, **When** they start a new offering, **Then** they first choose Lend, Gift,
    Trade, or Service, and only the offering type and a title are required.
-2. **Given** a member listing something countable or measurable (e.g., 5 kg of rice, 1 drill, 1 hour
-   of bodywork), **When** they enter an amount and choose a unit from a list, **Then** the listing
+2. **Given** a member offering something countable or measurable (e.g., 5 kg of rice, 1 drill, 1 hour
+   of bodywork), **When** they enter an amount and choose a unit from a list, **Then** the offering
    shows the amount available.
 3. **Given** a member choosing Lend, **When** they set a maximum loan length (a number of hours, days,
-   or weeks), **Then** it is shown on the listing (e.g., "Lend for up to 3 days"); if left empty, the
-   listing says "Loan length to be agreed".
+   or weeks), **Then** it is shown on the offering (e.g., "Lend for up to 3 days"); if left empty, the
+   offering says "Loan length to be agreed".
 4. **Given** a member choosing Gift with an amount, **When** part of it is given away, **Then** the
-   listing shows the remaining amount.
+   offering shows the remaining amount.
 5. **Given** a member choosing Trade, **When** they describe what they'd like in return (optionally
-   with an amount and unit, e.g., "2 kg of flour") or tick "Open to offers", **Then** the listing shows
+   with an amount and unit, e.g., "2 kg of flour") or tick "Open to offers", **Then** the offering shows
    that; at least one of the two is required.
 6. **Given** a member choosing Service, **When** they set how long each session lasts (e.g., 1 hour)
-   and how many times it is available (e.g., 3), **Then** the listing shows "1 hour · 3 sessions
+   and how many times it is available (e.g., 3), **Then** the offering shows "1 hour · 3 sessions
    available", and the count goes down as sessions are agreed.
 7. **Given** a member adding location, **When** they choose to share it, **Then** they can share only an
-   approximate area (e.g., neighbourhood) publicly, and the exact address is never shown on the listing.
-8. **Given** a member who uploads photos, **When** the listing is published, **Then** the photos appear
+   approximate area (e.g., neighbourhood) publicly, and the exact address is never shown on the offering.
+8. **Given** a member who uploads photos, **When** the offering is published, **Then** the photos appear
    with a description field for alt text, and embedded location data is removed from the photos.
-9. **Given** a member, **When** they view their own listing, **Then** they can edit, pause, or remove it.
-10. **Given** a listing owned by someone else, **When** a member flags it and writes a request (e.g.,
+9. **Given** a member, **When** they view their own offering, **Then** they can edit, pause, or remove it.
+10. **Given** an offering owned by someone else, **When** a member flags it and writes a request (e.g.,
    "please remove this, it isn't safe to share"), **Then** the owner is notified with the request and
-   the flagging member's name, and the listing stays up unless the owner changes or removes it.
+   the flagging member's name, and the offering stays up unless the owner changes or removes it.
 
 ---
 
@@ -131,39 +131,39 @@ offering type (Lend, Gift, Trade, Service), and can narrow results by offering t
 
 **Why this priority**: Sharing only happens if people can find what's available.
 
-**Independent Test**: With several listings present, a member searches "drill" and filters by "Gift"
-and sees only matching, available listings.
+**Independent Test**: With several offerings present, a member searches "drill" and filters by "Gift"
+and sees only matching, available offerings.
 
 **Acceptance Scenarios**:
 
-1. **Given** available listings, **When** a member searches by keyword, **Then** listings whose title or
+1. **Given** available offerings, **When** a member searches by keyword, **Then** offerings whose title or
    description match are shown, newest first.
 2. **Given** search results, **When** the member filters by offering type or area, **Then**
-   only matching listings remain, and the active filters are clearly shown and easy to clear.
-3. **Given** a listing that is fully given away, lent out, paused, or removed, **When** a member
+   only matching offerings remain, and the active filters are clearly shown and easy to clear.
+3. **Given** an offering that is fully given away, lent out, paused, or removed, **When** a member
    searches, **Then** it is not shown as available (lent-out items may show "currently lent out").
 4. **Given** no results, **When** a member searches, **Then** they see a calm message suggesting they
    try other words or clear filters.
-5. **Given** a listing, **When** a member opens it, **Then** they see all details, photos, the owner's
+5. **Given** an offering, **When** a member opens it, **Then** they see all details, photos, the owner's
    name, and who invited the owner.
 
 ---
 
 ### User Story 4 - Talk and arrange the exchange (Priority: P2)
 
-A member interested in a listing sends the owner a direct message. They talk through details,
+A member interested in an offering sends the owner a direct message. They talk through details,
 negotiate the terms, propose a time for a call, and—if both choose to—share contact details.
 
 **Why this priority**: Members need a way to agree on details; but members could initially coordinate
-outside the app, so this follows the core listing/finding flow.
+outside the app, so this follows the core offering/finding flow.
 
-**Independent Test**: Member A messages Member B about a listing; B replies; A shares their phone
+**Independent Test**: Member A messages Member B about an offering; B replies; A shares their phone
 number using the share-contact action; B sees it.
 
 **Acceptance Scenarios**:
 
-1. **Given** a listing owned by someone else, **When** a member taps "Message about this", **Then** a
-   conversation opens linked to that listing.
+1. **Given** an offering owned by someone else, **When** a member taps "Message about this", **Then** a
+   conversation opens linked to that offering.
 2. **Given** a conversation, **When** either person sends a message, **Then** the other sees it in
    their conversations list, with unread conversations clearly but quietly indicated; if the other
    person has that conversation open, the message appears there without reloading.
@@ -177,29 +177,29 @@ number using the share-contact action; B sees it.
 ### User Story 5 - Record what was agreed (Priority: P2)
 
 Once two members agree, the owner records the outcome: the item was lent (with an agreed return date),
-gifted, traded, or part of the amount was given away. The listing updates automatically. For loans,
+gifted, traded, or part of the amount was given away. The offering updates automatically. For loans,
 the owner later marks the item as returned.
 
-**Why this priority**: Keeps listings accurate so others don't chase things that are gone, and creates
+**Why this priority**: Keeps offerings accurate so others don't chase things that are gone, and creates
 a shared record that supports trust and mediation.
 
-**Independent Test**: An owner records "Gave 2 kg of 5 kg rice to Member A"; the listing shows 3 kg
+**Independent Test**: An owner records "Gave 2 kg of 5 kg rice to Member A"; the offering shows 3 kg
 remaining. The owner records lending a drill until Friday; the drill shows as lent out; after marking
 it returned it shows as available again.
 
 **Acceptance Scenarios**:
 
-1. **Given** a listing and a conversation with another member, **When** the owner chooses "Record an
-   agreement", **Then** they select the other member, the amount (if the listing has one), and, for
+1. **Given** an offering and a conversation with another member, **When** the owner chooses "Record an
+   agreement", **Then** they select the other member, the amount (if the offering has one), and, for
    loans, the agreed return date, or for services, the number of sessions; the outcome (lent,
    gifted, traded, or provided) follows the offering type.
 2. **Given** a recorded agreement, **When** the other member is notified, **Then** they can confirm it
    or say "this isn't right", and the record shows whether it is confirmed.
-3. **Given** a partial give-away, **When** recorded, **Then** the listing's remaining amount decreases,
-   and the listing closes automatically when nothing remains.
+3. **Given** a partial give-away, **When** recorded, **Then** the offering's remaining amount decreases,
+   and the offering closes automatically when nothing remains.
 4. **Given** a lent item, **When** the return date passes and it is not marked returned, **Then** both
    members get one gentle reminder, and the owner can mark it returned or report a problem.
-5. **Given** a lent item, **When** the owner marks it returned, **Then** the listing becomes available
+5. **Given** a lent item, **When** the owner marks it returned, **Then** the offering becomes available
    again.
 
 ---
@@ -242,12 +242,12 @@ a notification and can see the agreement record and open a three-way conversatio
   there is no automatic double-allocation; the second requester sees the updated amount.
 - A member deletes their account while an item is lent to or from them: they are told of open loans
   before deletion and must confirm; the agreement record remains visible to the other party.
-- A listing photo is very large or not an image: it is refused with a plain explanation.
+- An offering photo is very large or not an image: it is refused with a plain explanation.
 - A member wants money for a trade: they can write it in what they'd like in return (e.g., "$30");
   wunan only records it as text and never handles payment.
 - A member needs a unit that isn't in the list: they choose "other" and describe it in the title or
   description.
-- A member's sign-in runs out while they are filling in a form (e.g., a listing or a message): they
+- A member's sign-in runs out while they are filling in a form (e.g., an offering or a message): they
   are asked to sign in again on the same page, and what they typed is kept and sent once they have
   signed in. Chosen photos cannot be kept this way; the page says plainly that they need to be
   chosen again. Sign-ins last 30 days and renew while the member keeps using wunan.
@@ -277,72 +277,72 @@ a notification and can see the agreement record and open a three-way conversatio
 - **FR-003**: Every member profile MUST show the member's display name, who invited them (linked),
   join date, and the members they invited; this is visible to all members.
 - **FR-004**: Members MUST be able to follow the invite chain upward from any profile.
-- **FR-005**: Community content (listings, profiles, messages) MUST be visible only to signed-in members.
-- **FR-006**: Each wunan installation MUST serve exactly one community; all members, listings, and
+- **FR-005**: Community content (offerings, profiles, messages) MUST be visible only to signed-in members.
+- **FR-006**: Each wunan installation MUST serve exactly one community; all members, offerings, and
   conversations belong to that community. Other communities run their own separate installation.
 
-**Listings**
+**Offerings**
 
-- **FR-007**: Members MUST be able to create a listing with: offering type (required: Lend, Gift,
+- **FR-007**: Members MUST be able to create an offering with: offering type (required: Lend, Gift,
   Trade, or Service), title (required), and optionally a description, an amount with a unit (not
   used for Service), photos, and an approximate area.
 - **FR-008**: Amounts MUST be a positive number paired with a unit chosen from a fixed list: item,
   kg, g, litre, hour, portion, bag, box, other.
-- **FR-009**: Lend listings MAY have a maximum loan length (a whole number of hours, days, or weeks);
-  without one, the listing shows "Loan length to be agreed".
-- **FR-010**: Trade listings MUST have either a description of what's wanted in return (optionally
+- **FR-009**: Lend offerings MAY have a maximum loan length (a whole number of hours, days, or weeks);
+  without one, the offering shows "Loan length to be agreed".
+- **FR-010**: Trade offerings MUST have either a description of what's wanted in return (optionally
   with an amount and unit) or "Open to offers" ticked, or both.
-- **FR-010a**: Service listings MAY have a session length (a whole number of minutes or hours) and a
-  number of times available (a whole number ≥ 1). When a number of times is set, the listing MUST
+- **FR-010a**: Service offerings MAY have a session length (a whole number of minutes or hours) and a
+  number of times available (a whole number ≥ 1). When a number of times is set, the offering MUST
   show how many sessions remain and close automatically when none remain.
-- **FR-011**: Location MUST be optional, MUST be shown only at an approximate area level on listings,
+- **FR-011**: Location MUST be optional, MUST be shown only at an approximate area level on offerings,
   and exact addresses MUST be shared only by the owner through direct messages. The area is a short
   free-text field with the hint "Your neighbourhood, not your address"; wunan does not check what is
   typed.
-- **FR-012**: Members MUST be able to add up to 6 photos per listing, each with an optional
+- **FR-012**: Members MUST be able to add up to 6 photos per offering, each with an optional
   description used as alt text; location metadata MUST be removed from uploaded photos.
-- **FR-013**: Owners MUST be able to edit, pause, resume, and remove their listings.
-- **FR-013a**: Members MUST be able to flag another member's listing with a written request to its
+- **FR-013**: Owners MUST be able to edit, pause, resume, and remove their offerings.
+- **FR-013a**: Members MUST be able to flag another member's offering with a written request to its
   owner. The owner MUST be notified and shown the request and who sent it. Only the owner can edit or
-  take down a listing; no other member, including founding members, can hide or remove it.
-- **FR-013b**: Owners MUST be able to reopen a listing they removed, returning it to Available (with
+  take down an offering; no other member, including founding members, can hide or remove it.
+- **FR-013b**: Owners MUST be able to reopen an offering they removed, returning it to Available (with
   its remaining amount unchanged), unless it closed because nothing remained.
-- **FR-014**: Each listing MUST have a status: Available, Lent out (with return date), Paused, or
-  Closed. Gift and Trade listings with an amount MUST show the remaining amount and close
+- **FR-014**: Each offering MUST have a status: Available, Lent out (with return date), Paused, or
+  Closed. Gift and Trade offerings with an amount MUST show the remaining amount and close
   automatically when it reaches zero (for Service sessions, see FR-010a).
 
 **Finding**
 
-- **FR-015**: Members MUST be able to search listings by keyword and browse by offering type.
+- **FR-015**: Members MUST be able to search offerings by keyword and browse by offering type.
 - **FR-016**: Members MUST be able to filter by offering type and approximate area, and clear filters
   in one action.
-- **FR-017**: Search MUST show only Available listings by default, with an option to include items
+- **FR-017**: Search MUST show only Available offerings by default, with an option to include items
   currently lent out.
 
 **Messaging & arranging**
 
 - **FR-018**: Members MUST be able to send direct text messages to other members, optionally linked to
-  a listing.
+  an offering.
 - **FR-018a**: While a member has a conversation open, new messages in it MUST appear without
   reloading, quietly: no sound, no animation, no automatic scrolling if the member has scrolled up, and
-  announced politely to screen readers. Other pages (conversation list, unread counts, listings)
+  announced politely to screen readers. Other pages (conversation list, unread counts, offerings)
   update only when reloaded.
 - **FR-019**: Members MUST be able to share chosen contact details within a conversation only after an
   explicit confirmation step; contact details are never shown otherwise.
 - **FR-020**: Members MUST be able to propose a call time in a conversation, and the other member can
   accept or propose another time. (The call itself happens outside wunan.)
 - **FR-021**: The system MUST NOT provide blocking. Every member can message any other member and
-  see every listing.
+  see every offering.
 
 **Agreements**
 
-- **FR-022**: Listing owners MUST be able to record an agreement with another member: amount (when the
-  listing has one), for loans an agreed return date, and for services the number of sessions
-  (default 1). The outcome (lent, gifted, traded, provided) follows the listing's offering type.
+- **FR-022**: Offering owners MUST be able to record an agreement with another member: amount (when the
+  offering has one), for loans an agreed return date, and for services the number of sessions
+  (default 1). The outcome (lent, gifted, traded, provided) follows the offering's offering type.
 - **FR-023**: The other member MUST be notified and able to confirm or dispute the recorded agreement.
-- **FR-024**: Recording an agreement MUST update the listing status and remaining amount automatically.
+- **FR-024**: Recording an agreement MUST update the offering status and remaining amount automatically.
 - **FR-024a**: While an agreement is still pending (not yet confirmed or disputed), the owner MUST be
-  able to cancel it. Cancelling restores the listing's remaining amount or sessions and its previous
+  able to cancel it. Cancelling restores the offering's remaining amount or sessions and its previous
   status, and tells the other member.
 - **FR-025**: For loans, the system MUST send one reminder to both members on the day after the return
   date passes, and owners MUST be able to mark the item returned.
@@ -367,7 +367,7 @@ a notification and can see the agreement record and open a three-way conversatio
 - **FR-030**: The system MUST NOT show ads, use third-party tracking, or display engagement metrics such
   as view counts, likes, or rankings of members.
 - **FR-031**: Notifications MUST be limited to: new messages, agreement confirmations, return
-  reminders, problem reports, and listing flags; members MUST be able to turn each type on or off.
+  reminders, problem reports, and offering flags; members MUST be able to turn each type on or off.
   Notifications are sent by email and, optionally, as device notifications. Both are off until the
   member turns them on. When joining, members see one plainly explained choice, "Email me when
   someone messages me or something needs my attention", which is unticked by default; they can
@@ -375,7 +375,7 @@ a notification and can see the agreement record and open a three-way conversatio
 - **FR-031a**: Members MUST be able to add wunan to their phone's home screen and receive device
   notifications without installing anything from an app store. Turning device notifications on
   MUST be a single, plainly explained step in settings and MUST never be prompted automatically.
-- **FR-032**: Members MUST be able to export all their data (profile, listings, agreements, messages)
+- **FR-032**: Members MUST be able to export all their data (profile, offerings, agreements, messages)
   in a readable format, and delete their account. Deleting an account keeps only the display name,
   for invite chains and shared agreement history.
 - **FR-033**: wunan MUST NOT process payments; any money mentioned in a trade is free text only, and
@@ -388,16 +388,16 @@ a notification and can see the agreement record and open a three-way conversatio
   inviter (or "founding member"), contact details (private until shared), notification preferences.
 - **Invitation**: Created by a member for one person. Inviter, status (unused, waiting for email confirmation, used, expired,
   cancelled), expiry, and the member who used it.
-- **Listing**: A resource offered by a member. Owner, offering type (Lend, Gift, Trade, Service),
+- **Offering**: A resource offered by a member. Owner, offering type (Lend, Gift, Trade, Service),
   title, description, amount and unit, remaining amount, maximum loan length (Lend), what's wanted in
   return and "open to offers" (Trade), session length and sessions available/remaining (Service), photos, approximate area, status.
 - **Conversation**: Messages between two members (or three or more, for a problem report), optionally linked
-  to a listing; includes contact-sharing events and proposed call times.
-- **Agreement**: A recorded exchange on a listing between owner and another member. Outcome type,
+  to an offering; includes contact-sharing events and proposed call times.
+- **Agreement**: A recorded exchange on an offering between owner and another member. Outcome type,
   amount, sessions (services), agreed return date (loans), returned date, confirmation status.
 - **Problem Report**: Raised on an agreement. Reporter, reported member, responsible inviter,
   description, status, escalation level (inviter, inviter's inviter, founding members), outcome note.
-- **Listing Flag**: A request from a member to a listing's owner. Listing, flagging member, request
+- **Offering Flag**: A request from a member to an offering's owner. Offering, flagging member, request
   text, date, whether the owner has seen it.
 
 ## Success Criteria *(mandatory)*
@@ -406,16 +406,16 @@ a notification and can see the agreement record and open a three-way conversatio
 
 - **SC-001**: A new invitee can go from opening an invitation to being a member with a profile in
   under 3 minutes.
-- **SC-002**: A member can publish a simple listing (offering type and title) in under 1 minute,
-  and a full listing with photos in under 5 minutes.
+- **SC-002**: A member can publish a simple offering (offering type and title) in under 1 minute,
+  and a full offering with photos in under 5 minutes.
 - **SC-003**: In usability testing with members who describe themselves as not confident with
   technology, at least 90% complete each core task (join, list, find, message, record agreement) on
   their first attempt without help.
-- **SC-004**: Members find a matching listing in 3 or fewer actions from the home screen.
+- **SC-004**: Members find a matching offering in 3 or fewer actions from the home screen.
 - **SC-005**: Every profile shows the inviter; 100% of members (other than founders) have a traceable
   invite chain.
 - **SC-006**: Search results appear within 2 seconds for a community of up to 5,000 members and 20,000
-  listings.
+  offerings.
 - **SC-007**: All screens pass a WCAG 2.2 AA audit with zero critical issues before release.
 - **SC-008**: Lent items past their return date are marked returned or reported within 7 days in at
   least 80% of cases.
@@ -436,7 +436,7 @@ a notification and can see the agreement record and open a three-way conversatio
   operator documentation. No hosted service is provided by the wunan project.
 - There is no limit on how many people a member can invite in total; a generous daily limit
   (20 new invitations per day) only guards against misuse.
-- Listings stay up until the owner closes them or the amount runs out; there is no automatic expiry.
+- Offerings stay up until the owner closes them or the amount runs out; there is no automatic expiry.
 - The interface is in English only, written in plain language; translation support is out of scope
   and not prepared for.
 - Out of scope for this version: showing the number of unresolved conflicts on a member's profile

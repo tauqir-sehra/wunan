@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { member, notificationPreference } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
-import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, signIn, type TestMember } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, signIn, type TestMember } from '../test/setup.ts';
 
 /**
  * Invite chain:  Fay (founder) → Ana → Ben → Xan (borrower)
@@ -23,7 +23,7 @@ async function chain() {
 async function loanBetween(owner: TestMember, borrower: TestMember) {
   const token = await signIn(owner);
   const borrowerToken = await signIn(borrower);
-  const drill = await createListing(token, { type: 'lend', title: 'Drill' });
+  const drill = await createOffering(token, { type: 'lend', title: 'Drill' });
   const deal = await agree(token, borrowerToken, drill.id, completeDetails('lend'));
   return { ...deal, ownerToken: token, borrowerToken };
 }
@@ -126,7 +126,7 @@ describe('asking for help', () => {
 
     const xanToken = await signIn(xan);
     expect((await api('GET', '/api/v1/me', { token: xanToken })).status).toBe(200);
-    expect((await api('POST', '/api/v1/listings', { token: xanToken, body: { type: 'gift', title: 'Apples' } })).status).toBe(201);
+    expect((await api('POST', '/api/v1/offerings', { token: xanToken, body: { type: 'gift', title: 'Apples' } })).status).toBe(201);
     expect((await api('GET', `/api/v1/members/${xan.id}`, { token: await signIn(fay) })).status).toBe(200);
     expect((await api('GET', `/api/v1/reports/${report.id}`, { token: xanToken })).status).toBe(200);
   });

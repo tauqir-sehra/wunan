@@ -1,4 +1,4 @@
-// My proposals (002 FR-024): ones I made and ones on my listings, open first.
+// My proposals (002 FR-024): ones I made and ones on my offerings, open first.
 import { apiFor } from '#lib/api.ts';
 import { memberLoad } from '#lib/load.ts';
 import type { ProposalSummary } from '@wunan/shared';

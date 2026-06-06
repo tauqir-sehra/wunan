@@ -113,7 +113,7 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 
 - **Decision**: Uploads go to the API as `multipart/form-data`. `sharp` decodes each upload (rejecting
   non-images), applies orientation, resizes to at most 1600 px, and re-encodes as WebP, which drops all
-  metadata including GPS. Max 10 MB per upload, 6 per listing. Files live on a disk volume owned by
+  metadata including GPS. Max 10 MB per upload, 6 per offering. Files live on a disk volume owned by
   the API, named by random key, and served only to authenticated members by
   `GET /api/v1/photos/{key}`. The web app proxies photo requests through its own route so the
   browser's cookie session applies.
@@ -185,11 +185,11 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 
 ## 13. Search (FR-015 to FR-017)
 
-- **Decision**: PostgreSQL full-text search: a generated `tsvector` column on listings (title weighted
+- **Decision**: PostgreSQL full-text search: a generated `tsvector` column on offerings (title weighted
   above description and what's wanted, `english` configuration) with a GIN index, queried with
   `websearch_to_tsquery`. Offering type, area, and status are plain indexed filters. Newest first,
-  rank as tie-break. Exposed as `GET /api/v1/listings`.
-- **Rationale**: Handles word forms, meets SC-006 at 20,000 listings, no extra service.
+  rank as tie-break. Exposed as `GET /api/v1/offerings`.
+- **Rationale**: Handles word forms, meets SC-006 at 20,000 offerings, no extra service.
 
 ## 14. Security (constitution III)
 
@@ -234,7 +234,7 @@ readable code (VI), no unnecessary dependencies (VII), security first (III), acc
 
 - **Decision**: `GET /api/v1/me/export` returns a ZIP built with `fflate` containing
   `my-wunan-data.json`, a plain-language `README.txt`, and the member's own photos. Account deletion
-  (`DELETE /api/v1/me`, password required) clears personal fields and sign-in data, deletes listings,
+  (`DELETE /api/v1/me`, password required) clears personal fields and sign-in data, deletes offerings,
   photos, push subscriptions, and contact details, keeps only the display name (shown as "<name> (no
   longer a member)"), and revokes sessions; agreements,
   reports, and messages stay visible to the other members involved.

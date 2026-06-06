@@ -12,12 +12,12 @@ its standard schema and are not repeated here.
 |-------|------|-------|
 | email | text, unique | Required; sign-in only; never shown to other members (FR-001a) |
 | email_verified | boolean | Set true when the confirmation link is opened (FR-001b); founders: set by the setup command. Unverified accounts cannot sign in, and are deleted once their invitation's hold passes |
-| display_name | text, 1–60 chars | Required; shown on profile and listings |
+| display_name | text, 1–60 chars | Required; shown on profile and offerings |
 | bio | text, ≤500 chars | Optional |
 | invited_by_id | FK → member, nullable | Null only when `is_founder` (FR-001, FR-003) |
 | is_founder | boolean | Set only by the `create-founder` command; final mediators (FR-029a) |
 | share_phone, share_email | text, nullable | Private; revealed only via contact sharing (FR-019). Stored encrypted (AES-256-GCM, research §14) |
-| deleted_at | timestamptz, nullable | Set on account deletion; personal fields cleared except `display_name`, and `email` replaced with `deleted-<id>@deleted.invalid` so the address can join again; shown as "<name> (no longer a member)". Listings that are part of an agreement keep only title and kind, closed (`removed`); other listings are deleted |
+| deleted_at | timestamptz, nullable | Set on account deletion; personal fields cleared except `display_name`, and `email` replaced with `deleted-<id>@deleted.invalid` so the address can join again; shown as "<name> (no longer a member)". Offerings that are part of an agreement keep only title and kind, closed (`removed`); other offerings are deleted |
 
 Password hashes live in Better Auth's `account` table. There is no field for removal, suspension, or
 penalty (FR-029b). Invite chain = follow `invited_by_id` until a founder.
@@ -71,7 +71,7 @@ sign-up attempt, so the same email can try again straight away, and in the hourl
 unconfirmed personal data is not kept. A confirmation link keeps working until `reserved_until`,
 even if the invitation's own 14-day expiry passes in the meantime.
 
-## listing
+## offering
 
 | Field | Type | Rules |
 |-------|------|-------|
@@ -94,11 +94,11 @@ even if the invitation's own 14-day expiry passes in the meantime.
 | sessions_remaining | integer, nullable | Starts at `sessions_available`; never below 0 |
 | area | text, ≤60 chars, nullable | Approximate area only (FR-011); hint text says "not your address" |
 | status | enum | `available`, `lent_out`, `paused`, `closed` (FR-014) |
-| closed_reason | enum, nullable | `removed` (owner removed it) or `used_up` (nothing remains); set when `status = closed`. Only `removed` listings can be reopened (FR-013b) |
+| closed_reason | enum, nullable | `removed` (owner removed it) or `used_up` (nothing remains); set when `status = closed`. Only `removed` offerings can be reopened (FR-013b) |
 | search_vector | tsvector, generated | Title (weight A) + description + wanted (weight B); GIN index |
 | updated_at | timestamptz | |
 
-Fields that don't apply to the listing's `type` must be null (enforced by a check constraint and the
+Fields that don't apply to the offering's `type` must be null (enforced by a check constraint and the
 Zod schema, which is a discriminated union on `type`).
 
 Indexes: `search_vector` (GIN); (`status`, `created_at`); `type`; `owner_id`.
@@ -108,7 +108,7 @@ Indexes: `search_vector` (GIN); (`status`, `created_at`); `type`; `owner_id`.
 ```text
 available ──(loan agreement, Lend)──▶ lent_out ──(marked returned)──▶ available
 available ──(remaining reaches 0, Gift/Trade)──▶ closed
-available ──(agreement on a listing without an amount, Gift/Trade)──▶ closed
+available ──(agreement on an offering without an amount, Gift/Trade)──▶ closed
 available ──(sessions_remaining reaches 0, Service)──▶ closed
 (a Service without `sessions_available` stays available until the owner removes it)
 available ⇄ paused (owner pauses / resumes)
@@ -117,33 +117,33 @@ closed (removed) ──(owner reopens)──▶ available
 (automatic closes set closed_reason = used_up)
 ```
 
-Only the owner can change a listing's content or status (FR-013a).
+Only the owner can change an offering's content or status (FR-013a).
 
-## listing_photo
+## offering_photo
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing, cascade delete | Max 6 per listing |
+| offering_id | FK → offering, cascade delete | Max 6 per offering |
 | file_key | text | Random file name on the photos volume |
 | alt_text | text, ≤200 chars | Optional |
 | position | smallint | Display order |
 
-## listing_flag
+## offering_flag
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing | Cannot flag your own listing |
+| offering_id | FK → offering | Cannot flag your own offering |
 | flagged_by_id | FK → member | |
 | request | text, 1–500 chars | Required |
 | seen_by_owner_at | timestamptz, nullable | |
 
-No effect on the listing's visibility (FR-013a).
+No effect on the offering's visibility (FR-013a).
 
 ## conversation
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing, nullable | When started from "Message about this" |
+| offering_id | FK → offering, nullable | When started from "Message about this" |
 | problem_report_id | FK → problem_report, nullable | For mediation conversations |
 
 **conversation_participant**: `conversation_id`, `member_id`, `last_read_at`. Unique pair. Two
@@ -166,19 +166,19 @@ Index (`conversation_id`, `created_at`). Saving a message triggers `NOTIFY` for 
 
 | Field | Type | Rules |
 |-------|------|-------|
-| listing_id | FK → listing | Recorded by the listing owner only |
+| offering_id | FK → offering | Recorded by the offering owner only |
 | owner_id | FK → member | |
 | other_member_id | FK → member | ≠ owner |
-| outcome | enum | `lent`, `gifted`, `traded`, `provided`; set from the listing's `type` |
-| amount | numeric, nullable | Gift/Trade with an amount: required, ≤ listing `remaining`. Lend: null; a loan covers the whole listing. Service: null |
-| sessions | integer, nullable | Service only; default 1; ≤ listing `sessions_remaining` when that is set |
+| outcome | enum | `lent`, `gifted`, `traded`, `provided`; set from the offering's `type` |
+| amount | numeric, nullable | Gift/Trade with an amount: required, ≤ offering `remaining`. Lend: null; a loan covers the whole offering. Service: null |
+| sessions | integer, nullable | Service only; default 1; ≤ offering `sessions_remaining` when that is set |
 | return_due | date, nullable | Required when `outcome = lent` |
 | returned_at | timestamptz, nullable | Set by owner (FR-025) |
 | reminder_sent_at | timestamptz, nullable | Guarantees one reminder |
 | confirmation | enum | `pending` → `confirmed` / `disputed` / `cancelled` (FR-023, FR-024a); only the owner cancels, only while `pending` |
 | note | text, ≤500 chars | Optional |
 
-**Effects on listing** (FR-024), applied in the same transaction (row-locked listing, so two
+**Effects on offering** (FR-024), applied in the same transaction (row-locked offering, so two
 agreements can't over-allocate): `lent` → `lent_out`; `gifted`/`traded` with an amount →
 `remaining -= amount`, and `closed` at 0; without an amount → `closed`. `provided` →
 `sessions_remaining -= sessions`, `closed` at 0; without `sessions_available` → unchanged. Marked returned →
@@ -211,8 +211,8 @@ further steps. Reports never affect access (FR-029b).
 
 ```text
 member ─invited_by─▶ member
-member 1─* invitation, listing, agreement, push_subscription, notification_preference
-listing 1─* listing_photo, listing_flag, agreement, conversation
+member 1─* invitation, offering, agreement, push_subscription, notification_preference
+offering 1─* offering_photo, offering_flag, agreement, conversation
 conversation 1─* message; *─* member (conversation_participant)
 agreement 1─* problem_report 1─1 conversation
 ```

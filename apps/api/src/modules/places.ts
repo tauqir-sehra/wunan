@@ -1,6 +1,6 @@
 // Places (002 FR-027 to FR-030, research §1–§2): suggestions while typing, how a place is shown to
 // whom, and whether two places are in the same area. Every place in an API response goes through
-// `viewPlace`, so a listing's full address is never shown to someone who shouldn't see it.
+// `viewPlace`, so an offering's full address is never shown to someone who shouldn't see it.
 // Suggestions come from the operator's Photon server. Only the typed text (and the operator's fixed
 // bias) is sent, from this server: never who is typing. What is typed is never logged.
 import type { Place } from '@wunan/shared';

@@ -7,12 +7,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import webpush from 'web-push';
 import { app } from '../app.ts';
 import { db } from '../db/index.ts';
-import { invitation, listing, member, pushSubscription } from '../db/schema/index.ts';
+import { invitation, offering, member, pushSubscription } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
 import { notify } from '../notify/index.ts';
 import { agree, api, completeDetails, createFounder, createInvitedMember, PASSWORD, propose, signIn } from '../test/setup.ts';
 
-const types = ['message', 'agreement', 'reminder', 'report', 'flag'];
+const types = ['message', 'agreement', 'reminder', 'report', 'flag', 'request', 'public_message'];
 
 /** Keys like a browser's, so the push library can encrypt for them. */
 function browserKeys() {
@@ -132,17 +132,17 @@ describe('devices', () => {
     await api('POST', '/api/v1/me/push-subscriptions', { token, body: device(endpoint) });
     const send = vi.spyOn(webpush, 'sendNotification').mockResolvedValue({ statusCode: 201, body: '', headers: {} });
 
-    await notify(founder.id, 'flag', { title: 'Alex sent a request about your listing!', body: 'Hello', url: '/listings/1' });
+    await notify(founder.id, 'flag', { title: 'Alex sent a request about your offering!', body: 'Hello', url: '/offerings/1' });
     expect(send).toHaveBeenCalledTimes(1);
     const [subscription, payload, options] = send.mock.calls[0]!;
     expect(subscription.endpoint).toBe(endpoint);
-    expect(JSON.parse(payload as string)).toEqual({ title: 'Alex sent a request about your listing.', body: 'Hello', url: '/listings/1' });
+    expect(JSON.parse(payload as string)).toEqual({ title: 'Alex sent a request about your offering.', body: 'Hello', url: '/offerings/1' });
     expect(options?.vapidDetails?.publicKey).toBe(process.env.VAPID_PUBLIC_KEY);
     // The real library can encrypt for this device with these keys.
     expect(webpush.generateRequestDetails(subscription, payload as string, options).headers['Content-Encoding']).toBe('aes128gcm');
 
     send.mockRejectedValue(Object.assign(new Error('Gone'), { statusCode: 410 }));
-    await notify(founder.id, 'flag', { title: 'Another request', body: 'Hi', url: '/listings/1' });
+    await notify(founder.id, 'flag', { title: 'Another request', body: 'Hi', url: '/offerings/1' });
     expect(await db.select().from(pushSubscription)).toEqual([]);
   });
 
@@ -151,7 +151,7 @@ describe('devices', () => {
     const token = await signIn(founder);
     await api('POST', '/api/v1/me/push-subscriptions', { token, body: device(fcm('phone')) });
     vi.spyOn(webpush, 'sendNotification').mockRejectedValue(Object.assign(new Error('Busy'), { statusCode: 503 }));
-    await notify(founder.id, 'flag', { title: 'A request', body: 'Hi', url: '/listings/1' });
+    await notify(founder.id, 'flag', { title: 'A request', body: 'Hi', url: '/offerings/1' });
     expect(await db.select().from(pushSubscription)).toHaveLength(1);
   });
 });
@@ -161,12 +161,12 @@ async function download(token: string) {
   return { response, files: unzipSync(new Uint8Array(await response.arrayBuffer())) };
 }
 
-async function addPhoto(token: string, listingId: string) {
+async function addPhoto(token: string, offeringId: string) {
   const bytes = await sharp({ create: { width: 40, height: 30, channels: 3, background: '#7a9' } }).jpeg().toBuffer();
   const form = new FormData();
   form.set('file', new File([new Uint8Array(bytes)], 'photo', { type: 'image/jpeg' }));
   form.set('alt', 'Rice');
-  await api('POST', `/api/v1/listings/${listingId}/photos`, { token, body: form });
+  await api('POST', `/api/v1/offerings/${offeringId}/photos`, { token, body: form });
 }
 
 describe('data export', () => {
@@ -176,7 +176,7 @@ describe('data export', () => {
     const samToken = await signIn(sam);
     const alexToken = await signIn(alex);
     await api('PUT', '/api/v1/me/contact', { token: alexToken, body: { sharePhone: '07700 900999', shareEmail: 'alex.private@example.org' } });
-    const { body: rice } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'gift', title: 'Rice', amount: 5, unit: 'kg' } });
+    const { body: rice } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'gift', title: 'Rice', amount: 5, unit: 'kg' } });
     await addPhoto(samToken, rice.id);
     await agree(samToken, alexToken, rice.id, completeDetails('gift', { amount: '2', message: 'Could I have 2 kg?' }));
 
@@ -191,12 +191,12 @@ describe('data export', () => {
     const data = JSON.parse(json);
     expect(data.format_version).toBe(1);
     expect(data.profile).toMatchObject({ display_name: 'Sam', email: sam.email, is_founder: true, invited_by: null });
-    expect(data.listings[0]).toMatchObject({ title: 'Rice', amount: '5', remaining: '3', photos: [`photos/${rice.id}-1.webp`] });
-    expect(data.agreements[0]).toMatchObject({ listing_title: 'Rice', role: 'owner', other_member: 'Alex', outcome: 'gifted', amount: '2' });
-    expect(data.proposals[0]).toMatchObject({ with: 'Alex', listing_title: 'Rice', role: 'lister', status: 'accepted', amount: '2' });
+    expect(data.offerings[0]).toMatchObject({ title: 'Rice', amount: '5', remaining: '3', photos: [`photos/${rice.id}-1.webp`] });
+    expect(data.agreements[0]).toMatchObject({ offering_title: 'Rice', role: 'owner', other_member: 'Alex', outcome: 'gifted', amount: '2' });
+    expect(data.proposals[0]).toMatchObject({ with: 'Alex', offering_title: 'Rice', role: 'lister', status: 'accepted', amount: '2' });
     expect(data.proposals[0].messages[0]).toMatchObject({ from: 'Alex', body: 'Could I have 2 kg?' });
     expect(data.conversations).toEqual([]);
-    expect(data.notification_preferences).toHaveLength(5);
+    expect(data.notification_preferences).toHaveLength(7);
     // Nothing private about Alex.
     expect(json).not.toContain(alex.email);
     expect(json).not.toContain('07700 900999');
@@ -239,7 +239,7 @@ describe('leaving wunan', () => {
     expect((await api('GET', '/api/v1/me', { token: samToken })).status).toBe(200);
   });
 
-  it('keeps only the display name, removes listings, photos and devices, and signs out everywhere', async () => {
+  it('keeps only the display name, removes offerings, photos and devices, and signs out everywhere', async () => {
     const { sam, alex, samToken, alexToken } = await scene();
     const otherDevice = await signIn(sam);
     await api('PATCH', '/api/v1/me', { token: samToken, body: { bio: 'I like bikes' } });
@@ -247,17 +247,17 @@ describe('leaving wunan', () => {
     await api('POST', '/api/v1/me/push-subscriptions', { token: samToken, body: device('https://fcm.googleapis.com/fcm/send/sam') });
     await api('POST', '/api/v1/invitations', { token: samToken });
 
-    const { body: pump } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'gift', title: 'Bike pump', description: 'Pick up at 12 Elm Street' } });
+    const { body: pump } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'gift', title: 'Bike pump', description: 'Pick up at 12 Elm Street' } });
     await addPhoto(samToken, pump.id);
-    const { body: drill } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'lend', title: 'Drill', area: 'Near the park' } });
+    const { body: drill } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'lend', title: 'Drill', area: 'Near the park' } });
     await addPhoto(samToken, drill.id);
     const deal = await agree(samToken, alexToken, drill.id, completeDetails('lend'));
     const started = { id: deal.conversationId };
     await api('POST', `/api/v1/conversations/${started.id}/contact-share`, { token: samToken, body: { phone: true, email: false } });
     await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: samToken, body: { body: 'See you Saturday' } });
     const loan = { id: deal.agreementId };
-    // An open proposal on another of Sam's listings closes when Sam leaves.
-    const { body: ladder } = await api('POST', '/api/v1/listings', { token: samToken, body: { type: 'lend', title: 'Ladder' } });
+    // An open proposal on another of Sam's offerings closes when Sam leaves.
+    const { body: ladder } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'lend', title: 'Ladder' } });
     const open = await propose(alexToken, ladder.id);
 
     const deleted = await api('DELETE', '/api/v1/me', { token: samToken, body: { password: PASSWORD } });
@@ -279,12 +279,12 @@ describe('leaving wunan', () => {
     expect((await api('GET', `/api/v1/members/${alex.id}/chain`, { token: alexToken })).body.chain.map((c: { displayName: string }) => c.displayName))
       .toEqual(['Alex', 'Sam (no longer a member)', 'Fay']);
 
-    // Listings and photos are gone; the loaned drill keeps only its title for Alex's agreement.
-    expect((await api('GET', `/api/v1/listings/${pump.id}`, { token: alexToken })).status).toBe(404);
-    const [kept] = await db.select().from(listing).where(eq(listing.id, drill.id));
+    // Offerings and photos are gone; the loaned drill keeps only its title for Alex's agreement.
+    expect((await api('GET', `/api/v1/offerings/${pump.id}`, { token: alexToken })).status).toBe(404);
+    const [kept] = await db.select().from(offering).where(eq(offering.id, drill.id));
     expect(kept).toMatchObject({ title: 'Drill', description: null, area: null, status: 'closed' });
-    expect((await api('GET', `/api/v1/listings/${drill.id}`, { token: alexToken })).body.photos).toEqual([]);
-    expect((await api('GET', '/api/v1/listings', { token: alexToken })).body.items).toEqual([]);
+    expect((await api('GET', `/api/v1/offerings/${drill.id}`, { token: alexToken })).body.photos).toEqual([]);
+    expect((await api('GET', '/api/v1/offerings', { token: alexToken })).body.items).toEqual([]);
 
     // Alex still sees the agreement and the conversation, without Sam's phone number.
     const agreement = await api('GET', `/api/v1/agreements/${loan.id}`, { token: alexToken });
@@ -299,9 +299,9 @@ describe('leaving wunan', () => {
     expect(await db.select().from(pushSubscription)).toEqual([]);
     expect((await db.select().from(invitation).where(eq(invitation.inviterId, sam.id))).map((i) => i.status)).toEqual(['cancelled']);
 
-    // The open proposal closed, and its listing stays (title only) so Alex's proposal still makes sense.
+    // The open proposal closed, and its offering stays (title only) so Alex's proposal still makes sense.
     expect((await api('GET', `/api/v1/proposals/${open.id}`, { token: alexToken })).body).toMatchObject({ status: 'closed', closedReason: 'member_left' });
-    expect((await api('GET', `/api/v1/listings/${ladder.id}`, { token: alexToken })).body).toMatchObject({ title: 'Ladder', status: 'closed' });
+    expect((await api('GET', `/api/v1/offerings/${ladder.id}`, { token: alexToken })).body).toMatchObject({ title: 'Ladder', status: 'closed' });
     // No more notifications.
     await notify(sam.id, 'message', { title: 'x', body: 'y', url: '/' });
   });
@@ -310,5 +310,46 @@ describe('leaving wunan', () => {
     const { sam, samToken } = await scene();
     await api('DELETE', '/api/v1/me', { token: samToken, body: { password: PASSWORD } });
     expect(await db.select().from(member).where(eq(member.email, sam.email))).toEqual([]);
+  });
+});
+
+describe('requests and public messages in export and deletion (003 US7)', () => {
+  async function scene() {
+    const fay = await createFounder('Fay');
+    const sam = await createInvitedMember(fay, 'Sam');
+    const alex = await createInvitedMember(sam, 'Alex');
+    return { samToken: await signIn(sam), alexToken: await signIn(alex) };
+  }
+  it('exports my requests, their links, my public messages, and flags about them', async () => {
+    const { samToken, alexToken } = await scene();
+    const id = (await api('POST', '/api/v1/requests', { token: samToken, body: { kind: 'trade', title: 'Bike pump', neededBy: '2099-01-01', giveBack: [{ description: 'Jam' }] } })).body.id;
+    const { body: pump } = await api('POST', '/api/v1/offerings', { token: alexToken, body: { type: 'trade', title: 'Pump', forRequest: id } });
+    await api('POST', `/api/v1/requests/${id}/messages`, { token: samToken, body: { body: 'Any size is fine' } });
+    await api('POST', `/api/v1/requests/${id}/flags`, { token: alexToken, body: { request: 'Which valve?' } });
+    const data = JSON.parse(strFromU8((await download(samToken)).files['my-wunan-data.json']!));
+    expect(data.requests[0]).toMatchObject({
+      kind: 'trade',
+      title: 'Bike pump',
+      needed_by: '2099-01-01',
+      could_give_back: [{ description: 'Jam', amount: null, unit: null }],
+      status: 'open',
+      linked_offerings: [{ offering_id: pump.id, title: 'Pump' }]
+    });
+    expect(data.public_messages[0]).toMatchObject({ on: { request: id, title: 'Bike pump' }, body: 'Any size is fine', removed: false });
+    expect(data.flags_received[0]).toMatchObject({ request_title: 'Bike pump', from: 'Alex', request: 'Which valve?' });
+  });
+
+  it('closes my requests for everyone and deletes my public messages when I leave', async () => {
+    const { samToken, alexToken } = await scene();
+    const id = (await api('POST', '/api/v1/requests', { token: samToken, body: { kind: 'borrow', title: 'Ladder', description: 'For the roof' } })).body.id;
+    const { body: ladder } = await api('POST', '/api/v1/offerings', { token: alexToken, body: { type: 'lend', title: 'Ladder', forRequest: id } });
+    await api('POST', `/api/v1/offerings/${ladder.id}/messages`, { token: samToken, body: { body: 'How tall is it?' } });
+    expect((await api('DELETE', '/api/v1/me', { token: samToken, body: { password: PASSWORD } })).status).toBe(204);
+
+    expect((await api('GET', `/api/v1/requests/${id}`, { token: alexToken })).status).toBe(404);
+    expect((await api('GET', '/api/v1/requests', { token: alexToken })).body.items).toEqual([]);
+    expect((await api('GET', `/api/v1/offerings/${ladder.id}/messages`, { token: alexToken })).body.items).toEqual([]);
+    // Alex's offering stays as it was.
+    expect((await api('GET', `/api/v1/offerings/${ladder.id}`, { token: alexToken })).body).toMatchObject({ status: 'available', answersRequest: null });
   });
 });

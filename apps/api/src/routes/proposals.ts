@@ -8,21 +8,21 @@ import * as proposals from '../modules/proposals.ts';
 export const proposalRoutes = createRouter();
 proposalRoutes.use('/proposals', requireMember);
 proposalRoutes.use('/proposals/*', requireMember);
-proposalRoutes.use('/listings/:id/proposals', requireMember);
+proposalRoutes.use('/offerings/:id/proposals', requireMember);
 
 const security = [{ bearer: [] }];
 const Id = z.object({ id: z.uuid({ message: 'That proposal could not be found.' }) });
-const ListingId = z.object({ id: z.uuid({ message: 'That listing could not be found.' }) });
+const OfferingId = z.object({ id: z.uuid({ message: 'That offering could not be found.' }) });
 const body = <T extends z.ZodType>(schema: T) => ({ content: { 'application/json': { schema } } });
 const reply = <T extends z.ZodType>(schema: T, description: string) => ({ description, content: { 'application/json': { schema } } });
 
 proposalRoutes.openapi(
   createRoute({
     method: 'post',
-    path: '/listings/{id}/proposals',
-    summary: 'Make a proposal on someone else\'s listing; every detail is optional',
+    path: '/offerings/{id}/proposals',
+    summary: 'Make a proposal on someone else\'s offering; every detail is optional',
     security,
-    request: { params: ListingId, body: body(CreateProposal) },
+    request: { params: OfferingId, body: body(CreateProposal) },
     responses: { 201: reply(z.object({ id: z.string(), conversationId: z.string() }), 'The new proposal') }
   }),
   async (c) => c.json(await proposals.createProposal(c.req.valid('param').id, c.get('member').id, c.req.valid('json')), 201)

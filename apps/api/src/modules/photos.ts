@@ -1,4 +1,4 @@
-// Listing photos (FR-012; research §8). Every upload is decoded and re-encoded as WebP by sharp,
+// Offering photos (FR-012; research §8). Every upload is decoded and re-encoded as WebP by sharp,
 // which drops all metadata (including GPS location). Files are stored under a random name and are
 // only ever served to signed-in members.
 import { randomBytes } from 'node:crypto';
@@ -8,9 +8,9 @@ import { and, count, eq } from 'drizzle-orm';
 import sharp from 'sharp';
 import { config } from '../config.ts';
 import { db } from '../db/index.ts';
-import { listingPhoto } from '../db/schema/index.ts';
+import { offeringPhoto } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
-import { ownedListing } from './listings.ts';
+import { ownedOffering } from './offerings.ts';
 
 export const MAX_PHOTOS = 6;
 export const MAX_BYTES = 10 * 1024 * 1024;
@@ -21,12 +21,12 @@ const PHOTO_FORMATS = new Set(['jpeg', 'png', 'webp', 'gif', 'heif', 'avif', 'ti
 const photosDir = path.resolve(config.PHOTOS_DIR);
 const fileFor = (key: string) => path.join(photosDir, `${key}.webp`);
 
-export async function addPhoto(listingId: string, ownerId: string, file: File, alt: string | null) {
-  await ownedListing(listingId, ownerId);
+export async function addPhoto(offeringId: string, ownerId: string, file: File, alt: string | null) {
+  await ownedOffering(offeringId, ownerId);
   if (file.size > MAX_BYTES) throw new ApiError(413, 'too_large', 'That photo is larger than 10 MB. Please choose a smaller one.');
-  const [existing] = await db.select({ photos: count() }).from(listingPhoto).where(eq(listingPhoto.listingId, listingId));
+  const [existing] = await db.select({ photos: count() }).from(offeringPhoto).where(eq(offeringPhoto.offeringId, offeringId));
   if ((existing?.photos ?? 0) >= MAX_PHOTOS) {
-    throw new ApiError(409, 'too_many_photos', 'A listing can have up to 6 photos. Remove one to add another.');
+    throw new ApiError(409, 'too_many_photos', 'An offering can have up to 6 photos. Remove one to add another.');
   }
 
   const notAPhoto = () =>
@@ -53,31 +53,31 @@ export async function addPhoto(listingId: string, ownerId: string, file: File, a
   await mkdir(photosDir, { recursive: true });
   await writeFile(fileFor(key), webp);
   const [row] = await db
-    .insert(listingPhoto)
-    .values({ listingId, fileKey: key, altText: alt, position: existing?.photos ?? 0 })
+    .insert(offeringPhoto)
+    .values({ offeringId, fileKey: key, altText: alt, position: existing?.photos ?? 0 })
     .returning();
   return photoResponse(row!);
 }
 
-export async function updatePhoto(listingId: string, ownerId: string, photoId: string, changes: { alt?: string | null | undefined; position?: number | undefined }) {
-  await ownedListing(listingId, ownerId);
-  const values: Partial<typeof listingPhoto.$inferInsert> = {};
+export async function updatePhoto(offeringId: string, ownerId: string, photoId: string, changes: { alt?: string | null | undefined; position?: number | undefined }) {
+  await ownedOffering(offeringId, ownerId);
+  const values: Partial<typeof offeringPhoto.$inferInsert> = {};
   if (changes.alt !== undefined) values.altText = changes.alt;
   if (changes.position !== undefined) values.position = changes.position;
   const [row] = await db
-    .update(listingPhoto)
+    .update(offeringPhoto)
     .set(values)
-    .where(and(eq(listingPhoto.id, photoId), eq(listingPhoto.listingId, listingId)))
+    .where(and(eq(offeringPhoto.id, photoId), eq(offeringPhoto.offeringId, offeringId)))
     .returning();
   if (!row) throw errors.notFound('That photo');
   return photoResponse(row);
 }
 
-export async function deletePhoto(listingId: string, ownerId: string, photoId: string) {
-  await ownedListing(listingId, ownerId);
+export async function deletePhoto(offeringId: string, ownerId: string, photoId: string) {
+  await ownedOffering(offeringId, ownerId);
   const [row] = await db
-    .delete(listingPhoto)
-    .where(and(eq(listingPhoto.id, photoId), eq(listingPhoto.listingId, listingId)))
+    .delete(offeringPhoto)
+    .where(and(eq(offeringPhoto.id, photoId), eq(offeringPhoto.offeringId, offeringId)))
     .returning();
   if (!row) throw errors.notFound('That photo');
   await rm(fileFor(row.fileKey), { force: true });
@@ -91,7 +91,7 @@ export async function deletePhotoFiles(keys: string[]) {
 /** Image bytes for a signed-in member. The key format is checked so it can't point elsewhere. */
 export async function readPhoto(key: string): Promise<Buffer> {
   if (!KEY_PATTERN.test(key)) throw errors.notFound('That photo');
-  const [row] = await db.select({ id: listingPhoto.id }).from(listingPhoto).where(eq(listingPhoto.fileKey, key));
+  const [row] = await db.select({ id: offeringPhoto.id }).from(offeringPhoto).where(eq(offeringPhoto.fileKey, key));
   if (!row) throw errors.notFound('That photo');
   try {
     return await readFile(fileFor(key));
@@ -100,6 +100,6 @@ export async function readPhoto(key: string): Promise<Buffer> {
   }
 }
 
-function photoResponse(row: typeof listingPhoto.$inferSelect) {
+function photoResponse(row: typeof offeringPhoto.$inferSelect) {
   return { id: row.id, key: row.fileKey, url: `/api/v1/photos/${row.fileKey}`, alt: row.altText, position: row.position };
 }

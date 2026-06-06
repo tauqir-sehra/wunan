@@ -10,7 +10,8 @@ export async function expectAccessible(page: Page, label = page.url()) {
     await page.emulateMedia({ colorScheme });
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
     const summary = results.violations.map(
-      (v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`
+      (v) =>
+        `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`
     );
     expect(summary, `Accessibility problems on ${label} in the ${colorScheme} theme`).toEqual([]);
   }

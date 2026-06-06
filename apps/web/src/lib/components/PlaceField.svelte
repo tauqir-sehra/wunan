@@ -64,7 +64,13 @@
   const errorId = $derived(error ? `${name}-error` : undefined);
   const noteId = $derived(unavailable ? `${name}-note` : undefined);
   const describedBy = $derived([errorId, hintId, noteId].filter(Boolean).join(' ') || undefined);
-  const saved = $derived(picked ? JSON.stringify(picked) : text.trim() ? JSON.stringify({ label: text.trim(), source: 'typed' }) : '');
+  const saved = $derived(
+    picked
+      ? JSON.stringify(picked)
+      : text.trim()
+        ? JSON.stringify({ label: text.trim(), source: 'typed' })
+        : ''
+  );
 
   function onInput(event: Event & { currentTarget: HTMLInputElement }) {
     picked = null; // Typing again means it's the member's own words, until they pick again.
@@ -92,7 +98,10 @@
     }
     active = -1;
     open = options.length > 0;
-    announcement = options.length === 0 ? '' : `${options.length} ${options.length === 1 ? 'suggestion' : 'suggestions'}. Use the arrow keys to choose.`;
+    announcement =
+      options.length === 0
+        ? ''
+        : `${options.length} ${options.length === 1 ? 'suggestion' : 'suggestions'}. Use the arrow keys to choose.`;
   }
 
   function choose(option: Place & { display?: string }) {
@@ -121,7 +130,15 @@
   }
 
   const kindOf = (place: Place) =>
-    place.houseNumber ? 'Address' : place.name && place.street ? 'Place' : place.neighbourhood ? 'Neighbourhood' : place.city ? 'City or town' : 'Place';
+    place.houseNumber
+      ? 'Address'
+      : place.name && place.street
+        ? 'Place'
+        : place.neighbourhood
+          ? 'Neighbourhood'
+          : place.city
+            ? 'City or town'
+            : 'Place';
 </script>
 
 <div class="relative grid gap-1.5">
@@ -150,19 +167,25 @@
     onblur={() => setTimeout(() => (open = false), 150)}
   />
   <input type="hidden" {name} value={saved} />
-  {#if unavailable}<InfoNote id={noteId}>Suggestions aren't available right now. You can type the place.</InfoNote>{/if}
+  {#if unavailable}<InfoNote id={noteId}
+      >Suggestions aren't available right now. You can type the place.</InfoNote
+    >{/if}
   <ul
     id={listId}
     role="listbox"
     aria-label="Suggestions for {label}"
-    class="absolute top-full z-10 mt-1 grid w-full gap-0.5 rounded-md border bg-card p-1 shadow-sm {open ? '' : 'hidden'}"
+    class="absolute top-full z-10 mt-1 grid w-full gap-0.5 rounded-md border bg-card p-1 shadow-sm {open
+      ? ''
+      : 'hidden'}"
   >
     {#each options as option, index (option.label + index)}
       <li
         id="{listId}-{index}"
         role="option"
         aria-selected={index === active}
-        class="min-h-11 cursor-pointer rounded px-3 py-2 {index === active ? 'bg-accent outline-2 outline-primary' : ''}"
+        class="min-h-11 cursor-pointer rounded px-3 py-2 {index === active
+          ? 'bg-accent outline-2 outline-primary'
+          : ''}"
         onmousedown={(event) => {
           event.preventDefault();
           choose(option);

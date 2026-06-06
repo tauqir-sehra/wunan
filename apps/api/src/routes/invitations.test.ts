@@ -117,7 +117,7 @@ describe('joining', () => {
 
     // The join checkbox sets email notifications for every type.
     const preferences = await db.select().from(notificationPreference).where(eq(notificationPreference.memberId, alex!.id));
-    expect(preferences).toHaveLength(5);
+    expect(preferences).toHaveLength(7);
     expect(preferences.every((p) => p.email && !p.device)).toBe(true);
   });
 

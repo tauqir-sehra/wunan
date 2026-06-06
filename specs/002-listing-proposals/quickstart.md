@@ -1,4 +1,4 @@
-# Quickstart: Validate Proposals for Listings
+# Quickstart: Validate Proposals for Offerings
 
 How to prove the proposal workflow works end to end. Setup is the same as
 [001 quickstart](../001-community-resource-sharing/quickstart.md), with a database reset first.
@@ -47,7 +47,7 @@ Use two browser windows (Sam = lister, Robin = requester; invite Robin first).
    refreshes; Sam presses Accept → told the details changed and shown the new ones.
 4. **Overlapping loans**: Ana proposes to borrow the drill overlapping Robin's loan → the proposal
    shows "Already lent: …" and can't be accepted. Ana moves her dates after Robin's → Sam accepts.
-   The listing shows "Lent out" only once Robin's loan period starts.
+   The offering shows "Lent out" only once Robin's loan period starts.
 5. **Nothing left (US1, edge case)**: Sam gives away 5 kg rice; Robin asks for 3 kg, Ana for 5 kg,
    Kim for 2 kg. Sam accepts Robin → Ana is told only 2 kg is left (can't be accepted until amended);
    Sam accepts Kim → Ana's proposal closes and Ana is notified.
@@ -57,7 +57,7 @@ Use two browser windows (Sam = lister, Robin = requester; invite Robin first).
 7. **Service limits (US4)**: Jo offers bike repair, 1 hour, 4 times, Mon–Fri 18:00–21:00, area
    Riverside. Leo tries 5 times, Saturday, 2 hours, and a place in another neighbourhood → four plain
    messages; fixes each → Jo accepts; 2 sessions remain.
-8. **One page (US5)**: `/proposals` shows "Asked by me" and "On my listings" with states in words;
+8. **One page (US5)**: `/proposals` shows "Asked by me" and "On my offerings" with states in words;
    contact sharing and call times work on a proposal page; a declined proposal is read-only.
 9. **Units (US6)**: gift "2 lb coffee", gift "8 oz tea", service lasting "2 days".
 10. **Places (US7)**: type "Riv" in each place field → suggestions; keyboard only: arrows, Enter,

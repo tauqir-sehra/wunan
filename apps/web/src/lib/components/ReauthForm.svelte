@@ -15,9 +15,7 @@
 
 <section class="mx-auto grid max-w-md gap-5" aria-labelledby="reauth-title">
   <h1 id="reauth-title" class="text-2xl font-semibold">Please sign in again</h1>
-  <p>
-    Your sign-in ran out. What you typed is kept, and it will be sent as soon as you sign in.
-  </p>
+  <p>Your sign-in ran out. What you typed is kept, and it will be sent as soon as you sign in.</p>
   {#if reauth.hadFiles}
     <Notice kind="info"><p>Please choose your photos again after signing in.</p></Notice>
   {/if}
@@ -28,8 +26,21 @@
     {#each reauth.fields as [name, value], index (index)}
       <input type="hidden" {name} {value} />
     {/each}
-    <FormField label="Email" name="_reauth_email" type="email" autocomplete="email" required value={reauth.email} />
-    <FormField label="Password" name="_reauth_password" type="password" autocomplete="current-password" required />
+    <FormField
+      label="Email"
+      name="_reauth_email"
+      type="email"
+      autocomplete="email"
+      required
+      value={reauth.email}
+    />
+    <FormField
+      label="Password"
+      name="_reauth_password"
+      type="password"
+      autocomplete="current-password"
+      required
+    />
     <Button type="submit">Sign in and send</Button>
   </form>
 </section>

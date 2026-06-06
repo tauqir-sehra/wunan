@@ -3,7 +3,7 @@
 // API writes when a proposal changes. There is no inbox and no way to start a thread directly.
 import { and, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { conversation, conversationParticipant, listing, member, message, proposal } from '../db/schema/index.ts';
+import { conversation, conversationParticipant, offering, member, message, proposal } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { checkRateLimit } from '../lib/rate-limit.ts';
 import { notify } from '../notify/index.ts';
@@ -86,7 +86,7 @@ async function summarise(c: typeof conversation.$inferSelect, memberId: string, 
     .innerJoin(member, eq(member.id, conversationParticipant.memberId))
     .where(and(eq(conversationParticipant.conversationId, c.id), ne(conversationParticipant.memberId, memberId)));
   const [item] = c.proposalId
-    ? await db.select({ id: listing.id, title: listing.title }).from(proposal).innerJoin(listing, eq(listing.id, proposal.listingId)).where(eq(proposal.id, c.proposalId))
+    ? await db.select({ id: offering.id, title: offering.title }).from(proposal).innerJoin(offering, eq(offering.id, proposal.offeringId)).where(eq(proposal.id, c.proposalId))
     : [];
   const [last] = await db.select().from(message).where(eq(message.conversationId, c.id)).orderBy(desc(message.createdAt)).limit(1);
   const [unread] = await db
@@ -104,7 +104,7 @@ async function summarise(c: typeof conversation.$inferSelect, memberId: string, 
   return {
     id: c.id,
     participants: people.map((p) => ({ id: p.id, displayName: shownName(p) })),
-    listing: item ?? null,
+    offering: item ?? null,
     isMediation: c.problemReportId !== null,
     proposalId: c.proposalId,
     canWrite,
@@ -237,7 +237,7 @@ async function post(conversationId: string, authorId: string | null, values: Pos
   if (notice === false) return (await toJson([saved!]))[0]!;
 
   const [item] = c?.proposalId
-    ? await db.select({ title: listing.title }).from(proposal).innerJoin(listing, eq(listing.id, proposal.listingId)).where(eq(proposal.id, c.proposalId))
+    ? await db.select({ title: offering.title }).from(proposal).innerJoin(offering, eq(offering.id, proposal.offeringId)).where(eq(proposal.id, c.proposalId))
     : [];
   const [author] = authorId ? await db.select().from(member).where(eq(member.id, authorId)) : [];
   const others = await db

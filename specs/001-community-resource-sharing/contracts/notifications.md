@@ -22,7 +22,7 @@ Calm rules for both channels (constitution V and I):
 | `agreement` | Owner | Other member disputes it | "Alex said an agreement needs a correction" | The agreement |
 | `reminder` | Owner and borrower | Once, the day after `return_due` if not returned | "A reminder about the drill" | The agreement |
 | `report` | Reported member and current mediators | Report created or escalated | "Someone asked for help with an agreement" | The report |
-| `flag` | Listing owner | A member flags their listing | "Alex sent a request about your listing" | The listing |
+| `flag` | Offering owner | A member flags their offering | "Alex sent a request about your offering" | The offering |
 
 Account emails (password reset) are always sent and cannot be turned off.
 

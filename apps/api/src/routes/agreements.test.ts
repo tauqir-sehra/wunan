@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { agreement } from '../db/schema/index.ts';
-import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, signIn } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, signIn } from '../test/setup.ts';
 
 async function setup() {
   const sam = await createFounder('Sam');
@@ -17,7 +17,7 @@ async function setup() {
 describe('agreements', () => {
   it('copies what was agreed, and only the owner marks a loan returned', async () => {
     const { samToken, alexToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill', loanLength: 3, loanLengthUnit: 'days' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill', loanLength: 3, loanLengthUnit: 'days' });
     const { agreementId, proposalId } = await agree(samToken, alexToken, drill.id, completeDetails('lend'));
 
     const shown = await api('GET', `/api/v1/agreements/${agreementId}`, { token: alexToken });
@@ -32,15 +32,15 @@ describe('agreements', () => {
 
   it('only loans can be marked returned', async () => {
     const { samToken, alexToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
     const { agreementId } = await agree(samToken, alexToken, rice.id, completeDetails('gift', { amount: '1' }));
     expect((await api('POST', `/api/v1/agreements/${agreementId}/returned`, { token: samToken })).body.error.code).toBe('not_a_loan');
   });
 
   it("groups history from each person's side and counts overdue loans", async () => {
     const { samToken, alexToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     await agree(samToken, alexToken, rice.id, completeDetails('gift', { amount: '1' }));
     const loan = await agree(samToken, alexToken, drill.id, completeDetails('lend'));
     // The loan ended yesterday and hasn't been marked returned.
@@ -63,14 +63,14 @@ describe('agreements', () => {
   it('keeps agreements private to the two people', async () => {
     const { sam, samToken, alexToken } = await setup();
     const kim = await createInvitedMember(sam, 'Kim');
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice' });
     const { agreementId } = await agree(samToken, alexToken, rice.id, completeDetails('gift'));
     expect((await api('GET', `/api/v1/agreements/${agreementId}`, { token: await signIn(kim) })).status).toBe(404);
   });
 
   it('the old recording and confirming endpoints are gone', async () => {
     const { samToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice' });
-    expect((await api('POST', `/api/v1/listings/${rice.id}/agreements`, { token: samToken, body: {} })).status).toBe(404);
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice' });
+    expect((await api('POST', `/api/v1/offerings/${rice.id}/agreements`, { token: samToken, body: {} })).status).toBe(404);
   });
 });

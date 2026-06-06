@@ -7,7 +7,7 @@
   const groups = $derived(
     [
       { role: 'requester', heading: 'Asked by me', empty: "You haven't asked for anything yet. When you find something you'd like, make a proposal on it." },
-      { role: 'lister', heading: 'On my listings', empty: 'Nobody has asked about your listings yet.' }
+      { role: 'lister', heading: 'On my offerings', empty: 'Nobody has asked about your offerings yet.' }
     ].filter((g) => !data.role || g.role === data.role)
   );
   const fieldWords: Record<string, string> = {
@@ -56,7 +56,7 @@
           {#each items as p (p.id)}
             <li>
               <a href="/proposals/{p.id}" class="grid gap-1 rounded-xl border bg-card p-4 text-foreground no-underline hover:bg-accent">
-                <span class="font-medium underline underline-offset-2">{p.listing.title}</span>
+                <span class="font-medium underline underline-offset-2">{p.offering.title}</span>
                 <span>With {p.otherMember.displayName} · {state(p)}</span>
                 {#if p.unread}<span class="text-sm font-medium">New activity</span>{/if}
                 {#if p.lastMessagePreview}<span class="truncate text-sm text-muted-foreground">{p.lastMessagePreview}</span>{/if}

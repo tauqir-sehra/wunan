@@ -74,6 +74,10 @@ The UI MUST be calm and predictable, suitable for people who are easily overstim
 - Show one task at a time; avoid walls of options, dense dashboards, and competing calls to action.
 - Notifications MUST be opt-in, infrequent, and never use urgency or alarm to drive action.
 - Layout, navigation, and wording MUST stay consistent across screens.
+- Things on screen MUST stay put. Clicking, typing, hovering, focusing, posting, or loading MUST
+  NOT shift other elements around: the current page or tab is shown without changing text weight
+  or size, and space for messages, counts, and loading states is kept or added below what the
+  person is working on, not above it. Actions keep the page scrolled where it was.
 - No time pressure: no countdowns or session timeouts that discard user work without warning.
 
 **Rationale**: Sensory overload and unpredictability make software unusable for many people.
@@ -119,8 +123,8 @@ Every change MUST pass these gates before merge:
 - **Usability**: The change keeps core workflows simple and uses plain language (Principle II).
 - **Accessibility**: UI changes are checked against WCAG 2.2 AA, including keyboard navigation,
   contrast, and screen-reader labels (Principle IV).
-- **Calm design**: UI changes add no autoplay, flashing, unrequested motion, or urgency patterns
-  (Principle V).
+- **Calm design**: UI changes add no autoplay, flashing, unrequested motion, or urgency patterns,
+  and actions don't shift elements around or jump the page (Principle V).
 - **Security**: Inputs are validated, secrets are absent, and sensitive changes have had a
   security review (Principle III).
 - **Non-extraction**: The change adds no tracking, dark patterns, or unnecessary data
@@ -152,4 +156,4 @@ constitution wins.
   Complexity MUST be justified. Maintainers review the constitution periodically to keep it
   accurate and useful.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-03 | **Last Amended**: 2026-06-03
+**Version**: 1.2.0 | **Ratified**: 2026-06-03 | **Last Amended**: 2026-06-06

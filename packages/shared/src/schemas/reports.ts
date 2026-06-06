@@ -23,7 +23,7 @@ export const EscalationLevel = z.enum(['inviter', 'inviters_inviter', 'founders'
 export const ProblemReport = z.object({
   id: z.string(),
   agreementId: z.string(),
-  listingTitle: z.string(),
+  offeringTitle: z.string(),
   description: z.string(),
   status: z.enum(['open', 'resolved']),
   escalationLevel: EscalationLevel,

@@ -1,15 +1,15 @@
 // Agreements: made when a lister accepts a proposal (002 FR-018), confirmed from the start. They
-// keep a copy of the accepted details, so later edits to the listing never change what was agreed.
-// Loans hold a period; PostgreSQL refuses two unreturned loans of one listing whose periods overlap
+// keep a copy of the accepted details, so later edits to the offering never change what was agreed.
+// Loans hold a period; PostgreSQL refuses two unreturned loans of one offering whose periods overlap
 // (an exclusion constraint added by hand in drizzle/0000_initial.sql, as drizzle-kit can't write it).
 import { sql } from 'drizzle-orm';
 import { boolean, check, customType, index, integer, jsonb, numeric, pgEnum, pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
 import type { AgreementOfferSnapshot, Place } from '@wunan/shared';
-import { handover, listing, sessionLengthUnit } from './listings.ts';
+import { handover, offering, sessionLengthUnit } from './offerings.ts';
 import { member } from './members.ts';
 import { proposal } from './proposals.ts';
 
-/** Follows the listing's type: lend → lent, gift → gifted, trade → traded, service → provided. */
+/** Follows the offering's type: lend → lent, gift → gifted, trade → traded, service → provided. */
 export const agreementOutcome = pgEnum('agreement_outcome', ['lent', 'gifted', 'traded', 'provided']);
 
 const tstzrange = customType<{ data: string }>({ dataType: () => 'tstzrange' });
@@ -22,9 +22,9 @@ export const agreement = pgTable(
       .notNull()
       .unique()
       .references(() => proposal.id),
-    listingId: uuid()
+    offeringId: uuid()
       .notNull()
-      .references(() => listing.id, { onDelete: 'restrict' }),
+      .references(() => offering.id, { onDelete: 'restrict' }),
     ownerId: uuid()
       .notNull()
       .references(() => member.id),
@@ -63,6 +63,6 @@ export const agreement = pgTable(
     ),
     index('agreement_owner_idx').on(t.ownerId),
     index('agreement_other_idx').on(t.otherMemberId),
-    index('agreement_listing_idx').on(t.listingId)
+    index('agreement_offering_idx').on(t.offeringId)
   ]
 );

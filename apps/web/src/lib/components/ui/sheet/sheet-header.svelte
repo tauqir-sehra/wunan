@@ -11,6 +11,11 @@
   }: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
 </script>
 
-<div bind:this={ref} data-slot="sheet-header" class={cn('grid gap-2 p-5', className)} {...restProps}>
+<div
+  bind:this={ref}
+  data-slot="sheet-header"
+  class={cn('grid gap-2 p-5', className)}
+  {...restProps}
+>
   {@render children?.()}
 </div>

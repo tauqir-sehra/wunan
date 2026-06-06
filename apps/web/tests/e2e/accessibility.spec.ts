@@ -3,33 +3,101 @@
 // visible focus indicator. Screen-reader walkthroughs are done by hand.
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
-import { acceptProposal, completeDetails, createFounder, createInvitation, createInvitedMember, createListingFor, memberIdOf, proposeOn } from './helpers/members.ts';
+import {
+  acceptProposal,
+  completeDetails,
+  createFounder,
+  createInvitation,
+  createInvitedMember,
+  createOfferingFor,
+  createRequestFor,
+  memberIdOf,
+  proposeOn
+} from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
 
 async function noSidewaysScroll(page: Page, label: string) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+  );
   expect(overflow, `${label} scrolls sideways`).toBeLessThanOrEqual(0);
 }
 
 async function pagesOfACommunity() {
   const sam = createFounder('Sam');
   const alex = await createInvitedMember(sam, 'Alex');
-  const drill = await createListingFor(sam, { type: 'lend', title: 'Drill', description: 'A cordless drill with two batteries.', area: 'Riverside' });
+  const drill = await createOfferingFor(sam, {
+    type: 'lend',
+    title: 'Drill',
+    description: 'A cordless drill with two batteries.',
+    area: 'Riverside'
+  });
   const samId = await memberIdOf(sam);
   const deal = await proposeOn(alex, drill.id, completeDetails('lend'));
   const agreement = { id: await acceptProposal(sam, deal.id) };
-  const rice = await createListingFor(sam, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+  const rice = await createOfferingFor(sam, {
+    type: 'gift',
+    title: 'Rice',
+    amount: '5',
+    unit: 'kg'
+  });
   const open = await proposeOn(alex, rice.id);
-  const jam = await createListingFor(alex, { type: 'trade', title: 'Jam', accepts: [{ description: 'Eggs' }] });
+  const jam = await createOfferingFor(alex, {
+    type: 'trade',
+    title: 'Jam',
+    accepts: [{ description: 'Eggs' }]
+  });
+  // Requests (003): one of Sam's and one of Alex's.
+  const mine = await createRequestFor(sam, {
+    kind: 'trade',
+    title: 'Bike pump',
+    giveBack: [{ description: 'Jam' }]
+  });
+  const theirs = await createRequestFor(alex, {
+    kind: 'service',
+    title: 'Help moving a sofa',
+    neededBy: '2099-01-01',
+    area: 'Riverside'
+  });
   return {
     sam,
     paths: [
-      '/', '/listings', '/listings?q=drill&type=lend', `/listings/${drill.id}`, '/listings/new', `/listings/${drill.id}/edit`,
-      `/listings/${jam.id}/propose`, '/my-listings', '/proposals', `/proposals/${open.id}`, `/proposals/${deal.id}`,
-      `/threads/${open.conversationId}/share-contact`, `/threads/${open.conversationId}/call`, `/listings/${jam.id}/issue`,
-      '/agreements', `/agreements/${agreement.id}`, `/agreements/${agreement.id}/report`, '/invitations',
-      `/members/${samId}`, `/members/${samId}/chain`, '/settings', '/settings/notifications', '/settings/export',
-      '/settings/delete-account', '/help', '/help/joining', '/help/asking-for-help'
+      '/',
+      '/offerings',
+      '/offerings?q=drill&type=lend',
+      `/offerings/${drill.id}`,
+      '/offerings/new',
+      `/offerings/${drill.id}/edit`,
+      `/offerings/${jam.id}/propose`,
+      '/offerings?mine=true',
+      '/proposals',
+      `/proposals/${open.id}`,
+      `/proposals/${deal.id}`,
+      `/threads/${open.conversationId}/share-contact`,
+      `/threads/${open.conversationId}/call`,
+      `/offerings/${jam.id}/issue`,
+      '/agreements',
+      `/agreements/${agreement.id}`,
+      `/agreements/${agreement.id}/report`,
+      '/invitations',
+      `/members/${samId}`,
+      `/members/${samId}/chain`,
+      '/settings',
+      '/settings/notifications',
+      '/settings/export',
+      '/settings/delete-account',
+      '/help',
+      '/help/joining',
+      '/help/asking-for-help',
+      '/requests',
+      '/requests?mine=true',
+      '/requests/new',
+      `/requests/${mine.id}`,
+      `/requests/${mine.id}/edit`,
+      `/requests/${theirs.id}`,
+      `/requests/${theirs.id}/help`,
+      `/requests/${theirs.id}/issue`,
+      '/help/requests'
     ]
   };
 }
@@ -73,7 +141,7 @@ test('signed-out pages fit small screens', async ({ page }) => {
 test('the keyboard reaches everything, with a visible focus ring', async ({ page }) => {
   const sam = createFounder('Sam');
   await signInAs(page, sam);
-  await page.goto('/listings');
+  await page.goto('/offerings');
 
   // The first Tab shows the skip link, which jumps to the page content.
   await page.keyboard.press('Tab');
@@ -84,7 +152,7 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
   await expect(page).toHaveURL(/#main$/);
 
   // Every navigation link can be reached with Tab and shows a focus ring.
-  await page.goto('/listings');
+  await page.goto('/offerings');
   const seen = new Set<string>();
   for (let i = 0; i < 30; i += 1) {
     await page.keyboard.press('Tab');
@@ -92,20 +160,35 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body) return null;
       const style = getComputedStyle(el);
-      const ring = style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) >= 2 || style.boxShadow !== 'none';
+      const ring =
+        (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) >= 2) ||
+        style.boxShadow !== 'none';
       return { text: el.textContent?.trim() ?? '', ring };
     });
     if (!focused) continue;
     expect(focused.ring, `"${focused.text}" has no visible focus ring`).toBe(true);
     seen.add(focused.text);
   }
-  for (const label of ['Find', 'Proposals', 'My listings', 'Agreements', 'Invite', 'Share\u00a0a new listing', 'Sam']) {
-    expect([...seen].some((text) => text.startsWith(label)), `${label} reachable by keyboard (reached: ${[...seen].join(' | ')})`).toBe(true);
+  for (const label of [
+    'Offerings',
+    'Requests',
+    'Proposals',
+    'Agreements',
+    'Request\u00a0something',
+    'Offer\u00a0something',
+    'Sam'
+  ]) {
+    expect(
+      [...seen].some((text) => text.startsWith(label)),
+      `${label} reachable by keyboard (reached: ${[...seen].join(' | ')})`
+    ).toBe(true);
   }
   // The account menu opens from the keyboard too.
   await page.locator('summary', { hasText: 'Sam' }).focus();
   await page.keyboard.press('Enter');
   for (const label of ['Your profile', 'Settings', 'Help', 'Sign out']) {
-    await expect(page.getByRole('banner').getByRole('link', { name: label, exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByRole('banner').getByRole('link', { name: label, exact: true }).first()
+    ).toBeVisible();
   }
 });

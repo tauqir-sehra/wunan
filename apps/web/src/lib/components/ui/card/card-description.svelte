@@ -11,6 +11,11 @@
   }: WithElementRef<HTMLAttributes<HTMLElement>> = $props();
 </script>
 
-<p bind:this={ref} data-slot="card-description" class={cn('text-muted-foreground', className)} {...restProps}>
+<p
+  bind:this={ref}
+  data-slot="card-description"
+  class={cn('text-muted-foreground', className)}
+  {...restProps}
+>
   {@render children?.()}
 </p>

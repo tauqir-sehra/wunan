@@ -1,10 +1,10 @@
 // Proposals (002 US1; FR-010 to FR-021): making, changing, accepting, declining, withdrawing, and
-// what happens to other proposals on the same listing.
+// what happens to other proposals on the same offering.
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { notificationPreference } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
-import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, futureDate, propose, signIn } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, futureDate, propose, signIn } from '../test/setup.ts';
 
 async function setup() {
   const sam = await createFounder('Sam');
@@ -22,8 +22,8 @@ const accept = async (token: string, id: string) => {
 describe('making a proposal', () => {
   it('needs nothing filled in, lists what is missing, and starts a thread with the message', async () => {
     const { samToken, robinToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill', loanLength: 3, loanLengthUnit: 'days' });
-    const made = await api('POST', `/api/v1/listings/${drill.id}/proposals`, { token: robinToken, body: { message: 'Could I borrow it?' } });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill', loanLength: 3, loanLengthUnit: 'days' });
+    const made = await api('POST', `/api/v1/offerings/${drill.id}/proposals`, { token: robinToken, body: { message: 'Could I borrow it?' } });
     expect(made.status).toBe(201);
 
     const shown = await get(samToken, made.body.id);
@@ -34,31 +34,31 @@ describe('making a proposal', () => {
     expect((await get(robinToken, made.body.id)).body.canEdit).toBe(true);
   });
 
-  it('is refused on your own listing, on a paused one, and twice by the same member', async () => {
+  it('is refused on your own offering, on a paused one, and twice by the same member', async () => {
     const { samToken, robinToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
-    expect((await api('POST', `/api/v1/listings/${drill.id}/proposals`, { token: samToken, body: {} })).body.error.code).toBe('own_listing');
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
+    expect((await api('POST', `/api/v1/offerings/${drill.id}/proposals`, { token: samToken, body: {} })).body.error.code).toBe('own_offering');
     const first = await propose(robinToken, drill.id);
-    const again = await api('POST', `/api/v1/listings/${drill.id}/proposals`, { token: robinToken, body: {} });
+    const again = await api('POST', `/api/v1/offerings/${drill.id}/proposals`, { token: robinToken, body: {} });
     expect(again.status).toBe(409);
     expect(again.body.error).toMatchObject({ code: 'proposal_exists', proposalId: first.id });
 
-    const ladder = await createListing(samToken, { type: 'lend', title: 'Ladder' });
-    await api('POST', `/api/v1/listings/${ladder.id}/pause`, { token: samToken });
-    expect((await api('POST', `/api/v1/listings/${ladder.id}/proposals`, { token: robinToken, body: {} })).body.error.code).toBe('not_available');
+    const ladder = await createOffering(samToken, { type: 'lend', title: 'Ladder' });
+    await api('POST', `/api/v1/offerings/${ladder.id}/pause`, { token: samToken });
+    expect((await api('POST', `/api/v1/offerings/${ladder.id}/proposals`, { token: robinToken, body: {} })).body.error.code).toBe('not_available');
   });
 
-  it("refuses details that don't apply to the listing's type", async () => {
+  it("refuses details that don't apply to the offering's type", async () => {
     const { samToken, robinToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
-    const result = await api('POST', `/api/v1/listings/${rice.id}/proposals`, { token: robinToken, body: { loanLength: 2, loanLengthUnit: 'days' } });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+    const result = await api('POST', `/api/v1/offerings/${rice.id}/proposals`, { token: robinToken, body: { loanLength: 2, loanLengthUnit: 'days' } });
     expect(result.status).toBe(400);
-    expect(result.body.error.fields.loanLength).toBe("This doesn't apply to this kind of listing.");
+    expect(result.body.error.fields.loanLength).toBe("This doesn't apply to this kind of offering.");
   });
 
   it('starts a gift at all that is left', async () => {
     const { samToken, robinToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
     const made = await propose(robinToken, rice.id);
     expect((await get(robinToken, made.id)).body.details.amount).toBe('5');
   });
@@ -66,7 +66,7 @@ describe('making a proposal', () => {
   it('tells the lister, by email when they turned it on', async () => {
     const { sam, samToken, robinToken } = await setup();
     await db.insert(notificationPreference).values({ memberId: sam.id, type: 'message', email: true });
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     testOutbox.length = 0;
     await propose(robinToken, drill.id);
     expect(testOutbox.map((m) => m.subject)).toContain('Robin asked to borrow your Drill');
@@ -76,7 +76,7 @@ describe('making a proposal', () => {
 describe('changing a proposal', () => {
   it('only the requester changes details; each change is noted in plain words', async () => {
     const { samToken, robinToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill', loanLength: 3, loanLengthUnit: 'days' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill', loanLength: 3, loanLengthUnit: 'days' });
     const made = await propose(robinToken, drill.id);
     expect((await change(samToken, made.id, { loanLength: 1, loanLengthUnit: 'days' })).body.error.code).toBe('not_requester');
 
@@ -95,7 +95,7 @@ describe('changing a proposal', () => {
 
   it('clears a detail with null', async () => {
     const { samToken, robinToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     const made = await propose(robinToken, drill.id, { date: '2030-03-02' });
     const cleared = await change(robinToken, made.id, { date: null });
     expect(cleared.body.details).toMatchObject({ date: null, startsAt: null });
@@ -103,7 +103,7 @@ describe('changing a proposal', () => {
 
   it('keeps others out', async () => {
     const { samToken, robinToken, anaToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     const made = await propose(robinToken, drill.id);
     expect((await get(anaToken, made.id)).status).toBe(404);
     expect((await change(anaToken, made.id, { date: '2030-03-02' })).status).toBe(404);
@@ -113,7 +113,7 @@ describe('changing a proposal', () => {
 describe('accepting', () => {
   it('needs every detail, then makes the agreement with no further step', async () => {
     const { samToken, robinToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
     const made = await propose(robinToken, rice.id);
     const notReady = await accept(samToken, made.id);
     expect(notReady.status).toBe(409);
@@ -126,13 +126,13 @@ describe('accepting', () => {
     expect(done.status).toBe(200);
     const deal = await api('GET', `/api/v1/agreements/${done.body.agreementId}`, { token: robinToken });
     expect(deal.body).toMatchObject({ outcome: 'gifted', amount: '2', group: 'received' });
-    expect((await api('GET', `/api/v1/listings/${rice.id}`, { token: samToken })).body).toMatchObject({ remaining: '3', status: 'available' });
+    expect((await api('GET', `/api/v1/offerings/${rice.id}`, { token: samToken })).body).toMatchObject({ remaining: '3', status: 'available' });
     expect((await get(robinToken, made.id)).body).toMatchObject({ status: 'accepted', agreementId: done.body.agreementId, canEdit: false });
   });
 
   it('refuses details the lister has not seen', async () => {
     const { samToken, robinToken } = await setup();
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice' });
     const made = await propose(robinToken, rice.id, completeDetails('gift'));
     const { version } = (await get(samToken, made.id)).body;
     await change(robinToken, made.id, { time: '11:00' });
@@ -144,7 +144,7 @@ describe('accepting', () => {
 
   it("can't be accepted when the time has passed or the loan is too long", async () => {
     const { samToken, robinToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill', loanLength: 2, loanLengthUnit: 'days' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill', loanLength: 2, loanLengthUnit: 'days' });
     const made = await propose(robinToken, drill.id, completeDetails('lend', { date: '2020-01-01', loanLength: 1, loanLengthUnit: 'weeks' }));
     const issues = (await get(samToken, made.id)).body.issues.map((i: { message: string }) => i.message);
     expect(issues).toContain('That time has passed. Please choose a new one.');
@@ -155,7 +155,7 @@ describe('accepting', () => {
     const { sam, samToken, robinToken, anaToken } = await setup();
     const kim = await createInvitedMember(sam, 'Kim');
     const kimToken = await signIn(kim);
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice', amount: '5', unit: 'kg' });
     const robins = await propose(robinToken, rice.id, completeDetails('gift', { amount: '3' }));
     const anas = await propose(anaToken, rice.id, completeDetails('gift', { amount: '5' }));
     const kims = await propose(kimToken, rice.id, completeDetails('gift', { amount: '2' }));
@@ -173,29 +173,29 @@ describe('accepting', () => {
     expect((await api('POST', `/api/v1/conversations/${closed.conversationId}/messages`, { token: anaToken, body: { body: 'Hello?' } })).body.error.code).toBe('thread_closed');
   });
 
-  it('a listing without an amount closes when given', async () => {
+  it('an offering without an amount closes when given', async () => {
     const { samToken, robinToken } = await setup();
-    const sneakers = await createListing(samToken, { type: 'trade', title: 'Sneakers' });
+    const sneakers = await createOffering(samToken, { type: 'trade', title: 'Sneakers' });
     await agree(samToken, robinToken, sneakers.id, completeDetails('trade'));
-    expect((await api('GET', `/api/v1/listings/${sneakers.id}`, { token: samToken })).body).toMatchObject({ status: 'closed', closedReason: 'used_up' });
+    expect((await api('GET', `/api/v1/offerings/${sneakers.id}`, { token: samToken })).body).toMatchObject({ status: 'closed', closedReason: 'used_up' });
   });
 
   it('a service uses its times and closes when none are left', async () => {
     const { samToken, robinToken, anaToken } = await setup();
-    const repair = await createListing(samToken, { type: 'service', title: 'Bike repair', sessionsAvailable: 2 });
+    const repair = await createOffering(samToken, { type: 'service', title: 'Bike repair', sessionsAvailable: 2 });
     await agree(samToken, robinToken, repair.id, completeDetails('service', { sessions: 1 }));
     const anas = await propose(anaToken, repair.id, completeDetails('service', { sessions: 2 }));
     expect((await get(anaToken, anas.id)).body.issues).toContainEqual({ field: 'sessions', message: 'Only 1 time is left.' });
     await change(anaToken, anas.id, { sessions: 1 });
     await accept(samToken, anas.id);
-    expect((await api('GET', `/api/v1/listings/${repair.id}`, { token: samToken })).body).toMatchObject({ sessionsRemaining: 0, status: 'closed' });
+    expect((await api('GET', `/api/v1/offerings/${repair.id}`, { token: samToken })).body).toMatchObject({ sessionsRemaining: 0, status: 'closed' });
   });
 });
 
 describe('loans', () => {
   it("can't overlap; later dates are fine, and other proposals stay open", async () => {
     const { samToken, robinToken, anaToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     await agree(samToken, robinToken, drill.id, completeDetails('lend', { date: futureDate(3), loanLength: 3, loanLengthUnit: 'days' }));
     const anas = await propose(anaToken, drill.id, completeDetails('lend', { date: futureDate(4), loanLength: 1, loanLengthUnit: 'days' }));
     const shown = (await get(samToken, anas.id)).body;
@@ -204,14 +204,14 @@ describe('loans', () => {
 
     await change(anaToken, anas.id, { date: futureDate(7) });
     expect((await accept(samToken, anas.id)).status).toBe(200);
-    const listing = (await api('GET', `/api/v1/listings/${drill.id}`, { token: anaToken })).body;
-    expect(listing.takenPeriods).toHaveLength(2);
-    expect(listing.lentOut).toBe(false); // Neither loan has started yet.
+    const offering = (await api('GET', `/api/v1/offerings/${drill.id}`, { token: anaToken })).body;
+    expect(offering.takenPeriods).toHaveLength(2);
+    expect(offering.lentOut).toBe(false); // Neither loan has started yet.
   });
 
   it('two overlapping accepts at the same moment: only one wins', async () => {
     const { sam, samToken, robinToken, anaToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     const details = completeDetails('lend', { date: futureDate(3) });
     const a = await propose(robinToken, drill.id, details);
     const b = await propose(anaToken, drill.id, details);
@@ -228,7 +228,7 @@ describe('loans', () => {
 describe('declining and withdrawing', () => {
   it('ends the proposal, keeps a note, and makes the thread read-only', async () => {
     const { samToken, robinToken, anaToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
     const robins = await propose(robinToken, drill.id);
     expect((await api('POST', `/api/v1/proposals/${robins.id}/decline`, { token: robinToken, body: {} })).body.error.code).toBe('not_lister');
     const declined = await api('POST', `/api/v1/proposals/${robins.id}/decline`, { token: samToken, body: { note: "I'm using it that week." } });
@@ -239,21 +239,21 @@ describe('declining and withdrawing', () => {
     const withdrawn = await api('POST', `/api/v1/proposals/${anas.id}/withdraw`, { token: anaToken, body: {} });
     expect(withdrawn.body.status).toBe('withdrawn');
     // A new proposal can be made once the old one ended.
-    expect((await api('POST', `/api/v1/listings/${drill.id}/proposals`, { token: anaToken, body: {} })).status).toBe(201);
+    expect((await api('POST', `/api/v1/offerings/${drill.id}/proposals`, { token: anaToken, body: {} })).status).toBe(201);
   });
 });
 
-describe('listing my proposals', () => {
+describe('offering my proposals', () => {
   it('shows both sides, open first, with unread state', async () => {
     const { samToken, robinToken } = await setup();
-    const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
-    const rice = await createListing(samToken, { type: 'gift', title: 'Rice' });
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
+    const rice = await createOffering(samToken, { type: 'gift', title: 'Rice' });
     await propose(robinToken, drill.id, { message: 'Hi' });
     const riceProposal = await propose(robinToken, rice.id);
     await api('POST', `/api/v1/proposals/${riceProposal.id}/withdraw`, { token: robinToken, body: {} });
 
     const mine = await api('GET', '/api/v1/proposals?role=lister', { token: samToken });
-    expect(mine.body.items.map((p: { listing: { title: string }; status: string }) => [p.listing.title, p.status])).toEqual([
+    expect(mine.body.items.map((p: { offering: { title: string }; status: string }) => [p.offering.title, p.status])).toEqual([
       ['Drill', 'open'],
       ['Rice', 'withdrawn']
     ]);

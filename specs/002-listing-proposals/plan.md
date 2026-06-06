@@ -1,4 +1,4 @@
-# Implementation Plan: Proposals for Listings
+# Implementation Plan: Proposals for Offerings
 
 **Branch**: `002-listing-proposals` | **Date**: 2026-06-05 | **Spec**: [spec.md](spec.md)
 
@@ -7,11 +7,11 @@
 ## Summary
 
 Replace "message, then the owner records an agreement, then the other member confirms" with
-**proposals**. A member makes a proposal on a listing (borrow, receive a gift, trade, receive a
+**proposals**. A member makes a proposal on an offering (borrow, receive a gift, trade, receive a
 service) holding when, how, where, and how much; every detail is optional until the lister accepts.
 Only the requester edits the details, which are what they have agreed to; the lister accepts a
 complete proposal at any time and it becomes the agreement. The proposal page holds the details and
-the proposal's message thread. Listings gain handover options, meeting places, several things
+the proposal's message thread. Offerings gain handover options, meeting places, several things
 accepted in a trade, and weekly service times. Loans become periods with an overlap guarantee.
 Place fields get suggestions from an operator-chosen Photon server, called only by the API.
 
@@ -29,7 +29,7 @@ Tailwind v4, …). No new npm packages. New: PostgreSQL's bundled `btree_gist` e
 Photon place-search service over `fetch` (research §1)
 
 **Storage**: PostgreSQL 17+. New tables `proposal`, `proposal_offer`, `trade_accept`,
-`service_availability`; changes to `listing`, `agreement`, `conversation`, `message`,
+`service_availability`; changes to `offering`, `agreement`, `conversation`, `message`,
 `problem_report` ([data-model.md](data-model.md)). Migrations regenerated as one initial file
 
 **Testing**: Vitest (API module and route tests against the test database), Playwright per user
@@ -41,11 +41,11 @@ in tests
 **Project Type**: Web service (REST API) + web application in one npm-workspaces repository
 
 **Performance Goals**: Place suggestions within 1 s for 95% of lookups (SC-005; 2 s timeout, 10-min
-cache); search stays under 2 s at 5,000 members / 20,000 listings (001 SC-006) with the derived
+cache); search stays under 2 s at 5,000 members / 20,000 offerings (001 SC-006) with the derived
 lent-out condition
 
 **Constraints**: All 001 constraints hold. Only typed text reaches the place service, from the
-server. The listing and proposal forms need JavaScript (owner decision, 2026-06-05; research §10);
+server. The offering and proposal forms need JavaScript (owner decision, 2026-06-05; research §10);
 all other pages still work without it
 
 **Scale/Scope**: 7 user stories; ~10 new or changed API endpoints, 7 removed
@@ -59,7 +59,7 @@ all other pages still work without it
 | Principle | Gate | Status |
 |-----------|------|--------|
 | I. People Over Extraction | No tracking or data collection beyond need; export covers new data | ✅ Pass. The place service receives only typed text from the server, never member identity or IP; the operator guide says so; it can be self-hosted or turned off. Export gains `proposals.json` |
-| II. Simple, Intuitive Workflows | One primary action per page; plain errors; new features don't add complexity to core workflows without justification | ✅ Pass, justified: a listing still needs only type + title (all new fields optional); a proposal can be sent with nothing filled in (SC-001: 2 actions). It replaces two pages (messages, record agreement) with one, and removes the confirm/dispute step. Issues are listed in plain words |
+| II. Simple, Intuitive Workflows | One primary action per page; plain errors; new features don't add complexity to core workflows without justification | ✅ Pass, justified: an offering still needs only type + title (all new fields optional); a proposal can be sent with nothing filled in (SC-001: 2 actions). It replaces two pages (messages, record agreement) with one, and removes the confirm/dispute step. Issues are listed in plain words |
 | III. Security First | Authorization on every new endpoint; validated input; privacy of places; review before merge | ✅ Pass. Requester-only edits, lister-only accept/decline, `viewPlace()` in one place, version check against concurrent edits, exclusion constraint for loans, rate-limited place lookups, server-side outside calls with timeout. Security review checkpoints: places proxy, place visibility, proposal authorization, report message sharing |
 | IV. Accessible (WCAG 2.2 AA) | New widgets accessible | ✅ Pass. Place field uses Bits UI Combobox (ARIA combobox); repeating rows with focus management and polite announcements; issues tied to fields with `aria-describedby`; axe scans in both themes per story |
 | V. Calm Design | No urgency; quiet live updates; notifications within existing types | ✅ Pass. No new notification types; one per thread per hour; quiet close after 30 days is announced plainly, not as a warning countdown |
@@ -97,7 +97,7 @@ docs/operator.md                    # + Place suggestions: what is sent, self-ho
 
 packages/shared/src/schemas/
 ├── places.ts                       # new: placeSchema, suggestion response
-├── listings.ts                     # handovers, places, accepts, availability, units, session units
+├── offerings.ts                     # handovers, places, accepts, availability, units, session units
 ├── proposals.ts                    # new: create/update unions per type, proposal + issue shapes
 ├── agreements.ts                   # agreement from proposal; no record/confirm bodies
 └── messaging.ts                    # new message kinds; no conversation list/create
@@ -110,7 +110,7 @@ apps/api/
 └── src/
     ├── config.ts                   # places settings
     ├── db/schema/
-    │   ├── listings.ts             # changed; + trade_accept, service_availability
+    │   ├── offerings.ts             # changed; + trade_accept, service_availability
     │   ├── proposals.ts            # new: proposal, proposal_offer
     │   ├── agreements.ts           # changed (loan period, exclusion constraint)
     │   ├── messaging.ts            # conversation → proposal | report
@@ -118,7 +118,7 @@ apps/api/
     ├── modules/
     │   ├── places.ts               # new: Photon lookup, cache, viewPlace, area match
     │   ├── proposals.ts            # new: create, update, issues, accept, decline, withdraw, close
-    │   ├── listings.ts             # new fields, lent-out derived, takenPeriods, search vector
+    │   ├── offerings.ts             # new fields, lent-out derived, takenPeriods, search vector
     │   ├── search.ts               # area filter on parts, derived lent-out
     │   ├── agreements.ts           # recording/confirm/cancel removed; returned + history stay
     │   ├── messaging.ts            # threads for proposals/reports; read-only rule
@@ -139,18 +139,18 @@ apps/web/src/
 │   ├── RepeatingRows.svelte        # new: add/remove rows in place
 │   ├── ProposalFields.svelte       # new: per-type proposal form
 │   ├── ProposalDetails.svelte      # new: details + issues block
-│   ├── ListingFields.svelte        # handovers, places, accepts, availability
+│   ├── OfferingFields.svelte        # handovers, places, accepts, availability
 │   └── MessageList.svelte          # new kinds; refresh details on detail_changed
 ├── lib/help/                       # proposals and agreements topics rewritten
 └── routes/
     ├── places/+server.ts           # new: proxy for PlaceField
-    ├── listings/[id]/propose/      # new
+    ├── offerings/[id]/propose/      # new
     ├── proposals/                  # new: list, [id], [id]/edit, [id]/share-contact, [id]/live
-    ├── listings/[id]/+page.*       # proposal action, new details
+    ├── offerings/[id]/+page.*       # proposal action, new details
     ├── agreements/[id]/+page.*     # no confirm/dispute/cancel
     ├── reports/[id]/+page.*        # share proposal messages
     ├── messages/                   # removed
-    └── listings/[id]/agreements/   # removed
+    └── offerings/[id]/agreements/   # removed
 apps/web/tests/e2e/                 # proposals specs per story; messaging/agreements specs replaced
 ```
 

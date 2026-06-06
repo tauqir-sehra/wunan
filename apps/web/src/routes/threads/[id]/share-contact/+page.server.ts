@@ -9,11 +9,17 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = memberLoad(async (event) => {
   const api = apiFor(event);
   const [page, contact] = await Promise.all([
-    loadOr404(() => api.get<MessagesPage>(`/api/v1/conversations/${encodeURIComponent(event.params.id)}/messages?limit=1`)),
+    loadOr404(() =>
+      api.get<MessagesPage>(
+        `/api/v1/conversations/${encodeURIComponent(event.params.id)}/messages?limit=1`
+      )
+    ),
     api.get<ContactDetails>('/api/v1/me/contact')
   ]);
   // Back to where the member came from: the proposal's page, or this thread.
-  const back = page.conversation.proposalId ? `/proposals/${page.conversation.proposalId}` : `/threads/${event.params.id}`;
+  const back = page.conversation.proposalId
+    ? `/proposals/${page.conversation.proposalId}`
+    : `/threads/${event.params.id}`;
   return { conversation: page.conversation, contact, back };
 });
 
@@ -27,11 +33,21 @@ export const actions: Actions = {
   },
   // Step 2: confirm.
   share: formAction(async ({ event, form, api }) => {
-    await api.post(`/api/v1/conversations/${encodeURIComponent(event.params.id ?? '')}/contact-share`, {
-      phone: form.get('phone') === 'yes',
-      email: form.get('email') === 'yes'
-    });
-    const page = await api.get<MessagesPage>(`/api/v1/conversations/${encodeURIComponent(event.params.id ?? '')}/messages?limit=1`);
-    redirect(303, page.conversation.proposalId ? `/proposals/${page.conversation.proposalId}` : `/threads/${event.params.id}`);
+    await api.post(
+      `/api/v1/conversations/${encodeURIComponent(event.params.id ?? '')}/contact-share`,
+      {
+        phone: form.get('phone') === 'yes',
+        email: form.get('email') === 'yes'
+      }
+    );
+    const page = await api.get<MessagesPage>(
+      `/api/v1/conversations/${encodeURIComponent(event.params.id ?? '')}/messages?limit=1`
+    );
+    redirect(
+      303,
+      page.conversation.proposalId
+        ? `/proposals/${page.conversation.proposalId}#messages`
+        : `/threads/${event.params.id}#messages`
+    );
   })
 };

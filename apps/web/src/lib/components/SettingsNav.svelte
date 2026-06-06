@@ -17,7 +17,7 @@
         <a
           href={link.href}
           aria-current={page.url.pathname === link.href ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center rounded-md px-3 text-foreground no-underline hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:font-semibold"
+          class="inline-flex min-h-11 items-center rounded-md px-3 text-foreground no-underline hover:bg-accent aria-[current=page]:bg-accent"
         >
           {link.label}
         </a>

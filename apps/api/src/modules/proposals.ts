@@ -1,8 +1,8 @@
 // Proposals (002 FR-010 to FR-021, research §3–§6): a member asks for something on someone else's
-// listing. Every detail is optional; only the requester changes them, and what the proposal says is
+// offering. Every detail is optional; only the requester changes them, and what the proposal says is
 // what the requester has agreed to. The lister accepts once nothing blocks it, which makes the
 // agreement in one transaction. What blocks it ("issues") is worked out each time by
-// `proposalIssues`, never stored, so a listing edit never leaves a stale flag behind.
+// `proposalIssues`, never stored, so an offering edit never leaves a stale flag behind.
 import type { AgreementOfferSnapshot, CreateProposal, Place, ProposalDetailsInput, ProposalIssue } from '@wunan/shared';
 import { and, asc, desc, eq, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
@@ -10,11 +10,13 @@ import {
   agreement,
   conversation,
   conversationParticipant,
-  listing,
+  offering,
   member,
   message,
   proposal,
   proposalOffer,
+  request,
+  requestLink,
   serviceAvailability,
   tradeAccept
 } from '../db/schema/index.ts';
@@ -22,28 +24,29 @@ import { ApiError, errors } from '../lib/errors.ts';
 import { addLength, describeWhen, instantToLocal, lengthInMinutes, localToInstant, localWeekday } from '../lib/time.ts';
 import { notify } from '../notify/index.ts';
 import { outcomeFor } from './agreements.ts';
-import { earlierLoanNotBack, trimDecimal, unreturnedLoans } from './listings.ts';
+import { announceSettled, closeForAgreement } from './requests.ts';
+import { earlierLoanNotBack, trimDecimal, unreturnedLoans } from './offerings.ts';
 import { setProposalCloser, shownName } from './members.ts';
 import { createThread, postEvent } from './messaging.ts';
 import { displayOf, sameArea, viewPlace } from './places.ts';
 
 type ProposalRow = typeof proposal.$inferSelect;
-type ListingRow = typeof listing.$inferSelect;
+type OfferingRow = typeof offering.$inferSelect;
 type AcceptRow = typeof tradeAccept.$inferSelect;
 type TimeRow = typeof serviceAvailability.$inferSelect;
 type Loan = Awaited<ReturnType<typeof unreturnedLoans>>[number];
 type OfferRow = { tradeAcceptId: string; amount: string | null };
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/** Everything about a listing that decides whether a proposal fits it. */
-type ListingContext = { listing: ListingRow; ownerName: string; accepts: AcceptRow[]; times: TimeRow[]; loans: Loan[] };
+/** Everything about an offering that decides whether a proposal fits it. */
+type OfferingContext = { offering: OfferingRow; ownerName: string; accepts: AcceptRow[]; times: TimeRow[]; loans: Loan[] };
 
 // ── Words ──────────────────────────────────────────────────────────────────────────────────────
 
 const whenWord = { lend: 'pickup time', gift: 'pickup time', trade: 'time to trade', service: 'time' } as const;
 
 /** How the handover happens, in words for this type (research §6). */
-export function handoverWords(type: ListingRow['type'], handover: NonNullable<ProposalRow['handover']>, names: { lister: string; requester: string }) {
+export function handoverWords(type: OfferingRow['type'], handover: NonNullable<ProposalRow['handover']>, names: { lister: string; requester: string }) {
   const goods = type === 'lend' || type === 'gift';
   switch (handover) {
     case 'to_requester':
@@ -94,32 +97,32 @@ export function describeTimes(times: { weekday: number; startTime: string; endTi
 
 // ── Loading ────────────────────────────────────────────────────────────────────────────────────
 
-async function listingContext(listingId: string, tx: Transaction | typeof db = db): Promise<ListingContext> {
-  const [row] = await tx.select().from(listing).where(eq(listing.id, listingId));
-  if (!row) throw errors.notFound('That listing');
+async function offeringContext(offeringId: string, tx: Transaction | typeof db = db): Promise<OfferingContext> {
+  const [row] = await tx.select().from(offering).where(eq(offering.id, offeringId));
+  if (!row) throw errors.notFound('That offering');
   const [owner] = await tx.select().from(member).where(eq(member.id, row.ownerId));
-  const accepts = await tx.select().from(tradeAccept).where(eq(tradeAccept.listingId, listingId)).orderBy(asc(tradeAccept.position));
-  const times = await tx.select().from(serviceAvailability).where(eq(serviceAvailability.listingId, listingId));
+  const accepts = await tx.select().from(tradeAccept).where(eq(tradeAccept.offeringId, offeringId)).orderBy(asc(tradeAccept.position));
+  const times = await tx.select().from(serviceAvailability).where(eq(serviceAvailability.offeringId, offeringId));
   const loans = await tx
-    .select({ id: agreement.id, listingId: agreement.listingId, startsAt: agreement.loanStartsAt, endsAt: agreement.loanEndsAt })
+    .select({ id: agreement.id, offeringId: agreement.offeringId, startsAt: agreement.loanStartsAt, endsAt: agreement.loanEndsAt })
     .from(agreement)
-    .where(and(eq(agreement.listingId, listingId), isNotNull(agreement.loanStartsAt), isNull(agreement.returnedAt)))
+    .where(and(eq(agreement.offeringId, offeringId), isNotNull(agreement.loanStartsAt), isNull(agreement.returnedAt)))
     .orderBy(asc(agreement.loanStartsAt));
-  return { listing: row, ownerName: owner ? shownName(owner) : 'The lister', accepts, times, loans };
+  return { offering: row, ownerName: owner ? shownName(owner) : 'The lister', accepts, times, loans };
 }
 
 const offersOf = (proposalId: string, tx: Transaction | typeof db = db) =>
   tx.select({ tradeAcceptId: proposalOffer.tradeAcceptId, amount: proposalOffer.amount }).from(proposalOffer).where(eq(proposalOffer.proposalId, proposalId));
 
-/** The place a proposal happens at: its own, or the listing's area or meeting place (research §6). */
-function resolvedPlace(p: ProposalRow, l: ListingRow): Place | null {
+/** The place a proposal happens at: its own, or the offering's area or meeting place (research §6). */
+function resolvedPlace(p: ProposalRow, l: OfferingRow): Place | null {
   if (p.handover === 'online') return null;
   if (p.handover === 'at_lister') return l.area;
   if (p.handover === 'elsewhere') return p.place ?? l.meetingPlace;
   return p.place;
 }
-/** Whether the place shown comes from the listing, so only its display is shown until accepted. */
-const placeFromListing = (p: ProposalRow) => p.handover === 'at_lister' || (p.handover === 'elsewhere' && !p.place);
+/** Whether the place shown comes from the offering, so only its display is shown until accepted. */
+const placeFromOffering = (p: ProposalRow) => p.handover === 'at_lister' || (p.handover === 'elsewhere' && !p.place);
 
 const loanEnd = (p: ProposalRow) => (p.startsAt && p.loanLength && p.loanLengthUnit ? addLength(p.startsAt, p.loanLength, p.loanLengthUnit) : null);
 
@@ -128,15 +131,15 @@ const loanEnd = (p: ProposalRow) => (p.startsAt && p.loanLength && p.loanLengthU
 /**
  * What stops the lister from accepting, in plain words (data-model "Issues"). An empty list means
  * it can be accepted. `areaUnchecked` is true when wunan couldn't compare a typed place with the
- * listing's area, so the lister decides.
+ * offering's area, so the lister decides.
  */
-export function proposalIssues(p: ProposalRow, offers: OfferRow[], ctx: ListingContext, now = new Date()) {
-  const l = ctx.listing;
+export function proposalIssues(p: ProposalRow, offers: OfferRow[], ctx: OfferingContext, now = new Date()) {
+  const l = ctx.offering;
   const issues: ProposalIssue[] = [];
   const add = (field: string, text: string) => issues.push({ field, message: text });
   let areaUnchecked = false;
 
-  if (l.status !== 'available') add('listing', `This listing is ${l.status === 'paused' ? 'paused' : 'closed'} right now, so it can't be agreed.`);
+  if (l.status !== 'available') add('offering', `This offering is ${l.status === 'paused' ? 'paused' : 'closed'} right now, so it can't be agreed.`);
 
   // When
   if (!p.startsAt) add('date', `Please choose the ${whenWord[l.type]}.`);
@@ -154,7 +157,7 @@ export function proposalIssues(p: ProposalRow, offers: OfferRow[], ctx: ListingC
     if (!place) {
       add('place', p.handover === 'at_lister' ? `${ctx.ownerName} hasn't added their area yet. Please choose another way, or ask them.` : 'Please choose where.');
     } else if (l.type === 'service' && l.area && p.handover === 'elsewhere') {
-      // Only a place to meet must be in the listing's area. How far a lister will travel to the
+      // Only a place to meet must be in the offering's area. How far a lister will travel to the
       // recipient is theirs to agree in messages, so a drop-off place is never checked.
       const inside = sameArea(l.area, place);
       if (inside === false) add('place', `${ctx.ownerName} offers this in ${displayOf(l.area)} only.`);
@@ -245,14 +248,14 @@ const needsFixing = (fields: Record<string, string>) => new ApiError(400, 'valid
 
 /**
  * Turns input into column values, keeping only what's given. Refuses details that don't apply to
- * the listing's type and half-given pairs; whether values fit the listing is left to the issues.
+ * the offering's type and half-given pairs; whether values fit the offering is left to the issues.
  */
-function toValues(input: ProposalDetailsInput, current: ProposalRow | null, ctx: ListingContext) {
-  const l = ctx.listing;
+function toValues(input: ProposalDetailsInput, current: ProposalRow | null, ctx: OfferingContext) {
+  const l = ctx.offering;
   const allowed = new Set<string>([...commonFields, ...typeFields[l.type]]);
   const fields: Record<string, string> = {};
   for (const [key, value] of Object.entries(input)) {
-    if (value !== undefined && value !== null && !allowed.has(key)) fields[key] = "This doesn't apply to this kind of listing.";
+    if (value !== undefined && value !== null && !allowed.has(key)) fields[key] = "This doesn't apply to this kind of offering.";
   }
   const values: Partial<typeof proposal.$inferInsert> = {};
   const has = (key: keyof ProposalDetailsInput) => input[key] !== undefined;
@@ -268,7 +271,7 @@ function toValues(input: ProposalDetailsInput, current: ProposalRow | null, ctx:
   if (has('handover')) values.handover = input.handover ?? null;
   if (has('place')) values.place = input.place ?? null;
   const handover = values.handover !== undefined ? values.handover : current?.handover;
-  // At the lister's, the place is the listing's area; online, there is no place.
+  // At the lister's, the place is the offering's area; online, there is no place.
   if (handover === 'at_lister' || handover === 'online') {
     if (has('place') && input.place) fields.place = handover === 'online' ? 'No place is needed for online.' : `This happens at ${ctx.ownerName}'s place.`;
     values.place = null;
@@ -306,18 +309,19 @@ async function saveOffers(tx: Transaction, proposalId: string, offers: ProposalD
 
 const askedWords = { lend: 'asked to borrow your', gift: 'asked for your', trade: 'offered a trade for your', service: 'asked for your' } as const;
 
-export async function createProposal(listingId: string, requesterId: string, input: CreateProposal) {
-  const ctx = await listingContext(listingId);
-  const l = ctx.listing;
-  if (l.ownerId === requesterId) throw new ApiError(400, 'own_listing', "This is your own listing, so you can't make a proposal on it.");
-  if (l.status !== 'available') throw new ApiError(409, 'not_available', "This listing isn't available right now, so a proposal can't be made.");
+export async function createProposal(offeringId: string, requesterId: string, input: CreateProposal) {
+  const ctx = await offeringContext(offeringId);
+  const l = ctx.offering;
+  if (l.ownerId === requesterId) throw new ApiError(400, 'own_offering', "This is your own offering, so you can't make a proposal on it.");
+  if (l.status !== 'available') throw new ApiError(409, 'not_available', "This offering isn't available right now, so a proposal can't be made.");
   const [existing] = await db
     .select({ id: proposal.id })
     .from(proposal)
-    .where(and(eq(proposal.listingId, listingId), eq(proposal.requesterId, requesterId), eq(proposal.status, 'open')));
+    .where(and(eq(proposal.offeringId, offeringId), eq(proposal.requesterId, requesterId), eq(proposal.status, 'open')));
   if (existing) throw alreadyProposed(existing.id);
 
-  const { message: firstMessage, ...details } = input;
+  const { message: firstMessage, requestId: chosenRequest, ...details } = input;
+  const requestId = await requestTiedTo(offeringId, requesterId, chosenRequest);
   const values = toValues(details, null, ctx);
   // Gift and Trade amounts start at all that's left (FR-012, FR-013).
   if ((l.type === 'gift' || l.type === 'trade') && values.amount === undefined && l.remaining !== null) values.amount = l.remaining;
@@ -325,14 +329,14 @@ export async function createProposal(listingId: string, requesterId: string, inp
   let created: { id: string; conversationId: string };
   try {
     created = await db.transaction(async (tx) => {
-      const [row] = await tx.insert(proposal).values({ ...values, listingId, requesterId }).returning({ id: proposal.id });
+      const [row] = await tx.insert(proposal).values({ ...values, offeringId, requesterId, requestId }).returning({ id: proposal.id });
       await saveOffers(tx, row!.id, details.offers);
       const thread = await createThread(tx, { proposalId: row!.id }, [requesterId, l.ownerId]);
       return { id: row!.id, conversationId: thread.id };
     });
   } catch (err) {
     // Two clicks at once: the second one hits the one-open-proposal index.
-    const [again] = await db.select({ id: proposal.id }).from(proposal).where(and(eq(proposal.listingId, listingId), eq(proposal.requesterId, requesterId), eq(proposal.status, 'open')));
+    const [again] = await db.select({ id: proposal.id }).from(proposal).where(and(eq(proposal.offeringId, offeringId), eq(proposal.requesterId, requesterId), eq(proposal.status, 'open')));
     if (again) throw alreadyProposed(again.id);
     throw err;
   }
@@ -344,19 +348,42 @@ export async function createProposal(listingId: string, requesterId: string, inp
   return { id: created.id, conversationId: created.conversationId };
 }
 
+/**
+ * Which of the requester's open requests this proposal answers (003 research §3): only one of their
+ * own, linked to this offering. Linked to several → they must choose. Not linked → none.
+ */
+async function requestTiedTo(offeringId: string, requesterId: string, chosen: string | undefined) {
+  const linked = await db
+    .select({ id: request.id, title: request.title })
+    .from(requestLink)
+    .innerJoin(request, eq(request.id, requestLink.requestId))
+    .where(and(eq(requestLink.offeringId, offeringId), eq(request.askerId, requesterId), eq(request.status, 'open')))
+    .orderBy(asc(request.createdAt));
+  if (chosen) {
+    if (!linked.some((r) => r.id === chosen)) {
+      throw new ApiError(400, 'not_your_request', 'That request is not one of your open requests linked to this offering.', { requestId: 'Please choose one of your requests.' });
+    }
+    return chosen;
+  }
+  if (linked.length > 1) {
+    throw new ApiError(409, 'choose_request', 'This offering is linked to more than one of your requests. Please choose which one this is for.', undefined, { requests: linked });
+  }
+  return linked[0]?.id ?? null;
+}
+
 const alreadyProposed = (proposalId: string) =>
-  new ApiError(409, 'proposal_exists', 'You already have a proposal open on this listing. You can change it instead.', undefined, { proposalId });
+  new ApiError(409, 'proposal_exists', 'You already have a proposal open on this offering. You can change it instead.', undefined, { proposalId });
 
 /** The requester changes details (FR-016). Each change is noted in the thread in plain words. */
 export async function updateProposal(proposalId: string, requesterId: string, input: ProposalDetailsInput) {
   const current = await loadProposal(proposalId);
   if (current.requesterId !== requesterId) {
-    const ctx = await listingContext(current.listingId);
-    if (ctx.listing.ownerId === requesterId) throw new ApiError(403, 'not_requester', `Only the person who made the proposal can change it. You can ask them in a message.`);
+    const ctx = await offeringContext(current.offeringId);
+    if (ctx.offering.ownerId === requesterId) throw new ApiError(403, 'not_requester', `Only the person who made the proposal can change it. You can ask them in a message.`);
     throw errors.notFound('That proposal');
   }
   if (current.status !== 'open') throw new ApiError(409, 'proposal_ended', 'This proposal has ended, so it can no longer be changed.');
-  const ctx = await listingContext(current.listingId);
+  const ctx = await offeringContext(current.offeringId);
   const values = toValues(input, current, ctx);
   const before = await describeDetails(current, await offersOf(proposalId), ctx);
 
@@ -379,15 +406,15 @@ export async function updateProposal(proposalId: string, requesterId: string, in
       await threadOf(proposalId),
       requesterId,
       { kind: 'detail_changed', body: `${name} changed ${joinWords(words)}.` },
-      { title: `${name} changed their proposal for ${ctx.listing.title}`, body: 'Have a look at the new details.' }
+      { title: `${name} changed their proposal for ${ctx.offering.title}`, body: 'Have a look at the new details.' }
     );
   }
   return getProposal(proposalId, requesterId);
 }
 
 /** Each detail as words, keyed by how it's named in "Robin changed the pickup time to …". */
-async function describeDetails(p: ProposalRow, offers: OfferRow[], ctx: ListingContext): Promise<Record<string, string>> {
-  const l = ctx.listing;
+async function describeDetails(p: ProposalRow, offers: OfferRow[], ctx: OfferingContext): Promise<Record<string, string>> {
+  const l = ctx.offering;
   const [requester] = await db.select().from(member).where(eq(member.id, p.requesterId));
   const names = { lister: ctx.ownerName, requester: requester ? shownName(requester) : 'the requester' };
   const d: Record<string, string> = {
@@ -418,39 +445,39 @@ const joinWords = (words: string[]) => (words.length <= 1 ? words.join('') : `${
 
 /**
  * The lister accepts exactly the details they saw (`version`). Creates the agreement and updates the
- * listing atomically, with the listing row locked so two accepts can't hand out more than is left.
+ * offering atomically, with the offering row locked so two accepts can't hand out more than is left.
  * Overlapping loans are also refused by the database itself (research §4).
  */
 export async function acceptProposal(proposalId: string, listerId: string, version: number) {
   const found = await loadProposal(proposalId);
-  const peek = await listingContext(found.listingId);
-  if (peek.listing.ownerId !== listerId) {
+  const peek = await offeringContext(found.offeringId);
+  if (peek.offering.ownerId !== listerId) {
     if (found.requesterId === listerId) throw new ApiError(403, 'not_lister', `Only ${peek.ownerName} can accept this proposal.`);
     throw errors.notFound('That proposal');
   }
 
-  let result: { agreementId: string; closedOthers: string[] };
+  let result: { agreementId: string; closedOthers: string[]; settled: Awaited<ReturnType<typeof closeForAgreement>> };
   try {
     result = await db.transaction(async (tx) => {
-      await tx.select({ id: listing.id }).from(listing).where(eq(listing.id, found.listingId)).for('update');
+      await tx.select({ id: offering.id }).from(offering).where(eq(offering.id, found.offeringId)).for('update');
       const [p] = await tx.select().from(proposal).where(eq(proposal.id, proposalId)).for('update');
       if (!p || p.status !== 'open') throw new ApiError(409, 'proposal_ended', 'This proposal has ended, so it can no longer be accepted.');
       if (p.version !== version) {
         throw new ApiError(409, 'proposal_changed', `${await nameOf(p.requesterId)} changed the details. Please check them again.`);
       }
-      const ctx = await listingContext(p.listingId, tx);
+      const ctx = await offeringContext(p.offeringId, tx);
       const offers = await offersOf(p.id, tx);
       const { issues } = proposalIssues(p, offers, ctx);
       if (issues.length > 0) {
         throw new ApiError(409, 'proposal_not_ready', 'This proposal still needs some details before it can be accepted.', undefined, { issues });
       }
-      const l = ctx.listing;
+      const l = ctx.offering;
       const place = resolvedPlace(p, l);
       const [saved] = await tx
         .insert(agreement)
         .values({
           proposalId: p.id,
-          listingId: l.id,
+          offeringId: l.id,
           ownerId: l.ownerId,
           otherMemberId: p.requesterId,
           outcome: outcomeFor[l.type],
@@ -467,35 +494,37 @@ export async function acceptProposal(proposalId: string, listerId: string, versi
           loanEndsAt: l.type === 'lend' ? loanEnd(p) : null
         })
         .returning({ id: agreement.id });
+      // The asker's request this answers closes with the agreement (003 FR-016).
+      const settled = p.requestId ? await closeForAgreement(tx, p.requestId, saved!.id) : null;
 
-      // Calculated by PostgreSQL so decimals stay exact; close the listing when nothing is left.
+      // Calculated by PostgreSQL so decimals stay exact; close the offering when nothing is left.
       if ((l.type === 'gift' || l.type === 'trade') && l.remaining === null) {
-        await tx.update(listing).set({ status: 'closed', closedReason: 'used_up', updatedAt: new Date() }).where(eq(listing.id, l.id));
+        await tx.update(offering).set({ status: 'closed', closedReason: 'used_up', updatedAt: new Date() }).where(eq(offering.id, l.id));
       }
       if (p.amount && l.remaining !== null) {
-        await tx.update(listing).set({ remaining: sql`${listing.remaining} - ${p.amount}`, updatedAt: new Date() }).where(eq(listing.id, l.id));
+        await tx.update(offering).set({ remaining: sql`${offering.remaining} - ${p.amount}`, updatedAt: new Date() }).where(eq(offering.id, l.id));
       }
       if (l.type === 'service' && l.sessionsRemaining !== null && p.sessions) {
-        await tx.update(listing).set({ sessionsRemaining: sql`${listing.sessionsRemaining} - ${p.sessions}`, updatedAt: new Date() }).where(eq(listing.id, l.id));
+        await tx.update(offering).set({ sessionsRemaining: sql`${offering.sessionsRemaining} - ${p.sessions}`, updatedAt: new Date() }).where(eq(offering.id, l.id));
       }
       await tx
-        .update(listing)
+        .update(offering)
         .set({ status: 'closed', closedReason: 'used_up' })
-        .where(and(eq(listing.id, l.id), eq(listing.status, 'available'), or(eq(listing.remaining, '0'), eq(listing.sessionsRemaining, 0))));
+        .where(and(eq(offering.id, l.id), eq(offering.status, 'available'), or(eq(offering.remaining, '0'), eq(offering.sessionsRemaining, 0))));
       await tx.update(proposal).set({ status: 'accepted', acceptedAt: new Date(), updatedAt: new Date() }).where(eq(proposal.id, p.id));
 
       // Nothing left: every other open proposal on it closes (FR-019).
-      const [after] = await tx.select({ status: listing.status, closedReason: listing.closedReason }).from(listing).where(eq(listing.id, l.id));
+      const [after] = await tx.select({ status: offering.status, closedReason: offering.closedReason }).from(offering).where(eq(offering.id, l.id));
       let closedOthers: string[] = [];
       if (after?.status === 'closed' && after.closedReason === 'used_up') {
         const closed = await tx
           .update(proposal)
           .set({ status: 'closed', closedReason: 'nothing_left', updatedAt: new Date() })
-          .where(and(eq(proposal.listingId, l.id), eq(proposal.status, 'open'), ne(proposal.id, p.id)))
+          .where(and(eq(proposal.offeringId, l.id), eq(proposal.status, 'open'), ne(proposal.id, p.id)))
           .returning({ id: proposal.id });
         closedOthers = closed.map((c) => c.id);
       }
-      return { agreementId: saved!.id, closedOthers };
+      return { agreementId: saved!.id, closedOthers, settled };
     });
   } catch (err) {
     // PostgreSQL's exclusion constraint: another loan was accepted for overlapping dates meanwhile.
@@ -509,14 +538,15 @@ export async function acceptProposal(proposalId: string, listerId: string, versi
   }
 
   await afterAccept(proposalId, listerId, result);
+  if (result.settled) await announceSettled(result.settled, listerId);
   return { agreementId: result.agreementId };
 }
 
 /** Notes and notices once an acceptance is saved: the requester, and others it affects. */
 async function afterAccept(proposalId: string, listerId: string, result: { agreementId: string; closedOthers: string[] }) {
   const p = await loadProposal(proposalId);
-  const ctx = await listingContext(p.listingId);
-  const l = ctx.listing;
+  const ctx = await offeringContext(p.offeringId);
+  const l = ctx.offering;
   const lister = await nameOf(listerId);
   await postEvent(await threadOf(proposalId), listerId, { kind: 'accepted', body: `${lister} accepted this proposal. It's now an agreement.` });
   await notify(p.requesterId, 'agreement', {
@@ -537,7 +567,7 @@ async function afterAccept(proposalId: string, listerId: string, result: { agree
   }
 
   // Others still open that no longer fit: less is left than they ask for, or the dates are taken.
-  const stillOpen = await db.select().from(proposal).where(and(eq(proposal.listingId, l.id), eq(proposal.status, 'open')));
+  const stillOpen = await db.select().from(proposal).where(and(eq(proposal.offeringId, l.id), eq(proposal.status, 'open')));
   for (const other of stillOpen) {
     const { issues } = proposalIssues(other, await offersOf(other.id), ctx);
     const affected = issues.find((i) => (i.field === 'amount' && i.message.startsWith('Only')) || i.field === 'sessions' || (i.field === 'date' && i.message.includes('already lent')));
@@ -563,8 +593,8 @@ function offerSnapshot(p: ProposalRow, offers: OfferRow[], accepts: AcceptRow[])
 
 export async function declineProposal(proposalId: string, listerId: string, note: string | null) {
   const p = await loadProposal(proposalId);
-  const ctx = await listingContext(p.listingId);
-  if (ctx.listing.ownerId !== listerId) {
+  const ctx = await offeringContext(p.offeringId);
+  if (ctx.offering.ownerId !== listerId) {
     if (p.requesterId === listerId) throw new ApiError(403, 'not_lister', 'You can withdraw your proposal instead.');
     throw errors.notFound('That proposal');
   }
@@ -574,16 +604,16 @@ export async function declineProposal(proposalId: string, listerId: string, note
     await threadOf(proposalId),
     listerId,
     { kind: 'declined', body: `${name} declined this proposal.${note ? ` Their note: ${note}` : ''}` },
-    { title: `${name} declined your proposal for ${ctx.listing.title}`, body: note ?? 'You can still look at it in wunan.' }
+    { title: `${name} declined your proposal for ${ctx.offering.title}`, body: note ?? 'You can still look at it in wunan.' }
   );
   return getProposal(proposalId, listerId);
 }
 
 export async function withdrawProposal(proposalId: string, requesterId: string, note: string | null) {
   const p = await loadProposal(proposalId);
-  const ctx = await listingContext(p.listingId);
+  const ctx = await offeringContext(p.offeringId);
   if (p.requesterId !== requesterId) {
-    if (ctx.listing.ownerId === requesterId) throw new ApiError(403, 'not_requester', 'You can decline this proposal instead.');
+    if (ctx.offering.ownerId === requesterId) throw new ApiError(403, 'not_requester', 'You can decline this proposal instead.');
     throw errors.notFound('That proposal');
   }
   await endProposal(p, 'withdrawn', note);
@@ -592,7 +622,7 @@ export async function withdrawProposal(proposalId: string, requesterId: string, 
     await threadOf(proposalId),
     requesterId,
     { kind: 'withdrawn', body: `${name} withdrew this proposal.${note ? ` Their note: ${note}` : ''}` },
-    { title: `${name} withdrew their proposal for ${ctx.listing.title}`, body: note ?? 'Nothing else changes.' }
+    { title: `${name} withdrew their proposal for ${ctx.offering.title}`, body: note ?? 'Nothing else changes.' }
   );
   return getProposal(proposalId, requesterId);
 }
@@ -618,11 +648,11 @@ export async function closeProposals(ids: string[], reason: 'quiet' | 'member_le
       .where(and(eq(proposal.id, id), eq(proposal.status, 'open')))
       .returning();
     if (!closed) continue;
-    const ctx = await listingContext(closed.listingId);
+    const ctx = await offeringContext(closed.offeringId);
     const words =
       reason === 'quiet'
-        ? { body: 'This proposal was closed after a quiet month. You can make a new one any time.', title: `Your proposal for ${ctx.listing.title} was closed after a quiet month` }
-        : { body: 'This proposal was closed because one of you left wunan.', title: `A proposal for ${ctx.listing.title} was closed` };
+        ? { body: 'This proposal was closed after a quiet month. You can make a new one any time.', title: `Your proposal for ${ctx.offering.title} was closed after a quiet month` }
+        : { body: 'This proposal was closed because one of you left wunan.', title: `A proposal for ${ctx.offering.title} was closed` };
     await postEvent(await threadOf(id), null, { kind: 'closed', body: words.body }, { title: words.title });
   }
 }
@@ -656,8 +686,8 @@ async function nameOf(memberId: string) {
 /** One proposal for its requester or lister, with its details, issues, and what they may do. */
 export async function getProposal(proposalId: string, memberId: string) {
   const p = await loadProposal(proposalId);
-  const ctx = await listingContext(p.listingId);
-  const l = ctx.listing;
+  const ctx = await offeringContext(p.offeringId);
+  const l = ctx.offering;
   const isLister = l.ownerId === memberId;
   if (!isLister && p.requesterId !== memberId) throw errors.notFound('That proposal');
   const offers = await offersOf(p.id);
@@ -674,7 +704,7 @@ export async function getProposal(proposalId: string, memberId: string) {
     status: p.status,
     closedReason: p.closedReason,
     version: p.version,
-    listing: { id: l.id, title: l.title, type: l.type, unit: l.unit },
+    offering: { id: l.id, title: l.title, type: l.type, unit: l.unit },
     requester: { id: p.requesterId, displayName: requester ? shownName(requester) : 'A member' },
     lister: { id: l.ownerId, displayName: ctx.ownerName },
     details: {
@@ -683,8 +713,8 @@ export async function getProposal(proposalId: string, memberId: string) {
       date: local?.date ?? null,
       time: p.hasTime ? (local?.time ?? null) : null,
       handover: p.handover,
-      // The listing's own place shows only its display until accepted (or to the lister).
-      place: viewPlace(place, { full: !placeFromListing(p) || isLister || p.status === 'accepted' }),
+      // The offering's own place shows only its display until accepted (or to the lister).
+      place: viewPlace(place, { full: !placeFromOffering(p) || isLister || p.status === 'accepted' }),
       loanLength: p.loanLength,
       loanLengthUnit: p.loanLengthUnit,
       amount: trimDecimal(p.amount),
@@ -701,6 +731,7 @@ export async function getProposal(proposalId: string, memberId: string) {
     },
     issues,
     areaUnchecked,
+    request: await requestOf(p.requestId),
     earlierLoanNotBack: earlierLoan,
     canAccept: isLister && p.status === 'open' && issues.length === 0,
     canEdit: !isLister && p.status === 'open',
@@ -713,24 +744,31 @@ export async function getProposal(proposalId: string, memberId: string) {
   };
 }
 
+/** The request a proposal answers, for "For your request: …" (003). */
+async function requestOf(requestId: string | null) {
+  if (!requestId) return null;
+  const [row] = await db.select({ id: request.id, title: request.title, status: request.status }).from(request).where(eq(request.id, requestId));
+  return row ?? null;
+}
+
 /** Proposals I made and received (FR-024), open first, then latest activity first. */
 export async function listProposals(memberId: string, query: { role?: 'requester' | 'lister' | undefined; status?: 'open' | 'ended' | undefined; cursor?: string | undefined; limit: number }) {
-  const mine = query.role === 'requester' ? eq(proposal.requesterId, memberId) : query.role === 'lister' ? eq(listing.ownerId, memberId) : or(eq(proposal.requesterId, memberId), eq(listing.ownerId, memberId));
+  const mine = query.role === 'requester' ? eq(proposal.requesterId, memberId) : query.role === 'lister' ? eq(offering.ownerId, memberId) : or(eq(proposal.requesterId, memberId), eq(offering.ownerId, memberId));
   const status = query.status === 'open' ? eq(proposal.status, 'open') : query.status === 'ended' ? ne(proposal.status, 'open') : undefined;
   const offset = Math.max(0, Number(query.cursor ?? 0) || 0);
   const rows = await db
-    .select({ proposal, listing })
+    .select({ proposal, offering })
     .from(proposal)
-    .innerJoin(listing, eq(listing.id, proposal.listingId))
+    .innerJoin(offering, eq(offering.id, proposal.offeringId))
     .where(and(mine, status))
     .orderBy(sql`case when ${proposal.status} = 'open' then 0 else 1 end`, desc(proposal.lastActivityAt), desc(proposal.id))
     .offset(offset)
     .limit(query.limit + 1);
   const page = rows.slice(0, query.limit);
   const items = [];
-  for (const { proposal: p, listing: l } of page) {
+  for (const { proposal: p, offering: l } of page) {
     const isLister = l.ownerId === memberId;
-    const ctx = await listingContext(l.id);
+    const ctx = await offeringContext(l.id);
     const { issues } = p.status === 'open' ? proposalIssues(p, await offersOf(p.id), ctx) : { issues: [] };
     const threadId = await threadOf(p.id);
     const [read] = await db
@@ -743,7 +781,7 @@ export async function listProposals(memberId: string, query: { role?: 'requester
       id: p.id,
       status: p.status,
       closedReason: p.closedReason,
-      listing: { id: l.id, title: l.title, type: l.type },
+      offering: { id: l.id, title: l.title, type: l.type },
       otherMember: { id: isLister ? p.requesterId : l.ownerId, displayName: isLister ? await nameOf(p.requesterId) : ctx.ownerName },
       myRole: isLister ? ('lister' as const) : ('requester' as const),
       issues,
@@ -760,8 +798,8 @@ export async function openProposalsOf(memberId: string) {
   const rows = await db
     .select({ id: proposal.id })
     .from(proposal)
-    .innerJoin(listing, eq(listing.id, proposal.listingId))
-    .where(and(eq(proposal.status, 'open'), or(eq(proposal.requesterId, memberId), eq(listing.ownerId, memberId))));
+    .innerJoin(offering, eq(offering.id, proposal.offeringId))
+    .where(and(eq(proposal.status, 'open'), or(eq(proposal.requesterId, memberId), eq(offering.ownerId, memberId))));
   return rows.map((r) => r.id);
 }
 

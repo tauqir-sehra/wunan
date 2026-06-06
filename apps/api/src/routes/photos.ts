@@ -1,29 +1,29 @@
-// Photo endpoints (contracts/api.md, "Listings"). Uploads are multipart; images are served only
+// Photo endpoints (contracts/api.md, "Offerings"). Uploads are multipart; images are served only
 // to signed-in members, never cached by shared caches.
 import { createRoute, z } from '@hono/zod-openapi';
-import { ListingPhoto, UpdatePhoto } from '@wunan/shared';
+import { OfferingPhoto, UpdatePhoto } from '@wunan/shared';
 import { createRouter } from '../app-router.ts';
 import { ApiError } from '../lib/errors.ts';
 import { requireMember } from '../lib/require-member.ts';
 import * as photos from '../modules/photos.ts';
 
 export const photoRoutes = createRouter();
-photoRoutes.use('/listings/*', requireMember);
+photoRoutes.use('/offerings/*', requireMember);
 photoRoutes.use('/photos/*', requireMember);
 
 const security = [{ bearer: [] }];
-const ListingId = z.object({ id: z.uuid() });
+const OfferingId = z.object({ id: z.uuid() });
 const PhotoIds = z.object({ id: z.uuid(), photoId: z.uuid() });
 const Upload = z.object({ file: z.any().describe('The image file'), alt: z.string().max(200).optional() });
 
 photoRoutes.openapi(
   createRoute({
     method: 'post',
-    path: '/listings/{id}/photos',
-    summary: 'Add a photo (up to 6 per listing, 10 MB each; metadata is removed)',
+    path: '/offerings/{id}/photos',
+    summary: 'Add a photo (up to 6 per offering, 10 MB each; metadata is removed)',
     security,
-    request: { params: ListingId, body: { content: { 'multipart/form-data': { schema: Upload } } } },
-    responses: { 201: { description: 'The stored photo', content: { 'application/json': { schema: ListingPhoto } } } }
+    request: { params: OfferingId, body: { content: { 'multipart/form-data': { schema: Upload } } } },
+    responses: { 201: { description: 'The stored photo', content: { 'application/json': { schema: OfferingPhoto } } } }
   }),
   async (c) => {
     const form = await c.req.formData();
@@ -39,11 +39,11 @@ photoRoutes.openapi(
 photoRoutes.openapi(
   createRoute({
     method: 'patch',
-    path: '/listings/{id}/photos/{photoId}',
+    path: '/offerings/{id}/photos/{photoId}',
     summary: "Change a photo's description or order",
     security,
     request: { params: PhotoIds, body: { content: { 'application/json': { schema: UpdatePhoto } } } },
-    responses: { 200: { description: 'The photo', content: { 'application/json': { schema: ListingPhoto } } } }
+    responses: { 200: { description: 'The photo', content: { 'application/json': { schema: OfferingPhoto } } } }
   }),
   async (c) => {
     const { id, photoId } = c.req.valid('param');
@@ -54,7 +54,7 @@ photoRoutes.openapi(
 photoRoutes.openapi(
   createRoute({
     method: 'delete',
-    path: '/listings/{id}/photos/{photoId}',
+    path: '/offerings/{id}/photos/{photoId}',
     summary: 'Delete a photo',
     security,
     request: { params: PhotoIds },

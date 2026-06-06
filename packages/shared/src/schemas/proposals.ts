@@ -1,10 +1,10 @@
-// Proposals (002 FR-010 to FR-021): a member asks for something on someone else's listing. Every
+// Proposals (002 FR-010 to FR-021): a member asks for something on someone else's offering. Every
 // detail is optional until the lister accepts; only the requester changes them, and what the
-// proposal says is what the requester has agreed to. Which details apply depends on the listing's
+// proposal says is what the requester has agreed to. Which details apply depends on the offering's
 // type; the API refuses details that don't apply, and lists what still blocks acceptance as issues.
 import { z } from 'zod';
 import { memberRef } from './common.ts';
-import { amount, Handover, ListingType, LoanLengthUnit, SessionLengthUnit, Unit, wholeNumber } from './listings.ts';
+import { amount, Handover, OfferingType, LoanLengthUnit, SessionLengthUnit, Unit, wholeNumber } from './offerings.ts';
 import { Place, PlaceView } from './places.ts';
 
 const whole = wholeNumber(1, 'Please enter a whole number of 1 or more.');
@@ -46,6 +46,8 @@ export const ProposalDetailsInput = z.strictObject({
 export type ProposalDetailsInput = z.infer<typeof ProposalDetailsInput>;
 
 export const CreateProposal = ProposalDetailsInput.extend({
+  /** The asker's request this answers, when the offering is linked to several of their requests (003 FR-017). */
+  requestId: z.uuid({ message: 'Please choose which request this is for.' }).optional(),
   message: z
     .string()
     .trim()
@@ -82,7 +84,7 @@ export const ProposalDetails = z.object({
   date: z.string().nullable(),
   time: z.string().nullable(),
   handover: Handover.nullable(),
-  /** For `at_lister`, the listing's area (only its display until accepted); null for online. */
+  /** For `at_lister`, the offering's area (only its display until accepted); null for online. */
   place: PlaceView.nullable(),
   loanLength: z.number().nullable(),
   loanLengthUnit: LoanLengthUnit.nullable(),
@@ -102,13 +104,15 @@ export const Proposal = z.object({
   status: ProposalStatus,
   closedReason: ProposalClosedReason.nullable(),
   version: z.number(),
-  listing: z.object({ id: z.string(), title: z.string(), type: ListingType, unit: Unit.nullable() }),
+  offering: z.object({ id: z.string(), title: z.string(), type: OfferingType, unit: Unit.nullable() }),
   requester: memberRef,
   lister: memberRef,
   details: ProposalDetails,
   issues: z.array(ProposalIssue),
-  /** The place couldn't be checked against the listing's area (it was typed, not picked). */
+  /** The place couldn't be checked against the offering's area (it was typed, not picked). */
   areaUnchecked: z.boolean(),
+  /** The asker's request this proposal answers; accepting it closes the request (003 FR-016). */
+  request: z.object({ id: z.string(), title: z.string(), status: z.enum(['open', 'closed']) }).nullable(),
   /** For a loan: an earlier loan of the same item is past its end and not marked returned. */
   earlierLoanNotBack: z.object({ endsAt: z.string() }).nullable(),
   canAccept: z.boolean(),
@@ -126,7 +130,7 @@ export const ProposalSummary = z.object({
   id: z.string(),
   status: ProposalStatus,
   closedReason: ProposalClosedReason.nullable(),
-  listing: z.object({ id: z.string(), title: z.string(), type: ListingType }),
+  offering: z.object({ id: z.string(), title: z.string(), type: OfferingType }),
   otherMember: memberRef,
   myRole: z.enum(['requester', 'lister']),
   /** Details still missing or not fitting, in short words ("when", "where"). */

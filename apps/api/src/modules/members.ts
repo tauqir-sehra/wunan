@@ -8,13 +8,15 @@ import {
   agreement,
   proposal,
   invitation,
-  listing,
-  listingPhoto,
+  offering,
+  offeringPhoto,
   member,
   message,
   notificationLog,
   notificationPreference,
+  publicMessage,
   pushSubscription,
+  request,
   session,
   verification
 } from '../db/schema/index.ts';
@@ -202,11 +204,13 @@ const CONTACT_REMOVED = 'Contact details were removed when this member left wuna
  *
  * - Personal fields, contact details, the password, sessions, devices, and notification
  *   settings are removed. The email is replaced, so it can be used to join again later.
- * - Listings are deleted with their photos. A listing that is part of an agreement keeps only
+ * - Offerings are deleted with their photos. An offering that is part of an agreement keeps only
  *   its title and kind, closed, so the other member's agreement still says what it was about.
  * - Contact details this member shared in conversations are replaced with a short note.
  * - Messages, agreements, and requests for help stay visible to the other members involved.
  * - Unused invitation links stop working, and open proposals they made or received close.
+ * - Their requests close and disappear for everyone (description and area cleared), and their
+ *   public messages are deleted (003 FR-026). Offerings linked to their requests stay as they are.
  */
 export async function deleteAccount(memberId: string, password: string) {
   await requirePassword(memberId, password, 'password');
@@ -215,29 +219,35 @@ export async function deleteAccount(memberId: string, password: string) {
     const [row] = await tx.select().from(member).where(eq(member.id, memberId)).for('update');
     if (!row || row.deletedAt) throw errors.notSignedIn();
 
-    const myListings = tx.select({ id: listing.id }).from(listing).where(eq(listing.ownerId, memberId));
+    const myOfferings = tx.select({ id: offering.id }).from(offering).where(eq(offering.ownerId, memberId));
     const photos = await tx
-      .delete(listingPhoto)
-      .where(inArray(listingPhoto.listingId, myListings))
-      .returning({ fileKey: listingPhoto.fileKey });
+      .delete(offeringPhoto)
+      .where(inArray(offeringPhoto.offeringId, myOfferings))
+      .returning({ fileKey: offeringPhoto.fileKey });
 
-    // Listings someone made a proposal on stay (title only), so their proposals still say what
+    // Offerings someone made a proposal on stay (title only), so their proposals still say what
     // they were about; the others go.
     const unused = and(
-      eq(listing.ownerId, memberId),
-      notExists(tx.select({ one: rawSql`1` }).from(agreement).where(eq(agreement.listingId, listing.id))),
-      notExists(tx.select({ one: rawSql`1` }).from(proposal).where(eq(proposal.listingId, listing.id)))
+      eq(offering.ownerId, memberId),
+      notExists(tx.select({ one: rawSql`1` }).from(agreement).where(eq(agreement.offeringId, offering.id))),
+      notExists(tx.select({ one: rawSql`1` }).from(proposal).where(eq(proposal.offeringId, offering.id)))
     );
-    await tx.delete(listing).where(unused);
+    await tx.delete(offering).where(unused);
     await tx
-      .update(listing)
+      .update(offering)
       .set({ description: null, area: null, meetingPlace: null, status: 'closed', closedReason: 'removed', updatedAt: new Date() })
-      .where(eq(listing.ownerId, memberId));
+      .where(eq(offering.ownerId, memberId));
 
     await tx
       .update(message)
       .set({ body: CONTACT_REMOVED })
       .where(and(eq(message.authorId, memberId), eq(message.kind, 'contact_shared')));
+
+    await tx
+      .update(request)
+      .set({ status: 'closed', closedReason: 'account_deleted', closedByAgreementId: null, description: null, area: null, updatedAt: new Date() })
+      .where(eq(request.askerId, memberId));
+    await tx.delete(publicMessage).where(eq(publicMessage.authorId, memberId));
 
     await tx
       .update(invitation)

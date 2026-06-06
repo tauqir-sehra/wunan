@@ -4,7 +4,10 @@ import { expectAccessible } from './helpers/axe.ts';
 import { createFounder, waitForEmailLink } from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
 
-test('a member invites someone, who joins and shows the inviter on their profile', async ({ page, browser }) => {
+test('a member invites someone, who joins and shows the inviter on their profile', async ({
+  page,
+  browser
+}) => {
   const founder = createFounder('Sam');
 
   // Founder creates an invitation.
@@ -50,7 +53,10 @@ test('a member invites someone, who joins and shows the inviter on their profile
   await expect(alex.getByText('Founding member').first()).toBeVisible();
   await alex.goBack();
   await alex.getByRole('link', { name: 'See the full invite chain' }).click();
-  await expect(alex.getByRole('main').getByRole('listitem')).toHaveText([/Alex/, /Sam.*founding member/]);
+  await expect(alex.getByRole('main').getByRole('listitem')).toHaveText([
+    /Alex/,
+    /Sam.*founding member/
+  ]);
   await expectAccessible(alex, 'chain');
 
   // The used link no longer works.
@@ -60,8 +66,8 @@ test('a member invites someone, who joins and shows the inviter on their profile
   await expectAccessible(alex, 'used invitation');
 
   // Signed out, member pages redirect to sign-in.
-  await alex.goto('/listings');
-  await expect(alex).toHaveURL(/\/sign-in\?redirectTo=%2Flistings/);
+  await alex.goto('/offerings');
+  await expect(alex).toHaveURL(/\/sign-in\?redirectTo=%2Fofferings/);
   await expectAccessible(alex, 'sign in');
 
   // The founder's invitations list shows Alex joined.
@@ -85,7 +91,10 @@ test('settings save profile and private contact details', async ({ page }) => {
   await expect(page.getByLabel('Phone number')).toHaveValue('07700 900123');
 });
 
-test('if the sign-in runs out mid-form, signing in again sends what was typed', async ({ page, context }) => {
+test('if the sign-in runs out mid-form, signing in again sends what was typed', async ({
+  page,
+  context
+}) => {
   const founder = createFounder('Kim');
   await signInAs(page, founder);
   await page.goto('/settings');

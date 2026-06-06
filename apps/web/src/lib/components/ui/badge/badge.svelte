@@ -1,4 +1,4 @@
-<!-- Small text label, e.g. a listing's type. Always carries text, never colour alone. -->
+<!-- Small text label, e.g. an offering's type. Always carries text, never colour alone. -->
 <script lang="ts" module>
   import { type VariantProps, tv } from 'tailwind-variants';
 
@@ -30,6 +30,11 @@
   }: WithElementRef<HTMLAttributes<HTMLSpanElement>> & { variant?: BadgeVariant } = $props();
 </script>
 
-<span bind:this={ref} data-slot="badge" class={cn(badgeVariants({ variant }), className)} {...restProps}>
+<span
+  bind:this={ref}
+  data-slot="badge"
+  class={cn(badgeVariants({ variant }), className)}
+  {...restProps}
+>
   {@render children?.()}
 </span>

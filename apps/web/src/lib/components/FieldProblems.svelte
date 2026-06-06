@@ -4,15 +4,20 @@
   belongs to is further down the page or not on this step.
 -->
 <script lang="ts">
-  let { fields, labels = {} }: { fields: Record<string, string> | undefined; labels?: Record<string, string> } = $props();
+  let {
+    fields,
+    labels = {}
+  }: { fields: Record<string, string> | undefined; labels?: Record<string, string> } = $props();
 
   // "offers.0.amount" belongs to "offers"; the same message twice is shown once.
-  const items = $derived(
-    [...new Map(Object.entries(fields ?? {}).map(([key, message]) => {
-      const label = labels[key] ?? labels[key.split('.')[0]!];
-      return [`${label}${message}`, label ? `${label}: ${message}` : message];
-    })).values()]
-  );
+  const items = $derived([
+    ...new Map(
+      Object.entries(fields ?? {}).map(([key, message]) => {
+        const label = labels[key] ?? labels[key.split('.')[0]!];
+        return [`${label}${message}`, label ? `${label}: ${message}` : message];
+      })
+    ).values()
+  ]);
 </script>
 
 {#if items.length}

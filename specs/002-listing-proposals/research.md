@@ -1,4 +1,4 @@
-# Research: Proposals for Listings
+# Research: Proposals for Offerings
 
 Decisions for [spec.md](spec.md). The stack, structure, and rules from
 [001 research](../001-community-resource-sharing/research.md) stay as they are; only what changes or
@@ -39,22 +39,22 @@ clarification) can't suggest addresses or businesses.
 **Decision**: Places are stored whole (one `jsonb` value per place, validated by a shared Zod
 schema). The API decides what each viewer sees:
 
-- Listing places (area, meeting place): other members get `{ display }` only, where `display` is
+- Offering places (area, meeting place): other members get `{ display }` only, where `display` is
   "neighbourhood, city" (or whichever is known). The owner, and a requester whose proposal on the
-  listing was accepted, get the full place. A typed place has no parts, so its `display` is its
+  offering was accepted, get the full place. A typed place has no parts, so its `display` is its
   label as typed; the field keeps the 001 hint "Your neighbourhood, not your address" for that case.
 - Proposal and agreement places: visible in full to the two members, and to mediators of a report on
   that agreement (agreement details).
 
-"Within the listing's area" (FR-014, checked only for a service's meeting place, never for a drop-off at
+"Within the offering's area" (FR-014, checked only for a service's meeting place, never for a drop-off at
 the recipient's): when both places came from suggestions, they match if the
-neighbourhoods are equal (case- and accent-insensitive), or, when the listing area has no
+neighbourhoods are equal (case- and accent-insensitive), or, when the offering area has no
 neighbourhood (it's a whole city), if the cities are equal. If either place was typed, wunan can't
 tell, so the check is skipped and the lister decides; the proposal page says "wunan couldn't check
-this place against the listing's area".
+this place against the offering's area".
 
 Search's area filter (FR-016) matches the area's neighbourhood, city, or display text; generated
-columns `area_neighbourhood` and `area_city` on `listing` keep it indexed.
+columns `area_neighbourhood` and `area_city` on `offering` keep it indexed.
 
 **Rationale**: One place shape everywhere; privacy decided in one function (`viewPlace`) rather than
 spread across pages.
@@ -70,38 +70,38 @@ each edit bumps `version` and posts a `detail_changed` message summarising the c
 words. Accepting sends the `version` the lister saw; if it differs, `409 proposal_changed` and the
 page reloads showing the new details (spec edge case "Change just before accepting").
 
-Whether a proposal can be accepted is **computed, not stored**: `proposalIssues(proposal, listing,
-now)` returns a list of `{ field, message }` (missing detail, doesn't fit the listing, time passed,
-dates taken, not enough left). The page shows them; accept is refused while any remain. Listing
+Whether a proposal can be accepted is **computed, not stored**: `proposalIssues(proposal, offering,
+now)` returns a list of `{ field, message }` (missing detail, doesn't fit the offering, time passed,
+dates taken, not enough left). The page shows them; accept is refused while any remain. Offering
 edits therefore need no fix-up step ("Needs a new choice" is just an issue).
 
-Accepting runs in one transaction that locks the listing row (`select … for update`), re-checks
-issues, creates the agreement, updates the listing, and closes other open proposals when nothing is
+Accepting runs in one transaction that locks the offering row (`select … for update`), re-checks
+issues, creates the agreement, updates the offering, and closes other open proposals when nothing is
 left (amount or sessions at zero), posting a `closed` message and notifying each requester.
 
-One open proposal per requester per listing (partial unique index); a requester amends instead of
+One open proposal per requester per offering (partial unique index); a requester amends instead of
 opening a second one.
 
 **Rationale**: Computed issues keep one source of truth and work identically for every client. The
 version check is the simplest safe answer to concurrent edit + accept.
 
-**Alternatives considered**: Storing an "acceptable" flag (goes stale when the listing changes).
+**Alternatives considered**: Storing an "acceptable" flag (goes stale when the offering changes).
 Allowing several open proposals per requester (confusing lists, no benefit).
 
 ## 4. Loans as periods and overlap (FR-011, FR-011a, FR-019a)
 
 **Decision**: A loan agreement stores `loanStartsAt` and `loanEndsAt` (pickup time and pickup time
 plus loan length) and a generated `tstzrange` column `loan_period`. PostgreSQL enforces no overlap
-with an exclusion constraint: `exclude using gist (listing_id with =, loan_period with &&) where
+with an exclusion constraint: `exclude using gist (offering_id with =, loan_period with &&) where
 (returned_at is null)`, which needs the `btree_gist` extension (part of PostgreSQL, enabled in the
 migration). The application checks first to give the plain message "Those dates are already taken:
 …"; the constraint is the backstop under concurrency.
 
-"Lent out" is no longer a stored listing status. A Lend listing is lent out when it has a loan with
-`loanStartsAt <= now` and `returnedAt is null` (an overdue loan stays lent out). Listing status
+"Lent out" is no longer a stored offering status. A Lend offering is lent out when it has a loan with
+`loanStartsAt <= now` and `returnedAt is null` (an overdue loan stays lent out). Offering status
 becomes `available | paused | closed`; search's `includeLent` filters on that derived condition.
-`GET /listings/{id}` returns `takenPeriods` (loans not returned and not yet ended, plus overdue ones)
-for Lend listings.
+`GET /offerings/{id}` returns `takenPeriods` (loans not returned and not yet ended, plus overdue ones)
+for Lend offerings.
 
 Return reminders keep the 001 rule, keyed on `loanEndsAt` in the community time zone. An overdue
 earlier loan shows on the next loan's page (spec edge case).
@@ -117,9 +117,9 @@ breaks it). A separate bookings table (duplicates agreements).
 **Decision**: "When" is stored as `startsAt timestamptz` plus `hasTime boolean`; a date without a
 time is midnight in the community time zone (`TZ`, already set in `compose.yaml`). Service
 availability is rows of `(weekday 1–7, startTime, endTime)` in the community time zone, up to 14 per
-listing. A service proposal fits when its start falls inside a row for that weekday, and, for
+offering. A service proposal fits when its start falls inside a row for that weekday, and, for
 session lengths in minutes or hours, its end does too. Lengths in days or weeks only check the start.
-When a listing has availability, a service proposal must include a time.
+When an offering has availability, a service proposal must include a time.
 
 **Rationale**: Matches the clarified "weekly days + hours"; one time zone per community matches one
 community per installation.
@@ -135,9 +135,9 @@ community per installation.
 | `elsewhere` | Meet somewhere else | Meet somewhere else | Somewhere else |
 | `online` | Online | Online | Online |
 
-A listing stores `handovers` (array, empty = to be agreed). A proposal stores one `handover`. Its
-place: `to_requester` → the requester enters it; `at_lister` → copied from the listing's area when
-the proposal is read, not editable (FR-004a); `elsewhere` → defaults to the listing's meeting place,
+An offering stores `handovers` (array, empty = to be agreed). A proposal stores one `handover`. Its
+place: `to_requester` → the requester enters it; `at_lister` → copied from the offering's area when
+the proposal is read, not editable (FR-004a); `elsewhere` → defaults to the offering's meeting place,
 the requester may change it; `online` → no place.
 
 ## 7. Messages and threads (FR-022 to FR-026)
@@ -173,7 +173,7 @@ scripts.
 
 ## 10. Web form patterns
 
-**Decision**: The listing form and the proposal form need JavaScript (decided by the project owner
+**Decision**: The offering form and the proposal form need JavaScript (decided by the project owner
 on 2026-06-05). 001's rule that every flow works without JavaScript still holds for all other
 pages. These two forms still submit as normal form posts, so validation and errors stay on the
 server. Without JavaScript they show a plain note: "This form needs JavaScript turned on."
@@ -191,7 +191,7 @@ server. Without JavaScript they show a plain note: "This form needs JavaScript t
   closes; the count and the pick are announced in a polite live region. The picked
   place goes in a hidden JSON input; typing again after a pick turns it back into typed text.
   When the place service is unavailable, it works as a plain text field (FR-028).
-- **Proposal form**: one page per type (`/listings/[id]/propose`), every field optional, "Not
+- **Proposal form**: one page per type (`/offerings/[id]/propose`), every field optional, "Not
   decided yet" as the empty choice; a message box for "anything you'd rather talk about".
 
 ## Dependency summary (constitution VII)

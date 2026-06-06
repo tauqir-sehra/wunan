@@ -4,9 +4,10 @@ import AskingForHelp from './AskingForHelp.svelte';
 import Agreements from './Agreements.svelte';
 import Finding from './Finding.svelte';
 import Joining from './Joining.svelte';
-import Listing from './Listing.svelte';
+import Offering from './Offering.svelte';
 import Notifications from './Notifications.svelte';
 import Proposals from './Proposals.svelte';
+import Requests from './Requests.svelte';
 import YourData from './YourData.svelte';
 
 export type HelpTopic = { slug: string; title: string; summary: string; content: Component };
@@ -19,16 +20,22 @@ export const helpTopics: HelpTopic[] = [
     content: Joining
   },
   {
-    slug: 'listing',
-    title: 'Listing something',
+    slug: 'offering',
+    title: 'Offering something',
     summary: 'Lending, giving, trading, and offering your time.',
-    content: Listing
+    content: Offering
   },
   {
     slug: 'finding',
     title: 'Finding things',
     summary: 'Searching and narrowing down what you see.',
     content: Finding
+  },
+  {
+    slug: 'requests',
+    title: 'Asking for things',
+    summary: 'Requesting what you need, how others help, and public messages.',
+    content: Requests
   },
   {
     slug: 'proposals',

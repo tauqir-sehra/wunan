@@ -1,17 +1,17 @@
 // Turns proposal form fields (all text) into the API's proposal body (002 FR-011 to FR-015).
 // Every detail is optional. When making a proposal, empty boxes are left out; when changing one,
 // an emptied box clears that detail. The chosen accepted things arrive as JSON from ProposalFields.
-import type { ListingType } from '@wunan/shared';
-import { placeValue } from './listing-form.ts';
+import type { OfferingType } from '@wunan/shared';
+import { placeValue } from './offering-form.ts';
 
-const byType: Record<ListingType, string[]> = {
+const byType: Record<OfferingType, string[]> = {
   lend: ['loanLength', 'loanLengthUnit'],
   gift: ['amount'],
   trade: ['amount', 'ownOffer', 'ownOfferAmount', 'ownOfferUnit'],
   service: ['sessionLength', 'sessionLengthUnit', 'sessions']
 };
 
-export function proposalBody(values: Record<string, string>, type: ListingType, { forEdit = false } = {}) {
+export function proposalBody(values: Record<string, string>, type: OfferingType, { forEdit = false } = {}) {
   const body: Record<string, unknown> = {};
   for (const name of ['date', 'time', 'handover', ...byType[type]]) {
     const value = values[name]?.trim() ?? '';

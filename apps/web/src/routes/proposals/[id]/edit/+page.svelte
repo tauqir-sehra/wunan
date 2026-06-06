@@ -30,13 +30,23 @@
   <div class="grid gap-1">
     <h1 class="text-2xl font-semibold">Change your proposal</h1>
     <p class="text-muted-foreground">
-      For <a href="/listings/{data.listing.id}">{data.listing.title}</a> · <a href="/proposals/{data.proposal.id}">Back to the proposal</a>
+      For <a href="/offerings/{data.offering.id}">{data.offering.title}</a> ·
+      <a href="/proposals/{data.proposal.id}">Back to the proposal</a>
     </p>
   </div>
-  {#if form?.error}<Notice kind="error"><p>{form.error}</p><FieldProblems fields={form.fields} {labels} /></Notice>{/if}
+  {#if form?.error}<Notice kind="error"
+      ><p>{form.error}</p>
+      <FieldProblems fields={form.fields} {labels} /></Notice
+    >{/if}
   <form method="POST" class="grid gap-6">
-    <ProposalFields listing={data.listing} values={form?.values ?? data.values} fields={form?.fields ?? {}} />
-    <p class="text-sm text-muted-foreground">{data.listing.owner.displayName} sees each change in your messages.</p>
+    <ProposalFields
+      offering={data.offering}
+      values={form?.values ?? data.values}
+      fields={form?.fields ?? {}}
+    />
+    <p class="text-sm text-muted-foreground">
+      {data.offering.owner.displayName} sees each change in your messages.
+    </p>
     <div><Button type="submit">Save changes</Button></div>
   </form>
 </section>

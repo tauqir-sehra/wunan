@@ -24,7 +24,7 @@ changes stay in v1.
 - **IDs**: UUID strings. **Times**: ISO 8601 UTC. **Amounts**: decimal strings (e.g., `"2.5"`).
 - **Field names and rules**: as in [data-model.md](data-model.md) and the
   [001 data model](../../001-community-resource-sharing/data-model.md), in camelCase.
-- **Places**: a place object per data-model "Place". Listing places are returned as `{ display }`
+- **Places**: a place object per data-model "Place". Offering places are returned as `{ display }`
   unless the caller is the owner or a requester whose proposal on it was accepted.
 
 ## Authentication (Better Auth, `/api/auth`)
@@ -66,21 +66,21 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 | `DELETE /me` | member | `{ password }` → `204 No Content`. Effects per research §16. Password checks (here and `POST /me/password`) are limited to 10 per member per hour. |
 | `GET /me/summary` | member | Quiet home counts: `{ proposalsWithNews, agreementsNeedingAttention, unseenFlags }`. |
 
-## Listings
+## Offerings
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /listings` | member | Search. Query: `q`, `type` (one or more of `lend`/`gift`/`trade`/`service`, comma-separated; none = all), `area` (matches neighbourhood, city, or display text), `includeLent`, `cursor`, `limit`. Available, not-lent-out listings only by default. Each item has `lentOut` (bool). |
-| `POST /listings` | member | Create. Body is a discriminated union on `type` (fields per data-model): adds `handovers`, `area` and `meetingPlace` (place objects), `accepts` (Trade, ≤10 `{ description, amount?, unit? }`), `availability` (Service, ≤14 `{ weekday, startTime, endTime }`). Only `type` and `title` required; `area` required with `at_lister`, `meetingPlace` with `elsewhere`. |
-| `GET /listings/{id}` | member | Full listing with photos (`alt`, `url`), owner and owner's inviter, `handovers`, places (per Conventions), `accepts`, `availability`, `lentOut`, and for Lend `takenPeriods: [{ startsAt, endsAt, overdue }]`. Caller's own open proposal id as `myOpenProposalId`. Owner also gets `flags` and `openProposalCount`. |
-| `PATCH /listings/{id}` | owner | Edit fields; `type` cannot change. `accepts` and `availability` are replaced as a whole. |
-| `POST /listings/{id}/pause`, `/resume`, `/remove`, `/reopen` | owner | Status changes. `reopen` only when `closedReason = removed` (001 FR-013b). Open proposals stay open (they can't be accepted while the listing isn't available). |
-| `POST /listings/{id}/photos` | owner | Multipart `file`, optional `alt`. ≤6 per listing, ≤10 MB, images only (`413`, `400 not_an_image`). |
-| `PATCH /listings/{id}/photos/{photoId}` | owner | `{ alt, position }`. |
-| `DELETE /listings/{id}/photos/{photoId}` | owner | Deletes the photo. |
+| `GET /offerings` | member | Search. Query: `q`, `type` (one or more of `lend`/`gift`/`trade`/`service`, comma-separated; none = all), `area` (matches neighbourhood, city, or display text), `includeLent`, `cursor`, `limit`. Available, not-lent-out offerings only by default. Each item has `lentOut` (bool). |
+| `POST /offerings` | member | Create. Body is a discriminated union on `type` (fields per data-model): adds `handovers`, `area` and `meetingPlace` (place objects), `accepts` (Trade, ≤10 `{ description, amount?, unit? }`), `availability` (Service, ≤14 `{ weekday, startTime, endTime }`). Only `type` and `title` required; `area` required with `at_lister`, `meetingPlace` with `elsewhere`. |
+| `GET /offerings/{id}` | member | Full offering with photos (`alt`, `url`), owner and owner's inviter, `handovers`, places (per Conventions), `accepts`, `availability`, `lentOut`, and for Lend `takenPeriods: [{ startsAt, endsAt, overdue }]`. Caller's own open proposal id as `myOpenProposalId`. Owner also gets `flags` and `openProposalCount`. |
+| `PATCH /offerings/{id}` | owner | Edit fields; `type` cannot change. `accepts` and `availability` are replaced as a whole. |
+| `POST /offerings/{id}/pause`, `/resume`, `/remove`, `/reopen` | owner | Status changes. `reopen` only when `closedReason = removed` (001 FR-013b). Open proposals stay open (they can't be accepted while the offering isn't available). |
+| `POST /offerings/{id}/photos` | owner | Multipart `file`, optional `alt`. ≤6 per offering, ≤10 MB, images only (`413`, `400 not_an_image`). |
+| `PATCH /offerings/{id}/photos/{photoId}` | owner | `{ alt, position }`. |
+| `DELETE /offerings/{id}/photos/{photoId}` | owner | Deletes the photo. |
 | `GET /photos/{key}` | member | Image bytes, `Cache-Control: private`. |
-| `POST /listings/{id}/flags` | non-owner | `{ request }`; notifies the owner. Listing unchanged. |
-| `GET /me/listings` | member | My listings by status, with unseen flag counts. |
+| `POST /offerings/{id}/flags` | non-owner | `{ request }`; notifies the owner. Offering unchanged. |
+| `GET /me/offerings` | member | My offerings by status, with unseen flag counts. |
 
 ## Places
 
@@ -92,11 +92,11 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `POST /listings/{id}/proposals` | non-owner | Body: discriminated union on the listing's type, every detail optional: `date` (YYYY-MM-DD) and `time` (HH:MM) in the community time zone, `handover`, `place`, `loanLength`+`loanLengthUnit` (Lend), `amount` (Gift/Trade; defaults to `remaining`), `offers: [{ acceptId, amount? }]` or `ownOffer`+`ownOfferAmount?`+`ownOfferUnit?` (Trade), `sessionLength`+`sessionLengthUnit`, `sessions` (Service), plus optional first `message`. Values that don't fit the listing (e.g., a loan longer than the maximum, a time outside the service's hours, a place outside the area, more than remains) are saved and reported in the proposal's `issues`, which block acceptance until settled (research §3). Only malformed input is refused with `400` and `fields`: details that don't apply to the type, half-given pairs (a length without its unit), and `offers` whose `acceptId` isn't one of the listing's accepted things. Listing must be available (Lend: may be lent out). `409 proposal_exists` with `{ proposalId }` if the caller already has an open one. → `201 { id, conversationId }`. Notifies the lister (`message` type). |
-| `GET /proposals` | member | `?role=requester\|lister`, `?status=open\|ended`, paginated. Items: `{ id, listing: { id, title, type }, otherMember, status, issuesCount, unread, lastActivityAt, lastMessagePreview }`. |
-| `GET /proposals/{id}` | requester, lister; mediators only via report sharing | `{ id, status, closedReason, version, listing (summary, places per Conventions), requester, lister, details (with `place` resolved: listing area for `at_lister`), offers, issues: [{ field, message }], areaUnchecked, earlierLoanNotBack (Lend: `{ endsAt }` when an earlier loan is past its end and not marked returned, else null), canAccept, canEdit, conversationId, agreementId, decisionNote }`. |
-| `PATCH /proposals/{id}` | requester, while open | Same fields and the same rules as create (null clears a detail; misfit values become `issues`, not `400`). Bumps `version`; posts a `detail_changed` message listing each change; notifies the lister. Unchanged values are ignored. |
-| `POST /proposals/{id}/accept` | lister | `{ version }`. `409 proposal_changed` if the version differs (response includes the current proposal). `409 proposal_not_ready` with `issues` if any remain. Creates the agreement atomically (listing row locked; loans checked for overlap, database exclusion as backstop → `409 dates_taken`). Updates the listing; if nothing is left, closes other open proposals (`nothing_left`) and notifies their requesters; for other proposals now over the remaining amount or overlapping, notifies their requesters. → `{ agreementId }`. Notifies the requester (`agreement` type). |
+| `POST /offerings/{id}/proposals` | non-owner | Body: discriminated union on the offering's type, every detail optional: `date` (YYYY-MM-DD) and `time` (HH:MM) in the community time zone, `handover`, `place`, `loanLength`+`loanLengthUnit` (Lend), `amount` (Gift/Trade; defaults to `remaining`), `offers: [{ acceptId, amount? }]` or `ownOffer`+`ownOfferAmount?`+`ownOfferUnit?` (Trade), `sessionLength`+`sessionLengthUnit`, `sessions` (Service), plus optional first `message`. Values that don't fit the offering (e.g., a loan longer than the maximum, a time outside the service's hours, a place outside the area, more than remains) are saved and reported in the proposal's `issues`, which block acceptance until settled (research §3). Only malformed input is refused with `400` and `fields`: details that don't apply to the type, half-given pairs (a length without its unit), and `offers` whose `acceptId` isn't one of the offering's accepted things. Offering must be available (Lend: may be lent out). `409 proposal_exists` with `{ proposalId }` if the caller already has an open one. → `201 { id, conversationId }`. Notifies the lister (`message` type). |
+| `GET /proposals` | member | `?role=requester\|lister`, `?status=open\|ended`, paginated. Items: `{ id, offering: { id, title, type }, otherMember, status, issuesCount, unread, lastActivityAt, lastMessagePreview }`. |
+| `GET /proposals/{id}` | requester, lister; mediators only via report sharing | `{ id, status, closedReason, version, offering (summary, places per Conventions), requester, lister, details (with `place` resolved: offering area for `at_lister`), offers, issues: [{ field, message }], areaUnchecked, earlierLoanNotBack (Lend: `{ endsAt }` when an earlier loan is past its end and not marked returned, else null), canAccept, canEdit, conversationId, agreementId, decisionNote }`. |
+| `PATCH /proposals/{id}` | requester, while open | Same fields and the same rules as create (null clears a detail; misfit values become `issues`, not `400`). Bumps `version`; posts a `detail_changed` message offering each change; notifies the lister. Unchanged values are ignored. |
+| `POST /proposals/{id}/accept` | lister | `{ version }`. `409 proposal_changed` if the version differs (response includes the current proposal). `409 proposal_not_ready` with `issues` if any remain. Creates the agreement atomically (offering row locked; loans checked for overlap, database exclusion as backstop → `409 dates_taken`). Updates the offering; if nothing is left, closes other open proposals (`nothing_left`) and notifies their requesters; for other proposals now over the remaining amount or overlapping, notifies their requesters. → `{ agreementId }`. Notifies the requester (`agreement` type). |
 | `POST /proposals/{id}/decline` | lister, while open | `{ note? }` → `declined`; thread read-only; notifies the requester. |
 | `POST /proposals/{id}/withdraw` | requester, while open | `{ note? }` → `withdrawn`; thread read-only; notifies the lister. |
 
@@ -130,8 +130,8 @@ There is no inbox and no way to start a thread directly.
 
 ### Removed from 001
 
-`GET /conversations`, `POST /conversations`, `GET /listings/{id}/agreement-candidates`,
-`POST /listings/{id}/agreements`, `POST /agreements/{id}/confirm`, `/dispute`, `/cancel`.
+`GET /conversations`, `POST /conversations`, `GET /offerings/{id}/agreement-candidates`,
+`POST /offerings/{id}/agreements`, `POST /agreements/{id}/confirm`, `/dispute`, `/cancel`.
 
 ## Meta
 

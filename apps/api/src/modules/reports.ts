@@ -9,7 +9,7 @@
 // A report may stay open indefinitely. Nothing here changes anyone's membership or access.
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { agreement, conversation, conversationParticipant, listing, member, problemReport } from '../db/schema/index.ts';
+import { agreement, conversation, conversationParticipant, offering, member, problemReport } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { notify } from '../notify/index.ts';
 import { setMediatorCheck, setReportsLookup } from './agreements.ts';
@@ -62,7 +62,7 @@ export async function createReport(agreementId: string, reporterId: string, desc
 
   const [reporter] = await db.select().from(member).where(eq(member.id, reporterId));
   const [reported] = await db.select().from(member).where(eq(member.id, reportedId));
-  const [item] = await db.select({ title: listing.title }).from(listing).where(eq(listing.id, deal.listingId));
+  const [item] = await db.select({ title: offering.title }).from(offering).where(eq(offering.id, deal.offeringId));
   const helpers = mediators.map((m) => m.displayName).join(', ');
   await postSystemMessage(
     conversationId,
@@ -137,12 +137,12 @@ export async function getReport(reportId: string, memberId: string) {
     return { id: person.id, displayName: shownName(person) };
   };
   const [deal] = await db.select().from(agreement).where(eq(agreement.id, report.agreementId));
-  const [item] = await db.select({ title: listing.title }).from(listing).where(eq(listing.id, deal!.listingId));
+  const [item] = await db.select({ title: offering.title }).from(offering).where(eq(offering.id, deal!.offeringId));
   const mayAct = memberId === report.reporterId || mediatorIds.includes(memberId);
   return {
     id: report.id,
     agreementId: report.agreementId,
-    listingTitle: item?.title ?? '',
+    offeringTitle: item?.title ?? '',
     description: report.description,
     status: report.status,
     escalationLevel: report.escalationLevel,

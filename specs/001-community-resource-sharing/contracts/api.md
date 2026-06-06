@@ -59,28 +59,28 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 | `DELETE /me` | member | `{ password }` → `204 No Content`. Effects per research §16. Password checks (here and `POST /me/password`) are limited to 10 per member per hour. |
 | `GET /me/summary` | member | Quiet home counts: `{ unreadConversations, agreementsNeedingAttention, unseenFlags }`. |
 
-## Listings
+## Offerings
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /listings` | member | Search. Query: `q`, `type` (`lend`/`gift`/`trade`/`service`), `area`, `includeLent`, `cursor`, `limit`. Available listings only by default. |
-| `POST /listings` | member | Create. Body is a discriminated union on `type` (fields per data-model). Only `type` and `title` required (plus Trade's wanted-or-open rule). |
-| `GET /listings/{id}` | member | Full listing with photos (`alt`, `url`), owner and owner's inviter. Owner also gets `flags`. |
-| `PATCH /listings/{id}` | owner | Edit fields; `type` cannot change. |
-| `POST /listings/{id}/pause`, `/resume`, `/remove`, `/reopen` | owner | Status changes. `reopen` only when `closedReason = removed` (FR-013b). |
-| `POST /listings/{id}/photos` | owner | Multipart `file`, optional `alt`. ≤6 per listing, ≤10 MB, images only (`413`, `400 not_an_image`). |
-| `PATCH /listings/{id}/photos/{photoId}` | owner | `{ alt, position }`. |
-| `DELETE /listings/{id}/photos/{photoId}` | owner | Deletes the photo. |
+| `GET /offerings` | member | Search. Query: `q`, `type` (`lend`/`gift`/`trade`/`service`), `area`, `includeLent`, `cursor`, `limit`. Available offerings only by default. |
+| `POST /offerings` | member | Create. Body is a discriminated union on `type` (fields per data-model). Only `type` and `title` required (plus Trade's wanted-or-open rule). |
+| `GET /offerings/{id}` | member | Full offering with photos (`alt`, `url`), owner and owner's inviter. Owner also gets `flags`. |
+| `PATCH /offerings/{id}` | owner | Edit fields; `type` cannot change. |
+| `POST /offerings/{id}/pause`, `/resume`, `/remove`, `/reopen` | owner | Status changes. `reopen` only when `closedReason = removed` (FR-013b). |
+| `POST /offerings/{id}/photos` | owner | Multipart `file`, optional `alt`. ≤6 per offering, ≤10 MB, images only (`413`, `400 not_an_image`). |
+| `PATCH /offerings/{id}/photos/{photoId}` | owner | `{ alt, position }`. |
+| `DELETE /offerings/{id}/photos/{photoId}` | owner | Deletes the photo. |
 | `GET /photos/{key}` | member | Image bytes, `Cache-Control: private`. |
-| `POST /listings/{id}/flags` | non-owner | `{ request }`; notifies the owner. Listing unchanged. |
-| `GET /me/listings` | member | My listings by status, with unseen flag counts. |
+| `POST /offerings/{id}/flags` | non-owner | `{ request }`; notifies the owner. Offering unchanged. |
+| `GET /me/offerings` | member | My offerings by status, with unseen flag counts. |
 
 ## Conversations and messages
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /conversations` | member | My conversations, each with `unread`, last message preview, listing title. |
-| `POST /conversations` | member | `{ memberId, listingId? }` → existing conversation for that pair + listing, or a new one. |
+| `GET /conversations` | member | My conversations, each with `unread`, last message preview, offering title. |
+| `POST /conversations` | member | `{ memberId, offeringId? }` → existing conversation for that pair + offering, or a new one. |
 | `GET /conversations/{id}/messages` | participant | Newest first, paginated. |
 | `POST /conversations/{id}/messages` | participant | `{ body }`. Rate-limited. |
 | `POST /conversations/{id}/read` | participant | Marks read. |
@@ -93,13 +93,13 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /listings/{id}/agreement-candidates` | owner | Members who messaged about this listing. |
-| `POST /listings/{id}/agreements` | owner | `{ otherMemberId, amount?, returnDue?, sessions?, note? }` per listing type. Updates the listing atomically; `409 not_enough_remaining` if over-allocated. |
+| `GET /offerings/{id}/agreement-candidates` | owner | Members who messaged about this offering. |
+| `POST /offerings/{id}/agreements` | owner | `{ otherMemberId, amount?, returnDue?, sessions?, note? }` per offering type. Updates the offering atomically; `409 not_enough_remaining` if over-allocated. |
 | `GET /me/agreements` | member | Given, received, lent, borrowed, provided. |
 | `GET /agreements/{id}` | party, mediator | Details, confirmation, reports. |
 | `POST /agreements/{id}/confirm`, `/dispute` | other member | Sets confirmation. |
-| `POST /agreements/{id}/returned` | owner | Loans only; listing becomes available. |
-| `POST /agreements/{id}/cancel` | owner | Pending only; reverses the listing effects and notifies the other member (FR-024a). |
+| `POST /agreements/{id}/returned` | owner | Loans only; offering becomes available. |
+| `POST /agreements/{id}/cancel` | owner | Pending only; reverses the offering effects and notifies the other member (FR-024a). |
 | `POST /agreements/{id}/reports` | party | `{ description }` → report + mediation conversation with the reported member's inviter. |
 | `GET /reports/{id}` | reporter, reported, mediators | Report, escalation level, conversation id. |
 | `POST /reports/{id}/escalate` | reporter, current mediator | Next step; `409 already_at_founders` once founders are involved. |

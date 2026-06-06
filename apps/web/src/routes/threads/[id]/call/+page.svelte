@@ -15,7 +15,9 @@
   <p class="text-muted-foreground">{names} can accept it. The call itself happens outside wunan.</p>
   {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
   <form method="POST" class="grid gap-4">
-    {#if form?.fields?.proposedTime}<p class="font-medium text-destructive">{form.fields.proposedTime}</p>{/if}
+    {#if form?.fields?.proposedTime}<p class="font-medium text-destructive">
+        {form.fields.proposedTime}
+      </p>{/if}
     <div class="flex flex-wrap gap-4">
       <FormField label="Day" name="date" type="date" min={today} required />
       <FormField label="Time" name="time" type="time" required />

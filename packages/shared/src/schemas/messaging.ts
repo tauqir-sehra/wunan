@@ -3,12 +3,15 @@
 import { z } from 'zod';
 import { memberRef } from './common.ts';
 
+/** The most characters a private message can have. */
+export const MESSAGE_LIMIT = 4000;
+
 export const SendMessage = z.object({
   body: z
     .string({ message: 'Please write a message.' })
     .trim()
     .min(1, 'Please write a message.')
-    .max(4000, 'Please keep your message to 4000 characters or fewer.')
+    .max(MESSAGE_LIMIT, `Please keep your message to ${MESSAGE_LIMIT} characters or fewer.`)
 });
 
 export const ShareContact = z
@@ -50,7 +53,7 @@ export type Message = z.infer<typeof Message>;
 export const ConversationSummary = z.object({
   id: z.string(),
   participants: z.array(memberRef),
-  listing: z.object({ id: z.string(), title: z.string() }).nullable(),
+  offering: z.object({ id: z.string(), title: z.string() }).nullable(),
   isMediation: z.boolean(),
   proposalId: z.string().nullable(),
   /** False once its proposal is declined, withdrawn, or closed, or for mediators reading shared messages. */
@@ -70,6 +73,8 @@ export type MessagesPage = z.infer<typeof MessagesPage>;
 export const Summary = z.object({
   proposalsWithNews: z.number(),
   agreementsNeedingAttention: z.number(),
-  unseenFlags: z.number()
+  unseenFlags: z.number(),
+  /** Issues raised about my requests that I haven't seen (003 FR-022). */
+  unseenRequestFlags: z.number()
 });
 export type Summary = z.infer<typeof Summary>;

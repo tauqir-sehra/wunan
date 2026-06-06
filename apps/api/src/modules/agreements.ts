@@ -3,10 +3,10 @@
 // returned, and the loans that need a reminder.
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { agreement, listing, member } from '../db/schema/index.ts';
+import { agreement, offering, member } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { communityTimeZone } from '../lib/time.ts';
-import { earlierLoanNotBack, trimDecimal } from './listings.ts';
+import { earlierLoanNotBack, trimDecimal } from './offerings.ts';
 import { shownName } from './members.ts';
 import { viewPlace } from './places.ts';
 
@@ -39,7 +39,7 @@ export async function getAgreement(agreementId: string, memberId: string) {
   const stillOut = row.outcome === 'lent' && !row.returnedAt && row.loanStartsAt;
   return {
     ...(await describe([row], memberId))[0]!,
-    earlierLoanNotBack: stillOut ? await earlierLoanNotBack(row.listingId, row.loanStartsAt!, row.id) : null,
+    earlierLoanNotBack: stillOut ? await earlierLoanNotBack(row.offeringId, row.loanStartsAt!, row.id) : null,
     reports: await reportsFor(agreementId)
   };
 }
@@ -82,21 +82,21 @@ export function setMediatorCheck(check: typeof isMediator) {
 
 async function describe(rows: AgreementRow[], memberId: string) {
   if (rows.length === 0) return [];
-  const listings = await db.select().from(listing).where(inArray(listing.id, [...new Set(rows.map((r) => r.listingId))]));
+  const offerings = await db.select().from(offering).where(inArray(offering.id, [...new Set(rows.map((r) => r.offeringId))]));
   const people = await db.select().from(member).where(inArray(member.id, [...new Set(rows.flatMap((r) => [r.ownerId, r.otherMemberId]))]));
-  const listingById = new Map(listings.map((l) => [l.id, l]));
+  const offeringById = new Map(offerings.map((l) => [l.id, l]));
   const personById = new Map(people.map((p) => [p.id, p]));
   const now = new Date();
 
   return rows.map((row) => {
-    const item = listingById.get(row.listingId)!;
+    const item = offeringById.get(row.offeringId)!;
     const owner = personById.get(row.ownerId)!;
     const other = personById.get(row.otherMemberId)!;
     const myRole = row.ownerId === memberId ? 'owner' : row.otherMemberId === memberId ? 'other' : 'mediator';
     return {
       id: row.id,
       proposalId: row.proposalId,
-      listing: { id: item.id, title: item.title, type: item.type, unit: item.unit },
+      offering: { id: item.id, title: item.title, type: item.type, unit: item.unit },
       owner: { id: owner.id, displayName: shownName(owner) },
       otherMember: { id: other.id, displayName: shownName(other) },
       outcome: row.outcome,

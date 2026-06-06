@@ -1,7 +1,7 @@
 // Notification settings, devices, and leaving wunan (FR-031, FR-031a, FR-032).
 import { z } from 'zod';
 
-export const notificationTypes = ['message', 'agreement', 'reminder', 'report', 'flag'] as const;
+export const notificationTypes = ['message', 'agreement', 'reminder', 'report', 'flag', 'request', 'public_message'] as const;
 export const NotificationType = z.enum(notificationTypes);
 export type NotificationType = z.infer<typeof NotificationType>;
 

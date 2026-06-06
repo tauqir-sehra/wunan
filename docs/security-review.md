@@ -37,20 +37,20 @@ storage, or input handling. Each entry lists what was checked, what was found, a
 **Notes for later phases**: the API trusts `X-Forwarded-For` because it is reachable only through
 Caddy and the web app; `compose.yaml` (T111) must not publish the API port.
 
-## US2: listings and photo upload (2026-06-04)
+## US2: offerings and photo upload (2026-06-04)
 
-**Scope**: `apps/api/src/modules/listings.ts`, `modules/photos.ts`, `routes/listings.ts`,
-`routes/photos.ts`, `app.ts` (body limits); `apps/web/src/routes/listings/**`,
+**Scope**: `apps/api/src/modules/offerings.ts`, `modules/photos.ts`, `routes/offerings.ts`,
+`routes/photos.ts`, `app.ts` (body limits); `apps/web/src/routes/offerings/**`,
 `routes/photos/[key]/+server.ts`.
 
 **Checked**
 
 | Area | Result |
 |------|--------|
-| Ownership | Every change (edit, status, photos) goes through `ownedListing`, which refuses non-owners with 403 (tested). Flags can't target your own listing (tested). |
-| Input | Listing fields validated by the shared Zod schema per type, with fields from other types refused (tested), plus matching database check constraints. Flags 1–500 characters, 10 per member per day. |
+| Ownership | Every change (edit, status, photos) goes through `ownedOffering`, which refuses non-owners with 403 (tested). Flags can't target your own offering (tested). |
+| Input | Offering fields validated by the shared Zod schema per type, with fields from other types refused (tested), plus matching database check constraints. Flags 1–500 characters, 10 per member per day. |
 | Photo contents | The real format is read from the file's bytes; only photo formats are accepted, so SVG and non-images are refused (tested). `limitInputPixels` stops decompression bombs. |
-| Photo size | Request bodies capped at 11 MB for uploads (1 MB for everything else); files over 10 MB refused with 413 (tested). At most 6 photos per listing (tested). |
+| Photo size | Request bodies capped at 11 MB for uploads (1 MB for everything else); files over 10 MB refused with 413 (tested). At most 6 photos per offering (tested). |
 | Metadata | Every photo is re-encoded as WebP, which drops EXIF including GPS (tested in the API and end to end with a real GPS-tagged JPEG). |
 | Storage and serving | Files named by 16 random bytes; the key format is checked before touching the disk, so paths can't escape the photos folder (tested). Served only to signed-in members with `Cache-Control: private`, through the web app's proxy (tested). |
 
@@ -59,7 +59,7 @@ Caddy and the web app; `compose.yaml` (T111) must not publish the API port.
 1. *SVG files were accepted*: sharp can decode SVG, which is a document format rather than a
    photo. Uploads are now limited to photo formats by their actual contents.
 
-**Notes for later phases**: deleting a listing's rows does not delete its photo files; account
+**Notes for later phases**: deleting an offering's rows does not delete its photo files; account
 deletion (T108) must call `deletePhotoFiles` for the member's photos.
 
 ## US4: messages, contact sharing, live stream (2026-06-04)
@@ -105,7 +105,7 @@ holds one HTTP connection, not a database connection; revisit if it becomes a pr
 | Device endpoints in the web app | JSON endpoints check that the request comes from this site and that a member is signed in; the API re-checks everything. |
 | Service worker cache | Only the app's built files and icons; pages, messages and photos are never cached, because devices can be shared. |
 | Export | Only the member's own data; other members by display name only, never their email, ids or private contact details (tested), except details they shared in a conversation with this member. Downloads are `no-store`. Limited to 10 an hour per member, as each export reads every photo. |
-| Leaving | Needs the password; password checks (leaving and changing the password) are limited to 10 an hour per member, so a stolen session can't be used to guess it (tested). Removes the email (replaced, so it can join again), password, sessions on every device, bio, contact details, devices, notification settings, listings and photo files, and password-reset links; cancels unused invitations (tested). |
+| Leaving | Needs the password; password checks (leaving and changing the password) are limited to 10 an hour per member, so a stolen session can't be used to guess it (tested). Removes the email (replaced, so it can join again), password, sessions on every device, bio, contact details, devices, notification settings, offerings and photo files, and password-reset links; cancels unused invitations (tested). |
 
 **Found and fixed**
 
@@ -115,10 +115,10 @@ holds one HTTP connection, not a database connection; revisit if it becomes a pr
    stayed in those messages. They are now replaced with "Contact details were removed when this
    member left wunan." (tested).
 
-**Decided**: a listing that is part of an agreement can't be deleted without breaking the other
+**Decided**: an offering that is part of an agreement can't be deleted without breaking the other
 member's agreement, so when its owner leaves it keeps only its title and kind, closed, with
 description, area and photos removed. Messages, agreements, requests for help and requests about
-listings stay visible to the other members involved, as research §16 describes.
+offerings stay visible to the other members involved, as research §16 describes.
 
 ## Final review, whole app (2026-06-04)
 
@@ -132,7 +132,7 @@ app, photo upload, contact sharing, live stream, push subscriptions), plus the s
 |------|--------|
 | Inputs | Every API body, query and path parameter is validated with the shared Zod schemas before use; unknown fields are refused where they would be ignored silently. The OpenAPI completeness test confirms every contract endpoint is described. |
 | Access checks | Every `/api/v1` route except invitation check/accept/confirm, health and the OpenAPI document requires a member; owner, participant, party and mediator checks answer "not found" to others (tested per story). |
-| Rate limits | Sign-in, password reset, joining, resending confirmation, invitations, messages, listing requests, password checks and exports are limited; limits are per visitor address or per member as fits. |
+| Rate limits | Sign-in, password reset, joining, resending confirmation, invitations, messages, offering requests, password checks and exports are limited; limits are per visitor address or per member as fits. |
 | Visitor addresses | In the self-hosted setup only Caddy is reachable from outside. Caddy sets `X-Forwarded-For`; the web app (`ADDRESS_HEADER`, `XFF_DEPTH=1`) and the API both take the right-most entry, which a visitor can't forge. The API port is not published. |
 | CSP and headers | Strict nonce-based CSP from SvelteKit (no inline scripts, no third-party origins, `frame-ancestors 'none'`); `nosniff`, `Referrer-Policy: same-origin`, `X-Frame-Options: DENY`, a restrictive `Permissions-Policy`; HSTS from Caddy. |
 | Cookies | The web session cookie is `HttpOnly`, `SameSite=Lax`, and `Secure` in production (only relaxed for development over plain http, so phones on the local network can test). Form posts are checked for same-origin by SvelteKit; behind Caddy the scheme comes from `X-Forwarded-Proto`, which only Caddy can set. |
@@ -160,7 +160,7 @@ app, photo upload, contact sharing, live stream, push subscriptions), plus the s
   runs. Revisit when better-auth or drizzle-kit update.
 - No cap on simultaneous live streams per member (see US4).
 
-## 002 Proposals for listings (2026-06-05)
+## 002 Proposals for offerings (2026-06-05)
 
 Covers proposals, place suggestions, place privacy, loan overlap, and sharing proposal messages
 with helpers (002 tasks T032, T039, T067, T075).
@@ -169,18 +169,18 @@ with helpers (002 tasks T032, T039, T067, T075).
 |------|--------|
 | Proposal access | Only the requester changes details (`403 not_requester` for the lister, "not found" for anyone else); only the lister accepts or declines; only the requester withdraws. Every endpoint is covered by route tests. |
 | Accepting what was shown | Accept carries the `version` the lister saw; a change in between answers `409 proposal_changed` with the new details, so nobody agrees to details they didn't see. |
-| Over-allocation and double booking | Accepting locks the listing row and re-checks what's left in one transaction. Overlapping unreturned loans are refused by a PostgreSQL exclusion constraint (`agreement_loans_dont_overlap`) even if two accepts race (tested). Non-loan agreements have no loan period, so they never clash. |
-| Place privacy | Listing places are stored in full but every response goes through `viewPlace`: others get only "neighbourhood, city" until their proposal is accepted (listing page, search results, proposals that use the listing's area or meeting place). The area filter only matches neighbourhood, city, or typed text, so searching by street can't reveal whose listing is at an address (tested). A bare street address with no area parts is shown as "Area not given". |
+| Over-allocation and double booking | Accepting locks the offering row and re-checks what's left in one transaction. Overlapping unreturned loans are refused by a PostgreSQL exclusion constraint (`agreement_loans_dont_overlap`) even if two accepts race (tested). Non-loan agreements have no loan period, so they never clash. |
+| Place privacy | Offering places are stored in full but every response goes through `viewPlace`: others get only "neighbourhood, city" until their proposal is accepted (offering page, search results, proposals that use the offering's area or meeting place). The area filter only matches neighbourhood, city, or typed text, so searching by street can't reveal whose offering is at an address (tested). A bare street address with no area parts is shown as "Area not given". |
 | Place suggestions | Called only by the API, server to server, with a 2 s timeout; the request carries only the typed text, `limit`, `lang`, and the operator's fixed bias/box (tested against the stub). The answer is validated with Zod and reduced to known fields before use. 60 lookups per member per minute; the web proxy requires a signed-in member. The typed text is never logged. Answers are cached in memory only (10 minutes, 500 entries). |
 | Threads | Proposal threads become read-only once declined, withdrawn, or closed. Helpers can read (never write) a proposal's thread only after the reporter or reported member shares it; sharing is one-way and noted in the report thread (tested). |
-| Account deletion | Open proposals the member made or received close; listings with proposals keep only their title, so the other member's proposal still makes sense. |
-| Data export | Proposals and their messages are included; the listing's full place is never exported to a requester who wasn't accepted (only their own typed place is stored on their proposal). |
+| Account deletion | Open proposals the member made or received close; offerings with proposals keep only their title, so the other member's proposal still makes sense. |
+| Data export | Proposals and their messages are included; the offering's full place is never exported to a requester who wasn't accepted (only their own typed place is stored on their proposal). |
 
 **Found and fixed during the work**
 
 1. *Every agreement clashed with every loan*: `tstzrange(null, null)` is an unbounded range, so
    gifts and services counted as "lent for ever". The loan period is now null for anything but a
-   loan (tested: a second agreement on a listing is accepted).
+   loan (tested: a second agreement on an offering is accepted).
 2. *Picked places carried a display field*: a suggestion's `display` was being sent back as part of
    the place and refused. The place field now saves only the place itself.
 
@@ -191,3 +191,28 @@ with helpers (002 tasks T032, T039, T067, T075).
 - The default place server is komoot's public Photon instance, an outside service. Operators who
   don't want the typed text to leave their machines can self-host Photon or turn suggestions off;
   the operator guide says so.
+
+## 003 Requests for things (2026-06-06)
+
+Covers requests, links between requests and offerings, closing a request with an agreement, public
+threads, flags on requests and messages, export, and account deletion (003 tasks T037, T045, T057,
+T065).
+
+| Area | Review |
+|------|--------|
+| Request access | Only the asker edits, closes, or reopens (`403 not_asker`); edits re-check the whole request with the shared schema, so the per-kind rules always hold. A request closed because its asker left answers "not found" everywhere, including its thread and live stream. |
+| Linking | A member can link only their own available offering of the matching type, or (as the asker) an offering they found; an asker can't link their own offering to their own request. Each check has its own plain error (`wrong_type`, `not_available`, `already_linked`, `403`), all tested. A link can be removed only by who made it or the offering's owner. Links never change an offering. |
+| Offering made for a request | `forRequest` is checked by the same rules after the offering is saved; if the link can't be made (for example the request closed meanwhile) the offering is kept and the answer says why. |
+| Closing with an agreement | A proposal is tied to a request only when the requester is its asker and the offering is linked to it (a `requestId` naming anything else is refused). The request closes inside the accept transaction, under the offering lock, and only if still open; a request the asker closed by hand stays "closed by the asker". |
+| Place privacy | Request areas go out only through `viewPlace`: in full for the asker, "neighbourhood, city" for everyone else. An offering form prefilled from a request gets only that display text. The area filter matches neighbourhood, city, or typed text only. |
+| Public threads | Plain text, 1–240 characters after trimming, checked by the shared schema and a database check; shown with Svelte's normal escaping (no HTML). Any signed-in member may read and post while the request is open or the offering isn't closed. Only the author can remove a message (body emptied); nobody can hide one. Posts share the private-message limit of 60 per member per hour as an abuse backstop (owner decision). Live streams need a signed-in member and an existing request or offering, and close when the member leaves wunan. Notices are capped at one per thread per member per day. |
+| Flags | Requests and public messages use the same flag table and limit as offerings (10 a day per member); a flag goes only to the asker or the message's author and never hides anything. The author sees flags only on their own messages. |
+| Account deletion | The member's requests close for everyone (description and area cleared) and their public messages are deleted in the same transaction as the rest of 001's deletion. Offerings linked to their requests stay as they are. |
+| Data export | Adds the member's requests (with their own full area), links, and public messages, and flags sent or received about offerings, requests, and messages. Other members appear by display name only. |
+
+**Accepted for now**
+
+- Linking an offering has no rate limit of its own; the asker's notices about it are capped at one per
+  request per hour, and links can be removed by the offering's owner.
+- Same 4 moderate `npm audit` advisories as before (esbuild inside drizzle-kit, development server
+  only).

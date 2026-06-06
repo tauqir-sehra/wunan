@@ -5,8 +5,12 @@
 
   type Props = WithElementRef<HTMLTextareaAttributes, HTMLTextAreaElement>;
 
-  let { ref = $bindable(null), value = $bindable(), class: className, ...restProps }: Props =
-    $props();
+  let {
+    ref = $bindable(null),
+    value = $bindable(),
+    class: className,
+    ...restProps
+  }: Props = $props();
 </script>
 
 <textarea
@@ -17,5 +21,4 @@
     'flex min-h-28 w-full rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-2 aria-invalid:border-destructive',
     className
   )}
-  {...restProps}
-></textarea>
+  {...restProps}></textarea>

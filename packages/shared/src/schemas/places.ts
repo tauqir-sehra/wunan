@@ -1,6 +1,6 @@
 // Places (002 FR-027 to FR-030): areas, meeting places, and where a handover happens. A place is
 // either picked from a suggestion (with its parts, used for "neighbourhood, city" and area checks)
-// or typed as plain text. Other members see a listing's place only as `{ display }` until a
+// or typed as plain text. Other members see an offering's place only as `{ display }` until a
 // proposal on it is accepted; the API decides that (apps/api/src/modules/places.ts).
 import { z } from 'zod';
 
@@ -39,7 +39,7 @@ export const Place = z.preprocess((value) => {
 }, PlaceObject.nullable());
 export type Place = NonNullable<z.infer<typeof PlaceObject>>;
 
-/** What other members see of a listing's place: only its neighbourhood and city. */
+/** What other members see of an offering's place: only its neighbourhood and city. */
 export const PlaceDisplay = z.object({ display: z.string() });
 
 /** A place as returned by the API: in full, or reduced to its display text. */

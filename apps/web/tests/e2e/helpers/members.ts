@@ -1,6 +1,7 @@
 // Test helpers that create members the same way real people do: founders with the setup script,
 // everyone else through invitations and the emailed confirmation link (read from Mailpit).
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { API_URL, WEB_URL } from '../../../playwright.config.ts';
 
 // Like the web server, test calls to the API say which site they come from (Better Auth's CSRF check).
@@ -16,10 +17,26 @@ function uniqueEmail(name: string) {
 
 /** Creates a founding member with the same script operators use. */
 export function createFounder(displayName = 'Founder'): TestMember {
-  const member = { email: uniqueEmail(displayName), password: 'correct horse battery', displayName };
+  const member = {
+    email: uniqueEmail(displayName),
+    password: 'correct horse battery',
+    displayName
+  };
   execFileSync(
     'npm',
-    ['run', 'create-founder', '-w', 'apps/api', '--', '--email', member.email, '--name', displayName, '--password', member.password],
+    [
+      'run',
+      'create-founder',
+      '-w',
+      'apps/api',
+      '--',
+      '--email',
+      member.email,
+      '--name',
+      displayName,
+      '--password',
+      member.password
+    ],
     { cwd: '../..', env: { ...process.env, DATABASE_URL: testDatabaseUrl() }, stdio: 'pipe' }
   );
   return member;
@@ -33,7 +50,8 @@ export async function signIn(member: TestMember): Promise<string> {
     body: JSON.stringify({ email: member.email, password: member.password })
   });
   const token = response.headers.get('set-auth-token');
-  if (!response.ok || !token) throw new Error(`Sign-in failed for ${member.email}: ${response.status}`);
+  if (!response.ok || !token)
+    throw new Error(`Sign-in failed for ${member.email}: ${response.status}`);
   return token;
 }
 
@@ -50,10 +68,17 @@ export async function createInvitation(inviter: TestMember): Promise<string> {
 }
 
 /** Invites, signs up, and confirms a new member, all through the API and Mailpit. */
-export async function createInvitedMember(inviter: TestMember, displayName = 'Alex'): Promise<TestMember> {
+export async function createInvitedMember(
+  inviter: TestMember,
+  displayName = 'Alex'
+): Promise<TestMember> {
   const link = await createInvitation(inviter);
   const inviteToken = link.split('/join/')[1];
-  const member = { email: uniqueEmail(displayName), password: 'correct horse battery', displayName };
+  const member = {
+    email: uniqueEmail(displayName),
+    password: 'correct horse battery',
+    displayName
+  };
   const accept = await fetch(`${API_URL}/api/v1/invitations/${inviteToken}/accept`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...origin },
@@ -98,35 +123,70 @@ function testDatabaseUrl() {
   return process.env.TEST_DATABASE_URL ?? 'postgres://wunan:wunan@localhost:5432/wunan_test';
 }
 
-/** Creates a listing through the API (quicker than the form when a test only needs it to exist). */
-export async function createListingFor(member: TestMember, body: Record<string, unknown>): Promise<{ id: string }> {
+/** Adds a photo (a JPEG file) to `member`'s offering through the API. */
+export async function addPhotoFor(
+  member: TestMember,
+  offeringId: string,
+  file: string,
+  alt: string
+) {
   const token = await signIn(member);
-  const response = await fetch(`${API_URL}/api/v1/listings`, {
+  const form = new FormData();
+  form.set('file', new Blob([readFileSync(file)], { type: 'image/jpeg' }), 'photo.jpg');
+  form.set('alt', alt);
+  const response = await fetch(`${API_URL}/api/v1/offerings/${offeringId}/photos`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, ...origin },
+    body: form
+  });
+  if (response.status !== 201)
+    throw new Error(`Could not add photo: ${response.status} ${await response.text()}`);
+}
+
+/** Creates an offering through the API (quicker than the form when a test only needs it to exist). */
+export async function createOfferingFor(
+  member: TestMember,
+  body: Record<string, unknown>
+): Promise<{ id: string }> {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/offerings`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin },
     body: JSON.stringify(body)
   });
-  if (response.status !== 201) throw new Error(`Could not create listing: ${response.status} ${await response.text()}`);
+  if (response.status !== 201)
+    throw new Error(`Could not create offering: ${response.status} ${await response.text()}`);
   return (await response.json()) as { id: string };
 }
 
 /** The member's id, looked up through the API. */
 export async function memberIdOf(member: TestMember): Promise<string> {
   const token = await signIn(member);
-  const response = await fetch(`${API_URL}/api/v1/me`, { headers: { authorization: `Bearer ${token}`, ...origin } });
+  const response = await fetch(`${API_URL}/api/v1/me`, {
+    headers: { authorization: `Bearer ${token}`, ...origin }
+  });
   return ((await response.json()) as { id: string }).id;
 }
 
-/** `member` makes a proposal on a listing (with a first message), as people do before agreeing. */
-export async function proposeOn(member: TestMember, listingId: string, details: Record<string, unknown> = {}) {
+/** `member` makes a proposal on an offering (with a first message), as people do before agreeing. */
+export async function proposeOn(
+  member: TestMember,
+  offeringId: string,
+  details: Record<string, unknown> = {}
+) {
   const token = await signIn(member);
-  const headers = { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin };
-  const response = await fetch(`${API_URL}/api/v1/listings/${listingId}/proposals`, {
+  const headers = {
+    'content-type': 'application/json',
+    authorization: `Bearer ${token}`,
+    ...origin
+  };
+  const response = await fetch(`${API_URL}/api/v1/offerings/${offeringId}/proposals`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ message: 'Is this still available?', ...details })
   });
-  if (response.status !== 201) throw new Error(`Could not propose: ${response.status} ${await response.text()}`);
+  if (response.status !== 201)
+    throw new Error(`Could not propose: ${response.status} ${await response.text()}`);
   return (await response.json()) as { id: string; conversationId: string };
 }
 
@@ -136,8 +196,11 @@ export function daysAhead(days: number) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Complete details for a listing type, so the proposal can be accepted straight away. */
-export function completeDetails(type: 'lend' | 'gift' | 'trade' | 'service', extra: Record<string, unknown> = {}) {
+/** Complete details for an offering type, so the proposal can be accepted straight away. */
+export function completeDetails(
+  type: 'lend' | 'gift' | 'trade' | 'service',
+  extra: Record<string, unknown> = {}
+) {
   const byType: Record<string, Record<string, unknown>> = {
     lend: { loanLength: 2, loanLengthUnit: 'days' },
     gift: {},
@@ -147,12 +210,52 @@ export function completeDetails(type: 'lend' | 'gift' | 'trade' | 'service', ext
   return { date: daysAhead(3), time: '10:00', handover: 'online', ...byType[type], ...extra };
 }
 
-/** `owner` accepts a proposal on their listing; returns the agreement id. */
+/** `owner` accepts a proposal on their offering; returns the agreement id. */
 export async function acceptProposal(owner: TestMember, proposalId: string) {
   const token = await signIn(owner);
-  const headers = { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin };
-  const shown = (await (await fetch(`${API_URL}/api/v1/proposals/${proposalId}`, { headers })).json()) as { version: number };
-  const response = await fetch(`${API_URL}/api/v1/proposals/${proposalId}/accept`, { method: 'POST', headers, body: JSON.stringify({ version: shown.version }) });
-  if (response.status !== 200) throw new Error(`Could not accept: ${response.status} ${await response.text()}`);
+  const headers = {
+    'content-type': 'application/json',
+    authorization: `Bearer ${token}`,
+    ...origin
+  };
+  const shown = (await (
+    await fetch(`${API_URL}/api/v1/proposals/${proposalId}`, { headers })
+  ).json()) as { version: number };
+  const response = await fetch(`${API_URL}/api/v1/proposals/${proposalId}/accept`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ version: shown.version })
+  });
+  if (response.status !== 200)
+    throw new Error(`Could not accept: ${response.status} ${await response.text()}`);
   return ((await response.json()) as { agreementId: string }).agreementId;
+}
+
+/** Posts a request through the API (003), for tests that only need it to exist. */
+export async function createRequestFor(
+  member: TestMember,
+  body: Record<string, unknown>
+): Promise<{ id: string }> {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/requests`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin },
+    body: JSON.stringify(body)
+  });
+  if (response.status !== 201)
+    throw new Error(`Could not create request: ${response.status} ${await response.text()}`);
+  return (await response.json()) as { id: string };
+}
+
+/** Links an offering to a request through the API (003). */
+export async function linkOfferingFor(member: TestMember, requestId: string, offeringId: string) {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/requests/${requestId}/links`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin },
+    body: JSON.stringify({ offeringId })
+  });
+  if (response.status !== 201)
+    throw new Error(`Could not link: ${response.status} ${await response.text()}`);
+  return (await response.json()) as { id: string };
 }

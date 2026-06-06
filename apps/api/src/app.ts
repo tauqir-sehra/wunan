@@ -10,11 +10,13 @@ import { log } from './lib/log.ts';
 import { agreementRoutes } from './routes/agreements.ts';
 import { conversationRoutes } from './routes/conversations.ts';
 import { invitationRoutes } from './routes/invitations.ts';
-import { listingRoutes } from './routes/listings.ts';
+import { offeringRoutes } from './routes/offerings.ts';
 import { photoRoutes } from './routes/photos.ts';
 import { placeRoutes } from './routes/places.ts';
 import { proposalRoutes } from './routes/proposals.ts';
 import { reportRoutes } from './routes/reports.ts';
+import { requestRoutes } from './routes/requests.ts';
+import { publicMessageRoutes } from './routes/public-messages.ts';
 import { memberRoutes } from './routes/members.ts';
 import { meRoutes } from './routes/me.ts';
 
@@ -45,7 +47,7 @@ app.use('*', async (c, next) => {
 
 // JSON bodies up to 1 MB; photo uploads up to 10 MB (plus room for the multipart wrapper).
 app.use('/api/*', async (c, next) => {
-  const isPhotoUpload = c.req.method === 'POST' && /\/listings\/[^/]+\/photos$/.test(c.req.path);
+  const isPhotoUpload = c.req.method === 'POST' && /\/offerings\/[^/]+\/photos$/.test(c.req.path);
   return bodyLimit({
     maxSize: isPhotoUpload ? 11 * MB : 1 * MB,
     onError: () => {
@@ -74,13 +76,15 @@ app.openapi(
 app.route('/api/v1', invitationRoutes);
 app.route('/api/v1', memberRoutes);
 app.route('/api/v1', meRoutes);
-app.route('/api/v1', listingRoutes);
+app.route('/api/v1', offeringRoutes);
 app.route('/api/v1', photoRoutes);
 app.route('/api/v1', placeRoutes);
 app.route('/api/v1', proposalRoutes);
 app.route('/api/v1', conversationRoutes);
 app.route('/api/v1', agreementRoutes);
 app.route('/api/v1', reportRoutes);
+app.route('/api/v1', requestRoutes);
+app.route('/api/v1', publicMessageRoutes);
 
 app.openAPIRegistry.registerComponent('securitySchemes', 'bearer', {
   type: 'http',

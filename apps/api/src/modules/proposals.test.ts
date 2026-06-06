@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { notificationPreference, proposal } from '../db/schema/index.ts';
 import { testOutbox } from '../notify/email.ts';
-import { api, completeDetails, createFounder, createInvitedMember, createListing, futureDate, propose, signIn } from '../test/setup.ts';
+import { api, completeDetails, createFounder, createInvitedMember, createOffering, futureDate, propose, signIn } from '../test/setup.ts';
 import { closeQuietProposals, describeTimes } from './proposals.ts';
 
 async function pair() {
@@ -28,9 +28,9 @@ function nextWeekday(weekday: number) {
 describe('quiet proposals', () => {
   it('close after 30 days without activity, and both members are told', async () => {
     const { jo, leo, joToken, leoToken } = await pair();
-    const drill = await createListing(joToken, { type: 'lend', title: 'Drill' });
+    const drill = await createOffering(joToken, { type: 'lend', title: 'Drill' });
     const quiet = await propose(leoToken, drill.id);
-    const busy = await createListing(joToken, { type: 'lend', title: 'Ladder' });
+    const busy = await createOffering(joToken, { type: 'lend', title: 'Ladder' });
     const recent = await propose(leoToken, busy.id);
     await db.update(proposal).set({ lastActivityAt: new Date(Date.now() - 31 * 86_400_000) }).where(eq(proposal.id, quiet.id));
     // Emails on from now (the earlier "Leo asked to borrow" notice would otherwise count towards the hourly limit).
@@ -47,7 +47,7 @@ describe('quiet proposals', () => {
 describe('services', () => {
   it('fit the weekly times, the session length, and the times left', async () => {
     const { joToken, leoToken } = await pair();
-    const repair = await createListing(joToken, {
+    const repair = await createOffering(joToken, {
       type: 'service',
       title: 'Bike repair',
       sessionLength: 1,
@@ -74,10 +74,10 @@ describe('services', () => {
     expect(await issuesOf(joToken, made.id)).toContain('Please choose how long each time.');
   });
 
-  it('meets within the listing area when the place was picked from a suggestion', async () => {
+  it('meets within the offering area when the place was picked from a suggestion', async () => {
     const { joToken, leoToken } = await pair();
     const place = (neighbourhood: string) => ({ label: `${neighbourhood}, Springfield`, source: 'suggestion', neighbourhood, city: 'Springfield' });
-    const repair = await createListing(joToken, { type: 'service', title: 'Bike repair', area: place('Riverside') });
+    const repair = await createOffering(joToken, { type: 'service', title: 'Bike repair', area: place('Riverside') });
     const made = await propose(leoToken, repair.id, completeDetails('service', { handover: 'elsewhere', place: place('Old Town') }));
     expect(await issuesOf(joToken, made.id)).toContain('Jo offers this in Riverside, Springfield only.');
 
@@ -94,10 +94,10 @@ describe('services', () => {
 });
 
 describe('handovers', () => {
-  it("offer only the listing's ways; at the lister's uses the listing's area, shown in full once accepted", async () => {
+  it("offer only the offering's ways; at the lister's uses the offering's area, shown in full once accepted", async () => {
     const { joToken, leoToken } = await pair();
     const house = { label: '1 Mill Street, Riverside, Springfield', source: 'suggestion', street: 'Mill Street', houseNumber: '1', neighbourhood: 'Riverside', city: 'Springfield' };
-    const drill = await createListing(joToken, { type: 'lend', title: 'Drill', handovers: ['at_lister'], area: house });
+    const drill = await createOffering(joToken, { type: 'lend', title: 'Drill', handovers: ['at_lister'], area: house });
     const made = await propose(leoToken, drill.id, completeDetails('lend', { handover: 'to_requester', place: 'My flat' }));
     expect(await issuesOf(joToken, made.id)).toContain('Jo offered: picked up from jo.');
 
@@ -110,24 +110,24 @@ describe('handovers', () => {
     const deal = await api('GET', `/api/v1/agreements/${accepted.body.agreementId}`, { token: leoToken });
     expect(deal.body.place).toMatchObject({ street: 'Mill Street' });
     expect((await api('GET', `/api/v1/proposals/${made.id}`, { token: leoToken })).body.details.place).toMatchObject({ street: 'Mill Street' });
-    expect((await api('GET', `/api/v1/listings/${drill.id}`, { token: leoToken })).body.area).toMatchObject({ street: 'Mill Street' });
+    expect((await api('GET', `/api/v1/offerings/${drill.id}`, { token: leoToken })).body.area).toMatchObject({ street: 'Mill Street' });
   });
 });
 
 describe('trades', () => {
   it('offer from the list when there is one, or in your own words', async () => {
     const { joToken, leoToken } = await pair();
-    const starter = await createListing(joToken, { type: 'trade', title: 'Starter', accepts: [{ description: 'Eggs', amount: '6', unit: 'item' }, { description: 'Honey' }] });
+    const starter = await createOffering(joToken, { type: 'trade', title: 'Starter', accepts: [{ description: 'Eggs', amount: '6', unit: 'item' }, { description: 'Honey' }] });
     const eggs = (starter.accepts as { id: string }[])[0]!.id;
-    const own = await api('POST', `/api/v1/listings/${starter.id}/proposals`, { token: leoToken, body: { ownOffer: 'Jam' } });
+    const own = await api('POST', `/api/v1/offerings/${starter.id}/proposals`, { token: leoToken, body: { ownOffer: 'Jam' } });
     expect(own.body.error.fields.ownOffer).toBe('Please choose from what Jo listed.');
     const made = await propose(leoToken, starter.id, completeDetails('trade', { ownOffer: undefined, offers: [{ acceptId: eggs, amount: '12' }] }));
     expect(await issuesOf(joToken, made.id)).toContain('Jo would accept up to 6 of Eggs.');
     await api('PATCH', `/api/v1/proposals/${made.id}`, { token: leoToken, body: { offers: [{ acceptId: eggs, amount: '6' }] } });
     expect(await issuesOf(joToken, made.id)).toEqual([]);
 
-    const open = await createListing(joToken, { type: 'trade', title: 'Boots' });
-    const listed = await api('POST', `/api/v1/listings/${open.id}/proposals`, { token: leoToken, body: { offers: [{ acceptId: eggs }] } });
+    const open = await createOffering(joToken, { type: 'trade', title: 'Boots' });
+    const listed = await api('POST', `/api/v1/offerings/${open.id}/proposals`, { token: leoToken, body: { offers: [{ acceptId: eggs }] } });
     expect(listed.body.error.fields.offers).toBe('Jo is open to offers, so please describe yours.');
   });
 });

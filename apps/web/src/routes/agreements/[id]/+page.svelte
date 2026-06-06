@@ -34,7 +34,7 @@
     <p class="text-lg">{agreementSentence(a)}</p>
     <p class="text-muted-foreground">Agreed on {fullDay(a.createdAt)}</p>
     <p>
-      <a href="/listings/{a.listing.id}">{a.listing.title}</a> · with
+      <a href="/offerings/{a.offering.id}">{a.offering.title}</a> · with
       <a href="/members/{other.id}">{other.displayName}</a>
       {#if a.myRole !== 'mediator'} · <a href="/proposals/{a.proposalId}">Messages about it</a>{/if}
     </p>
@@ -42,9 +42,9 @@
 
   <dl class="grid gap-2 rounded-lg border bg-card p-4 sm:grid-cols-[10rem_1fr]">
     {#if a.startsAt}<dt class="font-medium">When</dt><dd>{a.hasTime ? when(a.startsAt) : new Date(a.startsAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' })}</dd>{/if}
-    {#if a.handover}<dt class="font-medium">How</dt><dd>{handoverText(a.listing.type, a.handover, names)}</dd>{/if}
+    {#if a.handover}<dt class="font-medium">How</dt><dd>{handoverText(a.offering.type, a.handover, names)}</dd>{/if}
     {#if a.place}<dt class="font-medium">Where</dt><dd>{placeText(a.place)}</dd>{/if}
-    {#if a.amount}<dt class="font-medium">How much</dt><dd>{quantity(a.amount, a.listing.unit)}</dd>{/if}
+    {#if a.amount}<dt class="font-medium">How much</dt><dd>{quantity(a.amount, a.offering.unit)}</dd>{/if}
     {#if offer}<dt class="font-medium">In return</dt><dd>{offer}</dd>{/if}
     {#if a.sessionLength && a.sessionLengthUnit}<dt class="font-medium">Each time</dt><dd>{duration(a.sessionLength, a.sessionLengthUnit)}</dd>{/if}
     {#if a.sessions}<dt class="font-medium">How many times</dt><dd>{a.sessions}</dd>{/if}

@@ -1,4 +1,4 @@
-// Serves listing photos to signed-in members by passing them through from the API, so the
+// Serves offering photos to signed-in members by passing them through from the API, so the
 // browser's session cookie applies. Never cached by shared caches.
 import { error } from '@sveltejs/kit';
 import { apiFor } from '#lib/api.ts';

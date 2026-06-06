@@ -29,8 +29,18 @@
     },
     {
       type: 'flag',
-      label: 'Requests about your listings',
-      hint: 'When someone raises a conflict about one of your listings.'
+      label: 'Requests about your offerings',
+      hint: 'When someone raises a conflict about one of your offerings, requests, or public messages.'
+    },
+    {
+      type: 'request',
+      label: 'Someone offers something for your request',
+      hint: 'When someone links an offering to your request, or a request you offered something for changes, closes, or opens again.'
+    },
+    {
+      type: 'public_message',
+      label: 'Public messages on your requests and offerings',
+      hint: 'When someone writes a public message on your request or offering, or replies where you wrote. At most once a day for each one.'
     }
   ] as const;
 

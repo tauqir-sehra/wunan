@@ -39,7 +39,7 @@ browsers on phones and computers; installable web app; API ready for future nati
 
 **Project Type**: Web service (REST API) + web application, in one npm-workspaces repository
 
-**Performance Goals**: Search results under 2 s for 5,000 members / 20,000 listings (SC-006); new
+**Performance Goals**: Search results under 2 s for 5,000 members / 20,000 offerings (SC-006); new
 messages appear in an open conversation within 2 s
 
 **Constraints**: The web app uses only public API endpoints (no direct database access); every web
@@ -57,7 +57,7 @@ English only
 | Principle | Gate | Status |
 |-----------|------|--------|
 | I. People Over Extraction | No ads, tracking, engagement metrics, or payment processing; no third-party push, font, or storage services; export and account deletion (FR-030, FR-032, FR-033) | ✅ Pass. Future Android push to prefer UnifiedPush over Firebase (research §10) |
-| II. Simple, Intuitive Workflows | One primary action per page; plain-language errors (written once in the API, shown by every client); confirm destructive actions; only type + title required for a listing | ✅ Pass |
+| II. Simple, Intuitive Workflows | One primary action per page; plain-language errors (written once in the API, shown by every client); confirm destructive actions; only type + title required for an offering | ✅ Pass |
 | III. Security First | Maintained auth library with bearer tokens; invite-only account creation; rate limits on sign-in, messages, invitations, flags; Zod validation on every API input; API has no cookies or CORS; web keeps the token in an HttpOnly cookie and uses CSP and origin checks; members-only photos with metadata stripped; hashed invite tokens; no personal data in logs; browser never calls the API directly | ✅ Pass. Research §6, §8, §14. Security review required before merge for: auth and invitation accept, bearer handling in web, photo upload, contact sharing, live stream, push subscriptions (checkpoint in each phase that touches them, plus a final review) |
 | IV. Accessible (WCAG 2.2 AA) | Native controls preferred; Bits UI for complex widgets; contrast-checked tokens in both themes; visible focus; 44 px targets; alt text; polite live region; automated axe + manual audit | ✅ Pass |
 | V. Calm Design | No autoplay, sound, or component animations; neutral palette; live updates only inside an open conversation; email and device notifications off by default, never auto-prompted, silent, rate-limited | ✅ Pass |
@@ -95,7 +95,7 @@ docs/operator.md                  # Setup, environment, founders, backups, updat
 
 packages/shared/
 └── src/
-    ├── schemas/                  # Zod schemas per area: listings, messages, agreements, ...
+    ├── schemas/                  # Zod schemas per area: offerings, messages, agreements, ...
     └── index.ts                  # Exported types for API requests and responses
 
 apps/api/
@@ -108,10 +108,10 @@ apps/api/
     ├── auth.ts                   # Better Auth config: bearer plugin, public sign-up disabled
     ├── db/schema/, db/index.ts   # Tables, one file per area
     ├── routes/                   # Thin handlers, one file per area (match contracts/api.md)
-    │   ├── invitations.ts, members.ts, me.ts, listings.ts, photos.ts
+    │   ├── invitations.ts, members.ts, me.ts, offerings.ts, photos.ts
     │   └── conversations.ts, agreements.ts, reports.ts
     ├── modules/                  # Business rules, one plain module per area
-    │   ├── invitations.ts, members.ts, listings.ts, search.ts, photos.ts
+    │   ├── invitations.ts, members.ts, offerings.ts, search.ts, photos.ts
     │   └── messaging.ts, live.ts, agreements.ts, reports.ts, export.ts, reminders.ts
     ├── notify/                   # index.ts (rules), email.ts, push.ts
     └── lib/                      # errors.ts (plain-language errors), rate-limit.ts, crypto.ts
@@ -128,7 +128,7 @@ apps/web/
     ├── lib/
     │   ├── api.ts                # Small typed fetch wrapper: adds bearer token, maps API errors
     │   ├── components/ui/        # shadcn-svelte components (copied source, animations removed)
-    │   ├── components/*.svelte   # Steps, PhotoPicker, MessageList, ListingCard
+    │   ├── components/*.svelte   # Steps, PhotoPicker, MessageList, OfferingCard
     │   └── utils.ts              # cn() class helper
     └── routes/                   # One folder per route in contracts/pages.md
                                   # incl. routes/help/: member help pages (constitution VI)

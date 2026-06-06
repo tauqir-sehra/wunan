@@ -20,7 +20,7 @@
     <p>If you delete your account:</p>
     <ul class="grid list-disc gap-1 pl-6">
       <li>Your email, password, bio, contact details and devices are deleted.</li>
-      <li>Your listings and their photos are deleted.</li>
+      <li>Your offerings and their photos are deleted.</li>
       <li>
         Your name stays, shown as "(no longer a member)", so the people you invited, and the
         agreements and conversations other members had with you, still make sense.
@@ -44,7 +44,7 @@
       <ul class="grid gap-2">
         {#each data.openLoans as loan (loan.id)}
           <li class="rounded-lg border bg-card p-4">
-            <a href="/agreements/{loan.id}" class="font-medium">{loan.listing.title}</a>
+            <a href="/agreements/{loan.id}" class="font-medium">{loan.offering.title}</a>
             <span class="block text-sm text-muted-foreground">
               {loan.myRole === 'owner'
                 ? `Lent to ${loan.otherMember.displayName}`

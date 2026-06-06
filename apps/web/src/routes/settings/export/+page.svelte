@@ -14,7 +14,7 @@
     </p>
     <ul class="grid list-disc gap-1 pl-6">
       <li>your profile and contact details,</li>
-      <li>your listings and their photos,</li>
+      <li>your offerings and their photos,</li>
       <li>your agreements and requests for help,</li>
       <li>your proposals and their messages,</li>
       <li>the invitations you made, and your notification settings.</li>

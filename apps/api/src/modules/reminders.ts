@@ -3,7 +3,7 @@
 // runs, each member gets exactly one reminder per loan.
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { agreement, listing } from '../db/schema/index.ts';
+import { agreement, offering } from '../db/schema/index.ts';
 import { describeWhen } from '../lib/time.ts';
 import { notify } from '../notify/index.ts';
 import { overdueLoansCondition } from './agreements.ts';
@@ -19,7 +19,7 @@ export async function runReminders() {
       .where(and(eq(agreement.id, id), isNull(agreement.reminderSentAt)))
       .returning();
     if (!claimed) continue;
-    const [item] = await db.select({ title: listing.title }).from(listing).where(eq(listing.id, claimed.listingId));
+    const [item] = await db.select({ title: offering.title }).from(offering).where(eq(offering.id, claimed.offeringId));
     const notice = {
       title: `A reminder about the ${item?.title ?? 'loan'}`,
       body: `It was due back on ${describeWhen(claimed.loanEndsAt!, false)}. When it's back, the owner can mark it returned in wunan. If something went wrong, either of you can ask for help from the agreement page.`,

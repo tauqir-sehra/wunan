@@ -1,27 +1,30 @@
-// Proposals (002 FR-010 to FR-021): a member asks for something on someone else's listing. The
+// Proposals (002 FR-010 to FR-021): a member asks for something on someone else's offering. The
 // details are what the requester has agreed to; the lister accepts once nothing blocks it, which
 // creates the agreement. Which details a type uses is enforced by the checks below and by
 // modules/proposals.ts; what still blocks acceptance is worked out there, never stored.
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { type AnyPgColumn, boolean, check, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import type { Place } from '@wunan/shared';
-import { handover, listing, loanLengthUnit, sessionLengthUnit, tradeAccept, unit } from './listings.ts';
+import { handover, offering, loanLengthUnit, sessionLengthUnit, tradeAccept, unit } from './offerings.ts';
 import { member } from './members.ts';
+import { request } from './requests.ts';
 
 export const proposalStatus = pgEnum('proposal_status', ['open', 'accepted', 'declined', 'withdrawn', 'closed']);
-/** Why a proposal closed by itself: nothing left on the listing, a quiet month, or a member left. */
+/** Why a proposal closed by itself: nothing left on the offering, a quiet month, or a member left. */
 export const proposalClosedReason = pgEnum('proposal_closed_reason', ['nothing_left', 'quiet', 'member_left']);
 
 export const proposal = pgTable(
   'proposal',
   {
     id: uuid().primaryKey().defaultRandom(),
-    listingId: uuid()
+    offeringId: uuid()
       .notNull()
-      .references(() => listing.id, { onDelete: 'restrict' }),
+      .references(() => offering.id, { onDelete: 'restrict' }),
     requesterId: uuid()
       .notNull()
       .references(() => member.id),
+    /** The asker's request this answers, set only on an offering linked to it (003 research §3). */
+    requestId: uuid().references((): AnyPgColumn => request.id, { onDelete: 'set null' }),
     status: proposalStatus().notNull().default('open'),
     closedReason: proposalClosedReason(),
     /** +1 on every detail change; accepting must name the version the lister saw. */
@@ -30,7 +33,7 @@ export const proposal = pgTable(
     startsAt: timestamp({ withTimezone: true }),
     hasTime: boolean().notNull().default(false),
     handover: handover(),
-    /** Not stored for `at_lister` (the listing's area is used) or `online`. */
+    /** Not stored for `at_lister` (the offering's area is used) or `online`. */
     place: jsonb().$type<Place>(),
     loanLength: integer(),
     loanLengthUnit: loanLengthUnit(),
@@ -62,10 +65,10 @@ export const proposal = pgTable(
     check('proposal_text_lengths', sql`
       (${t.ownOffer} is null or char_length(${t.ownOffer}) <= 300)
       and (${t.decisionNote} is null or char_length(${t.decisionNote}) <= 500)`),
-    // One open proposal per member per listing: they change it instead of starting another.
-    uniqueIndex('proposal_one_open_per_requester').on(t.listingId, t.requesterId).where(sql`${t.status} = 'open'`),
+    // One open proposal per member per offering: they change it instead of starting another.
+    uniqueIndex('proposal_one_open_per_requester').on(t.offeringId, t.requesterId).where(sql`${t.status} = 'open'`),
     index('proposal_requester_status_idx').on(t.requesterId, t.status),
-    index('proposal_listing_status_idx').on(t.listingId, t.status),
+    index('proposal_offering_status_idx').on(t.offeringId, t.status),
     index('proposal_quiet_idx').on(t.status, t.lastActivityAt)
   ]
 );

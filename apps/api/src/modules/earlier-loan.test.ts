@@ -4,14 +4,14 @@ import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { agreement } from '../db/schema/index.ts';
-import { agree, api, completeDetails, createFounder, createInvitedMember, createListing, futureDate, propose, signIn } from '../test/setup.ts';
+import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, futureDate, propose, signIn } from '../test/setup.ts';
 
 async function setUp() {
   const sam = await createFounder('Sam');
   const alex = await createInvitedMember(sam, 'Alex');
   const kim = await createInvitedMember(sam, 'Kim');
   const [samToken, alexToken, kimToken] = await Promise.all([signIn(sam), signIn(alex), signIn(kim)]);
-  const drill = await createListing(samToken, { type: 'lend', title: 'Drill' });
+  const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
   const first = await agree(samToken, alexToken, drill.id, completeDetails('lend', { date: futureDate(1) }));
   return { samToken, alexToken, kimToken, drill, first };
 }

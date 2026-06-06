@@ -12,7 +12,7 @@ wunan runs as four containers, started together with Docker Compose:
 | `api` | All data and rules; the API other apps (e.g. a future Android app) use | Caddy and the web app only |
 | `postgres` | The database | The API only |
 
-Data lives in Docker volumes: `database` (PostgreSQL), `photos` (listing photos), and
+Data lives in Docker volumes: `database` (PostgreSQL), `photos` (offering photos), and
 `caddy-data` (certificates).
 
 ## Requirements
@@ -190,6 +190,9 @@ for help.
 
 - **Return reminders** and the clean-up of unconfirmed sign-ups run inside the API once an hour.
   There is nothing to schedule.
+- **Requests and public messages** need nothing to set up. Public messages on requests and offerings
+  update live over the same connection as proposal messages, so a proxy that already passes those
+  through (as the included Caddy setup does) passes these too.
 - **The API on its own**: other apps can use the API at `https://<your address>/api/v1/`; its
   description is at `/api/v1/openapi.json`.
 - **Members leaving**: members delete their own accounts in Settings → Leave wunan. Only their

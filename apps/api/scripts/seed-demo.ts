@@ -1,9 +1,10 @@
 // Fills a database with a believable demo community, for trying wunan out, usability sessions,
-// and checking search speed (SC-006: a filtered search over 5,000 members and 20,000 listings
-// answers in under 2 seconds). Development only.
+// and checking search speed (001 SC-006: a filtered search over 5,000 members and 20,000 offerings
+// answers in under 2 seconds; 003: browsing 20,000 requests and suggestions while asking do too).
+// Development only.
 //
-//   npm run seed:demo -w apps/api                            (5,000 members, 20,000 listings)
-//   npm run seed:demo -w apps/api -- --members 200 --listings 600
+//   npm run seed:demo -w apps/api                 (5,000 members, 20,000 offerings, 20,000 requests)
+//   npm run seed:demo -w apps/api -- --members 200 --offerings 600 --requests 300
 //
 // It adds to the database in DATABASE_URL. To keep your own development data separate, point it
 // at another database, e.g. DATABASE_URL=postgres://wunan:wunan@localhost:5432/wunan_demo
@@ -11,21 +12,23 @@
 import { parseArgs } from 'node:util';
 
 if (process.env.NODE_ENV === 'production') {
-  console.error('seed-demo adds made-up members and listings, so it never runs in production.');
+  console.error('seed-demo adds made-up members and offerings, so it never runs in production.');
   process.exit(1);
 }
 
 const { values } = parseArgs({
-  options: { members: { type: 'string', default: '5000' }, listings: { type: 'string', default: '20000' } }
+  options: { members: { type: 'string', default: '5000' }, offerings: { type: 'string', default: '20000' }, requests: { type: 'string', default: '20000' } }
 });
 const MEMBERS = Number(values.members);
-const LISTINGS = Number(values.listings);
+const OFFERINGS = Number(values.offerings);
+const REQUESTS = Number(values.requests);
 
 const { runMigrations } = await import('../src/db/migrate.ts');
 const { db, sql } = await import('../src/db/index.ts');
-const { account, listing, member, tradeAccept } = await import('../src/db/schema/index.ts');
+const { account, offering, member, publicMessage, request, requestGiveBack, requestLink, tradeAccept } = await import('../src/db/schema/index.ts');
+const { listRequests, suggestOfferings } = await import('../src/modules/requests.ts');
 const { auth } = await import('../src/auth.ts');
-const { searchListings } = await import('../src/modules/search.ts');
+const { searchOfferings } = await import('../src/modules/search.ts');
 const { eq } = await import('drizzle-orm');
 
 await runMigrations();
@@ -60,7 +63,7 @@ const wantedThings = ['Eggs', 'Help in the garden', 'A bike pump', 'Some honey',
 /** A demo area as if picked from a suggestion: neighbourhood and city. */
 const areaPlace = (neighbourhood: string) => ({ label: `${neighbourhood}, Springfield`, source: 'suggestion' as const, neighbourhood, city: 'Springfield' });
 
-function listingRow(ownerId: string, index: number): typeof listing.$inferInsert {
+function offeringRow(ownerId: string, index: number): typeof offering.$inferInsert {
   const type = pick(['lend', 'gift', 'gift', 'trade', 'service'] as const);
   const title = `${pick(things[type])}${index % 7 === 0 ? ' (spare)' : ''}`;
   const createdAt = daysAgo(300);
@@ -68,7 +71,7 @@ function listingRow(ownerId: string, index: number): typeof listing.$inferInsert
   // How the handover happens: picked up from the owner (when they gave an area), or online now and then.
   const handovers = area && random() < 0.6 ? (['at_lister'] as const) : random() < 0.1 ? (['online'] as const) : ([] as const);
   const base = { ownerId, type, title, description: pick(describeAs), area, handovers: [...handovers], createdAt, updatedAt: createdAt };
-  // Most listings are available; some are paused or finished, as in a real community.
+  // Most offerings are available; some are paused or finished, as in a real community.
   const roll = random();
   const status = roll < 0.8 ? 'available' : roll < 0.9 ? 'paused' : 'closed';
   const closed = status === 'closed' ? { closedReason: 'used_up' as const } : {};
@@ -90,7 +93,7 @@ async function insertInBatches<T>(rows: T[], insert: (batch: T[]) => Promise<unk
   for (let start = 0; start < rows.length; start += 1000) await insert(rows.slice(start, start + 1000));
 }
 
-console.log(`Seeding ${MEMBERS} members and ${LISTINGS} listings…`);
+console.log(`Seeding ${MEMBERS} members and ${OFFERINGS} offerings…`);
 const started = Date.now();
 const ctx = await auth.$context;
 const DEMO_PASSWORD = 'demo password 123';
@@ -120,31 +123,86 @@ await insertInBatches(
   (batch) => db.insert(account).values(batch)
 );
 
-const listings = Array.from({ length: LISTINGS }, (_, i) => listingRow(pick(members).id, i));
-await insertInBatches(listings, (batch) => db.insert(listing).values(batch));
+const offerings = Array.from({ length: OFFERINGS }, (_, i) => offeringRow(pick(members).id, i));
+await insertInBatches(offerings, (batch) => db.insert(offering).values(batch));
 // What a trade accepts in return: about half list something, the rest are open to offers.
-const trades = (await db.select({ id: listing.id }).from(listing).where(eq(listing.type, 'trade'))).filter(() => random() < 0.5);
+const trades = (await db.select({ id: offering.id }).from(offering).where(eq(offering.type, 'trade'))).filter(() => random() < 0.5);
 await insertInBatches(
-  trades.map((t) => ({ listingId: t.id, position: 0, description: pick(wantedThings) })),
+  trades.map((t) => ({ offeringId: t.id, position: 0, description: pick(wantedThings) })),
   (batch) => db.insert(tradeAccept).values(batch)
 );
-// Search words, as modules/listings.ts sets them on every save.
-await sql`update listing l set search_vector =
+// Search words, as modules/offerings.ts sets them on every save.
+await sql`update offering l set search_vector =
   setweight(to_tsvector('english', l.title), 'A') ||
   setweight(to_tsvector('english', coalesce(l.description, '') || ' ' ||
-    coalesce((select string_agg(description, ' ') from trade_accept t where t.listing_id = l.id), '')), 'B')`;
+    coalesce((select string_agg(description, ' ') from trade_accept t where t.offering_id = l.id), '')), 'B')`;
 await sql`analyze`;
 
 // A few proposals for the demo member, so the Proposals page has something to show.
 const { createProposal } = await import('../src/modules/proposals.ts');
 const demoMember = members[1]!;
-const open = await db.select({ id: listing.id, ownerId: listing.ownerId }).from(listing).where(eq(listing.status, 'available')).limit(40);
+const open = await db.select({ id: offering.id, ownerId: offering.ownerId }).from(offering).where(eq(offering.status, 'available')).limit(40);
 let proposed = 0;
 for (const item of open) {
   if (proposed >= 5 || item.ownerId === demoMember.id) continue;
   await createProposal(item.id, demoMember.id, { message: 'Hello! Would this work for you?' });
   proposed += 1;
 }
+// Requests (003): what members ask for, a few with things they could give back.
+const asked = {
+  borrow: ['Drill for shelves', 'Ladder for the gutters', 'Tent for a weekend', 'Sewing machine', 'Pressure washer'],
+  receive: ['Rice', 'Baby clothes', 'Moving boxes', 'Plant pots', 'Children’s books'],
+  trade: ['Bike pump', 'Sourdough starter', 'Garden shears', 'Running shoes'],
+  service: ['Help moving a sofa', 'Bike tune-up', 'Help with a letter', 'Haircut', 'Someone to walk my dog']
+} as const;
+const requestRows = Array.from({ length: REQUESTS }, () => {
+  const kind = pick(['borrow', 'receive', 'trade', 'service'] as const);
+  const createdAt = daysAgo(200);
+  const roll = random();
+  return {
+    askerId: pick(members).id,
+    kind,
+    title: pick(asked[kind]),
+    description: pick([null, 'Any condition is fine.', 'Just for a few days.', 'Happy to pick it up.']),
+    area: random() < 0.7 ? areaPlace(pick(areas)) : null,
+    ...(kind === 'borrow' ? { loanLength: pick([1, 2, 7]), loanLengthUnit: 'days' as const } : {}),
+    status: roll < 0.8 ? ('open' as const) : ('closed' as const),
+    closedReason: roll < 0.8 ? null : ('by_asker' as const),
+    createdAt,
+    updatedAt: createdAt
+  };
+});
+await insertInBatches(requestRows, (batch) => db.insert(request).values(batch));
+const tradeRequests = (await db.select({ id: request.id }).from(request).where(eq(request.kind, 'trade'))).filter(() => random() < 0.5);
+await insertInBatches(
+  tradeRequests.map((r) => ({ requestId: r.id, position: 0, description: pick(wantedThings) })),
+  (batch) => db.insert(requestGiveBack).values(batch)
+);
+await sql`update request r set search_vector =
+  setweight(to_tsvector('english', r.title), 'A') ||
+  setweight(to_tsvector('english', coalesce(r.description, '') || ' ' ||
+    coalesce((select string_agg(description, ' ') from request_give_back g where g.request_id = r.id), '')), 'B')`;
+
+// The demo member asks for a drill; someone answers with an offering and a public message.
+if (REQUESTS > 0) {
+  const helper = members[0]!;
+  const [drillRequest] = await db
+    .insert(request)
+    .values({ askerId: demoMember.id, kind: 'borrow', title: 'Drill for putting up shelves', area: areaPlace('Riverside'), loanLength: 1, loanLengthUnit: 'days' })
+    .returning({ id: request.id });
+  const [answer] = await db
+    .insert(offering)
+    .values({ ownerId: helper.id, type: 'lend', title: 'Cordless drill', amount: '1', unit: 'item', loanLength: 2, loanLengthUnit: 'days', area: areaPlace('Riverside') })
+    .returning({ id: offering.id });
+  await sql`update offering set search_vector = setweight(to_tsvector('english', title), 'A') where id = ${answer!.id}`;
+  await db.insert(requestLink).values({ requestId: drillRequest!.id, offeringId: answer!.id, linkedById: helper.id });
+  await db.insert(publicMessage).values([
+    { requestId: drillRequest!.id, authorId: helper.id, body: 'Is it for brick or plaster walls?' },
+    { requestId: drillRequest!.id, authorId: demoMember.id, body: 'Plaster. Thank you!' },
+    { offeringId: answer!.id, authorId: members[2]!.id, body: 'Does it come with a charger?' }
+  ]);
+}
+await sql`analyze`;
 console.log(`Seeded in ${((Date.now() - started) / 1000).toFixed(1)} s.`);
 
 // SC-006: filtered searches answer in under 2 seconds.
@@ -159,10 +217,26 @@ const queries = [
 let slowest = 0;
 for (const query of queries) {
   const begin = performance.now();
-  const result = await searchListings({ limit: 20, includeLent: false, ...query }, members[0]!.id);
+  const result = await searchOfferings({ limit: 20, includeLent: false, ...query }, members[0]!.id);
   const ms = performance.now() - begin;
   slowest = Math.max(slowest, ms);
   console.log(`  search ${JSON.stringify(query).padEnd(52)} ${String(result.items.length).padStart(2)} results  ${ms.toFixed(0)} ms`);
+}
+// 003: browsing requests and suggestions while asking answer in under 2 seconds too (SC-004).
+const requestQueries = [{ q: 'drill' }, { kind: ['service' as const], area: 'Old Town' }, { q: 'rice', kind: ['receive' as const] }, {}];
+for (const query of requestQueries) {
+  const begin = performance.now();
+  const result = await listRequests({ limit: 20, mine: false, kind: undefined, ...query }, members[0]!.id);
+  const ms = performance.now() - begin;
+  slowest = Math.max(slowest, ms);
+  console.log(`  requests ${JSON.stringify(query).padEnd(50)} ${String(result.items.length).padStart(2)} results  ${ms.toFixed(0)} ms`);
+}
+for (const query of [{ kind: 'borrow' as const, q: 'drill', area: 'Riverside' }, { kind: 'receive' as const, q: 'apples' }]) {
+  const begin = performance.now();
+  const result = await suggestOfferings(query, members[0]!.id);
+  const ms = performance.now() - begin;
+  slowest = Math.max(slowest, ms);
+  console.log(`  suggestions ${JSON.stringify(query).padEnd(47)} ${String(result.items.length).padStart(2)} results  ${ms.toFixed(0)} ms`);
 }
 console.log(slowest < 2000 ? `Search speed: OK (slowest ${slowest.toFixed(0)} ms, limit 2000 ms).` : `Search speed: TOO SLOW (slowest ${slowest.toFixed(0)} ms).`);
 console.log(`\nSign in as demo.founder@example.org or demo.member@example.org, password "${DEMO_PASSWORD}".`);

@@ -1,4 +1,4 @@
-// Listing photos (US2; FR-012; research §8).
+// Offering photos (US2; FR-012; research §8).
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { app } from '../app.ts';
@@ -12,27 +12,27 @@ async function phonePhoto() {
     .toBuffer();
 }
 
-async function upload(token: string, listingId: string, bytes: Uint8Array, type = 'image/jpeg', alt = 'A bag of rice') {
+async function upload(token: string, offeringId: string, bytes: Uint8Array, type = 'image/jpeg', alt = 'A bag of rice') {
   const form = new FormData();
   form.set('file', new File([new Uint8Array(bytes)], 'photo', { type }));
   form.set('alt', alt);
-  return api('POST', `/api/v1/listings/${listingId}/photos`, { token, body: form });
+  return api('POST', `/api/v1/offerings/${offeringId}/photos`, { token, body: form });
 }
 
 async function setup() {
   const founder = await createFounder();
   const token = await signIn(founder);
-  const { body } = await api('POST', '/api/v1/listings', { token, body: { type: 'gift', title: 'Rice' } });
-  return { token, listingId: body.id as string };
+  const { body } = await api('POST', '/api/v1/offerings', { token, body: { type: 'gift', title: 'Rice' } });
+  return { token, offeringId: body.id as string };
 }
 
 describe('photos', () => {
   it('re-encodes uploads as WebP, at most 1600 px, with no location data', async () => {
-    const { token, listingId } = await setup();
+    const { token, offeringId } = await setup();
     const original = await phonePhoto();
     expect((await sharp(original).metadata()).exif).toBeDefined();
 
-    const uploaded = await upload(token, listingId, original);
+    const uploaded = await upload(token, offeringId, original);
     expect(uploaded.status).toBe(201);
     expect(uploaded.body.alt).toBe('A bag of rice');
 
@@ -44,55 +44,55 @@ describe('photos', () => {
     expect(Math.max(meta.width!, meta.height!)).toBeLessThanOrEqual(1600);
     expect(meta.exif).toBeUndefined();
 
-    const listing = await api('GET', `/api/v1/listings/${listingId}`, { token });
-    expect(listing.body.photos).toEqual([expect.objectContaining({ key: uploaded.body.key, alt: 'A bag of rice' })]);
+    const offering = await api('GET', `/api/v1/offerings/${offeringId}`, { token });
+    expect(offering.body.photos).toEqual([expect.objectContaining({ key: uploaded.body.key, alt: 'A bag of rice' })]);
   });
 
   it('refuses files that are not images', async () => {
-    const { token, listingId } = await setup();
-    const result = await upload(token, listingId, new TextEncoder().encode('not a photo'), 'image/jpeg');
+    const { token, offeringId } = await setup();
+    const result = await upload(token, offeringId, new TextEncoder().encode('not a photo'), 'image/jpeg');
     expect(result.status).toBe(400);
     expect(result.body.error.code).toBe('not_an_image');
   });
 
   it('refuses SVG files, even though they are images', async () => {
-    const { token, listingId } = await setup();
+    const { token, offeringId } = await setup();
     const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>');
-    const result = await upload(token, listingId, svg, 'image/svg+xml');
+    const result = await upload(token, offeringId, svg, 'image/svg+xml');
     expect(result.status).toBe(400);
     expect(result.body.error.code).toBe('not_an_image');
   });
 
   it('refuses files over 10 MB', async () => {
-    const { token, listingId } = await setup();
-    const result = await upload(token, listingId, new Uint8Array(10 * 1024 * 1024 + 1));
+    const { token, offeringId } = await setup();
+    const result = await upload(token, offeringId, new Uint8Array(10 * 1024 * 1024 + 1));
     expect(result.status).toBe(413);
   });
 
-  it('allows at most 6 photos per listing', async () => {
-    const { token, listingId } = await setup();
+  it('allows at most 6 photos per offering', async () => {
+    const { token, offeringId } = await setup();
     const small = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#000' } }).png().toBuffer();
-    for (let i = 0; i < 6; i += 1) expect((await upload(token, listingId, small, 'image/png')).status).toBe(201);
-    const seventh = await upload(token, listingId, small, 'image/png');
+    for (let i = 0; i < 6; i += 1) expect((await upload(token, offeringId, small, 'image/png')).status).toBe(201);
+    const seventh = await upload(token, offeringId, small, 'image/png');
     expect(seventh.status).toBe(409);
     expect(seventh.body.error.code).toBe('too_many_photos');
   });
 
   it('serves photos only to signed-in members', async () => {
-    const { token, listingId } = await setup();
+    const { token, offeringId } = await setup();
     const small = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#000' } }).png().toBuffer();
-    const { body } = await upload(token, listingId, small, 'image/png');
+    const { body } = await upload(token, offeringId, small, 'image/png');
     expect((await api('GET', `/api/v1/photos/${body.key}`)).status).toBe(401);
     expect((await api('GET', '/api/v1/photos/..%2F..%2Fetc%2Fpasswd', { token })).status).toBe(404);
   });
 
   it('updates and deletes photos', async () => {
-    const { token, listingId } = await setup();
+    const { token, offeringId } = await setup();
     const small = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#000' } }).png().toBuffer();
-    const { body } = await upload(token, listingId, small, 'image/png');
-    const updated = await api('PATCH', `/api/v1/listings/${listingId}/photos/${body.id}`, { token, body: { alt: 'Rice in a jar' } });
+    const { body } = await upload(token, offeringId, small, 'image/png');
+    const updated = await api('PATCH', `/api/v1/offerings/${offeringId}/photos/${body.id}`, { token, body: { alt: 'Rice in a jar' } });
     expect(updated.body.alt).toBe('Rice in a jar');
-    expect((await api('DELETE', `/api/v1/listings/${listingId}/photos/${body.id}`, { token })).status).toBe(204);
+    expect((await api('DELETE', `/api/v1/offerings/${offeringId}/photos/${body.id}`, { token })).status).toBe(204);
     expect((await api('GET', `/api/v1/photos/${body.key}`, { token })).status).toBe(404);
   });
 });

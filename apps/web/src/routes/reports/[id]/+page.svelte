@@ -37,7 +37,7 @@
 
   <header class="grid gap-2">
     <div class="flex items-start justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Asking for help: {r.listingTitle}</h1>
+      <h1 class="text-2xl font-semibold">Asking for help: {r.offeringTitle}</h1>
       <HelpLink topic="asking-for-help" label="How asking for help works" />
     </div>
     <p class="text-muted-foreground">

@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { boolean, check, index, pgEnum, pgTable, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import { member } from './members.ts';
 
-export const notificationTypes = ['message', 'agreement', 'reminder', 'report', 'flag'] as const;
+export const notificationTypes = ['message', 'agreement', 'reminder', 'report', 'flag', 'request', 'public_message'] as const;
 export type NotificationType = (typeof notificationTypes)[number];
 export const notificationType = pgEnum('notification_type', notificationTypes);
 
@@ -34,9 +34,14 @@ export const notificationLog = pgTable(
       .references(() => member.id, { onDelete: 'cascade' }),
     type: notificationType().notNull(),
     conversationId: uuid(),
+    /** A request or offering: keeps public thread and request notices infrequent (003 FR-023e). */
+    subjectId: uuid(),
     sentAt: timestamp({ withTimezone: true }).notNull().defaultNow()
   },
-  (t) => [index('notification_log_lookup_idx').on(t.memberId, t.conversationId, t.sentAt)]
+  (t) => [
+    index('notification_log_lookup_idx').on(t.memberId, t.conversationId, t.sentAt),
+    index('notification_log_subject_idx').on(t.memberId, t.subjectId, t.sentAt)
+  ]
 );
 
 /** `web` now; other values (e.g., `unifiedpush`) are reserved for future native clients. */
