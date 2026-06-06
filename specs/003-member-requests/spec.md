@@ -69,11 +69,20 @@ Request kinds mirror the listing types:
 - Q: Who can still read a public message the asker or lister hides? → A: No one can hide messages
   for now. Only the author can remove their own message; anyone can raise an issue about one.
 
+### Session 2026-06-06
+
+- Q: Do public threads update live? → A: Yes, new public messages appear without reloading, like
+  proposal messages.
+- Q: Must existing data or database migrations be kept? → A: No. Everything can be wiped and the
+  database rebuilt from scratch.
+- Q: What do the header buttons say? → A: "Request something" and "Offer something" ("Offer
+  something" replaces "Share a new listing").
+
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Ask for something (Priority: P1)
+### User Story 1 - Request something (Priority: P1)
 
-Rana needs a drill for an afternoon. Nobody has listed one. She opens "Ask for something", picks
+Rana needs a drill for an afternoon. Nobody has listed one. She opens "Request something", picks
 Borrow, writes "Drill for putting up shelves", sets "Needed after" and "Needed by" both to this Saturday, her area, and how long
 (one day). She posts it. Other members can now see her request. It stays open until she closes it.
 
@@ -413,6 +422,9 @@ an account and check its open requests are closed.
   able to raise an issue about a message.
 - **FR-023f**: There MUST be no limit on how many public messages a member posts, beyond the
   240-character length of each.
+- **FR-023g**: New public messages and removals MUST appear on an open request or listing page
+  without reloading, as proposal messages do (002 FR-025), announced politely to screen readers;
+  without live updates the page still shows them on reload.
 - **FR-023d**: Posting MUST stop when the request is closed or the listing is closed or removed; the
   thread stays readable to those who can see the page.
 - **FR-023e**: The asker or lister MUST be told of new public messages, and members who posted in a
@@ -475,9 +487,10 @@ an account and check its open requests are closed.
   says).
 - Requests have no photos in this feature.
 - A request may have any number of linked listings; a listing may answer more than one request.
-- "Ask for something" is reached from the Requests page and sits beside "Share a new listing" in the
-  header without becoming a second primary button (outlined), to keep one primary action per screen.
+- The header has two outlined buttons, **Request something** and **Offer something** ("Offer
+  something" replaces "Share a new listing"), so each page keeps one filled primary action.
+  "Request something" is also the primary action on the Requests page.
 - Public threads have no reactions, likes, or counts beyond the number of messages (constitution I).
 - Reopening a closed request keeps its links; listings linked before it closed stay shown.
 - No new notification channels: the two new types use the existing email and device delivery.
-- Existing data is kept; this feature adds to the 002 database rather than rebuilding it.
+- No existing data or migrations need keeping: the database may be wiped and rebuilt from scratch.
