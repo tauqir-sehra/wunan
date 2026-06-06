@@ -6,7 +6,7 @@ import { db } from '../db/index.ts';
 import { agreement, listing, member } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { communityTimeZone } from '../lib/time.ts';
-import { trimDecimal } from './listings.ts';
+import { earlierLoanNotBack, trimDecimal } from './listings.ts';
 import { shownName } from './members.ts';
 import { viewPlace } from './places.ts';
 
@@ -36,7 +36,12 @@ export async function listMine(memberId: string) {
 
 export async function getAgreement(agreementId: string, memberId: string) {
   const row = await viewableAgreement(agreementId, memberId);
-  return { ...(await describe([row], memberId))[0]!, reports: await reportsFor(agreementId) };
+  const stillOut = row.outcome === 'lent' && !row.returnedAt && row.loanStartsAt;
+  return {
+    ...(await describe([row], memberId))[0]!,
+    earlierLoanNotBack: stillOut ? await earlierLoanNotBack(row.listingId, row.loanStartsAt!, row.id) : null,
+    reports: await reportsFor(agreementId)
+  };
 }
 
 // Requests for help on an agreement are listed with it (set by modules/reports.ts).

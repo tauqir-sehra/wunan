@@ -1,6 +1,7 @@
 <script lang="ts">
   import HelpLink from '#lib/components/HelpLink.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
+  import InfoNote from '#lib/components/InfoNote.svelte';
   import Notice from '#lib/components/Notice.svelte';
   import { agreementSentence, duration, handoverText, placeText, quantity, when } from '#lib/format.ts';
 
@@ -49,6 +50,10 @@
     {#if a.sessions}<dt class="font-medium">How many times</dt><dd>{a.sessions}</dd>{/if}
     {#if a.loanStartsAt && a.loanEndsAt}<dt class="font-medium">Loan</dt><dd>{when(a.loanStartsAt)} to {when(a.loanEndsAt)}</dd>{/if}
   </dl>
+
+  {#if a.earlierLoanNotBack}
+    <InfoNote>The previous loan of this item hasn't been marked returned yet (it was due back {when(a.earlierLoanNotBack.endsAt)}). It may be worth checking with each other before the pickup.</InfoNote>
+  {/if}
 
   {#if a.outcome === 'lent'}
     <p>

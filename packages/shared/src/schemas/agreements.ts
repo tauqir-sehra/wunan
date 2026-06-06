@@ -39,6 +39,8 @@ export const Agreement = z.object({
   myRole: z.enum(['owner', 'other', 'mediator']),
   group: AgreementGroup.nullable(),
   overdue: z.boolean(),
+  /** For a loan: an earlier loan of the same item is past its end and not marked returned (single endpoint). */
+  earlierLoanNotBack: z.object({ endsAt: z.string() }).nullable().optional(),
   /** Requests for help about this agreement (only on the single-agreement endpoint). */
   reports: z.array(z.object({ id: z.string(), status: z.enum(['open', 'resolved']), outcomeNote: z.string().nullable() })).optional()
 });

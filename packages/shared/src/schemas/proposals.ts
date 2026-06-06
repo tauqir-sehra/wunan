@@ -109,6 +109,8 @@ export const Proposal = z.object({
   issues: z.array(ProposalIssue),
   /** The place couldn't be checked against the listing's area (it was typed, not picked). */
   areaUnchecked: z.boolean(),
+  /** For a loan: an earlier loan of the same item is past its end and not marked returned. */
+  earlierLoanNotBack: z.object({ endsAt: z.string() }).nullable(),
   canAccept: z.boolean(),
   canEdit: z.boolean(),
   myRole: z.enum(['requester', 'lister', 'mediator']),

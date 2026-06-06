@@ -3,7 +3,7 @@
 // Only the owner can change a listing. Flags never hide or change it. "Lent out" is not stored:
 // a lend listing is lent out while one of its loans has started and isn't marked returned.
 import { CreateListing } from '@wunan/shared';
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lt, lte, ne, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { agreement, listing, listingFlag, listingPhoto, member, proposal, serviceAvailability, tradeAccept } from '../db/schema/index.ts';
 import { ApiError, errors, validationError } from '../lib/errors.ts';
@@ -234,6 +234,28 @@ export async function unreturnedLoans(listingIds: string[]) {
     .from(agreement)
     .where(and(inArray(agreement.listingId, listingIds), isNotNull(agreement.loanStartsAt), isNull(agreement.returnedAt)))
     .orderBy(asc(agreement.loanStartsAt));
+}
+
+/**
+ * An earlier loan of this listing that should be back by now but isn't marked returned, starting
+ * before `startsAt` (002 Edge Case "Earlier loan not back in time"). Shown calmly on the next loan.
+ */
+export async function earlierLoanNotBack(listingId: string, startsAt: Date, exceptAgreementId?: string | null) {
+  const [row] = await db
+    .select({ endsAt: agreement.loanEndsAt })
+    .from(agreement)
+    .where(
+      and(
+        eq(agreement.listingId, listingId),
+        isNull(agreement.returnedAt),
+        lt(agreement.loanStartsAt, startsAt),
+        lte(agreement.loanEndsAt, new Date()),
+        exceptAgreementId ? ne(agreement.id, exceptAgreementId) : undefined
+      )
+    )
+    .orderBy(asc(agreement.loanEndsAt))
+    .limit(1);
+  return row?.endsAt ? { endsAt: row.endsAt.toISOString() } : null;
 }
 
 /** SQL condition: a lend listing is lent out now (a loan has started and isn't marked returned). */

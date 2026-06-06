@@ -181,8 +181,14 @@ server. Without JavaScript they show a plain note: "This form needs JavaScript t
 - **Repeating rows** (accepted things, availability): client-side Svelte state; "Add another" and
   "Remove" act in place. Rows are sent as indexed fields (`accepts[0].description`, …). Focus moves
   to the new row's first field; removal is announced in a polite live region.
-- **Place field** (`PlaceField.svelte`): Bits UI Combobox (already a dependency) over a text input;
-  suggestions after 3 characters with a 300 ms pause; up to 8; Enter picks, Escape closes. The picked
+- **Place field** (`PlaceField.svelte`): a small hand-written ARIA combobox (`role="combobox"` on
+  the text input, `aria-activedescendant` into a `role="listbox"`) instead of Bits UI Combobox, as
+  first planned. Bits UI's Combobox owns the input's value and filters its own item list, which
+  fought free typing, the hidden JSON field and the no-JavaScript text fallback; the hand-written one
+  is about 100 lines with no new dependency. Its keyboard and screen-reader behaviour is covered by
+  `apps/web/tests/e2e/proposals-us7.spec.ts` and the axe checks in `accessibility.spec.ts`.
+  Suggestions after 3 characters with a 300 ms pause; up to 8; arrow keys move, Enter picks, Escape
+  closes; the count and the pick are announced in a polite live region. The picked
   place goes in a hidden JSON input; typing again after a pick turns it back into typed text.
   When the place service is unavailable, it works as a plain text field (FR-028).
 - **Proposal form**: one page per type (`/listings/[id]/propose`), every field optional, "Not

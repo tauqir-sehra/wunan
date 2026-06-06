@@ -22,7 +22,7 @@ import { ApiError, errors } from '../lib/errors.ts';
 import { addLength, describeWhen, instantToLocal, lengthInMinutes, localToInstant, localWeekday } from '../lib/time.ts';
 import { notify } from '../notify/index.ts';
 import { outcomeFor } from './agreements.ts';
-import { trimDecimal, unreturnedLoans } from './listings.ts';
+import { earlierLoanNotBack, trimDecimal, unreturnedLoans } from './listings.ts';
 import { setProposalCloser, shownName } from './members.ts';
 import { createThread, postEvent } from './messaging.ts';
 import { displayOf, sameArea, viewPlace } from './places.ts';
@@ -666,6 +666,8 @@ export async function getProposal(proposalId: string, memberId: string) {
   const [made] = await db.select({ id: agreement.id }).from(agreement).where(eq(agreement.proposalId, p.id));
   const local = p.startsAt ? instantToLocal(p.startsAt) : null;
   const place = resolvedPlace(p, l);
+  const showsLoan = l.type === 'lend' && p.startsAt && (p.status === 'open' || p.status === 'accepted');
+  const earlierLoan = showsLoan ? await earlierLoanNotBack(l.id, p.startsAt!, made?.id) : null;
 
   return {
     id: p.id,
@@ -699,6 +701,7 @@ export async function getProposal(proposalId: string, memberId: string) {
     },
     issues,
     areaUnchecked,
+    earlierLoanNotBack: earlierLoan,
     canAccept: isLister && p.status === 'open' && issues.length === 0,
     canEdit: !isLister && p.status === 'open',
     myRole: isLister ? ('lister' as const) : ('requester' as const),

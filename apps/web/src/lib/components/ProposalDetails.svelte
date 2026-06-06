@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import InfoNote from '#lib/components/InfoNote.svelte';
-  import { duration, handoverText, placeText, quantity, unitLabel } from '#lib/format.ts';
+  import { duration, handoverText, placeText, quantity, unitLabel, when } from '#lib/format.ts';
   import type { Proposal } from '@wunan/shared';
 
   let { proposal }: { proposal: Proposal } = $props();
@@ -50,6 +50,9 @@
     <dd class={value === notYet ? 'text-muted-foreground' : ''}>{value}</dd>
   {/each}
 </dl>
+{#if proposal.earlierLoanNotBack}
+  <InfoNote>The previous loan of this item hasn't been marked returned yet (it was due back {when(proposal.earlierLoanNotBack.endsAt)}). It may be worth checking with each other before the pickup.</InfoNote>
+{/if}
 {#if proposal.areaUnchecked}
   <InfoNote>wunan couldn't check this place against the listing's area, because it was typed rather than picked from the suggestions.</InfoNote>
 {/if}

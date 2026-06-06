@@ -310,3 +310,13 @@ Task: "ProposalDetails.svelte"                                   (T024)
 US2 (handovers, place privacy) → US3 (trade lists) / US4 (service limits) → US5 (one page, mediation
 sharing) → US6 (units) → US7 (place suggestions) → Polish. Each adds value without breaking the
 previous ones.
+
+---
+
+## Phase 11: Convergence
+
+- [X] T077 CRITICAL: keep one primary action per screen: restyle the header's "Share a new listing" button in `apps/web/src/routes/+layout.svelte` as a secondary (outline) button so each page's own main button (e.g. "Ask to borrow", "Accept", "Send proposal") stays the only primary one, and check every page in `apps/web/tests/e2e/accessibility.spec.ts` still passes per Constitution II (contradicts)
+- [X] T078 Show an earlier loan that isn't back yet on the next loan: on `GET /proposals/{id}` and `GET /agreements/{id}` for Lend, include the overdue unreturned loan before this one (`apps/api/src/modules/proposals.ts`, `apps/api/src/modules/agreements.ts`), and show a calm note to the lister and the next borrower in `apps/web/src/lib/components/ProposalDetails.svelte` and `apps/web/src/routes/agreements/[id]/+page.svelte` ("The previous loan hasn't been marked returned yet."), with an API test per spec Edge Cases "Earlier loan not back in time" (partial)
+- [X] T079 Align `specs/002-listing-proposals/contracts/api.md` with how proposals work: values that don't fit the listing (e.g. a loan longer than the maximum) are saved and reported as `issues`, not refused with `400`; only details that don't apply to the type, half-given pairs, and offers not from the listing are refused, per plan research §3 (contradicts)
+- [X] T080 Update `specs/002-listing-proposals/contracts/pages.md` for the routes as built: `/` redirects to Find (no home page), Find's kind tick-boxes and `/listings/more`, `/listings/[id]/issue`, `/threads/[id]/call`, pop-up dialogs for contact sharing, call times and raising an issue, the header (account menu, "Share a new listing"), and the single-form `/settings` with a shared settings layout, per plan: Project Structure (unrequested)
+- [X] T081 Record in `specs/002-listing-proposals/research.md` §10 that PlaceField is a small hand-written ARIA combobox rather than Bits UI Combobox (with the reason and its keyboard/screen-reader tests), per plan research §10 (contradicts)

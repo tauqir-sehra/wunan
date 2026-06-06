@@ -2,7 +2,8 @@
   The app shell: skip link, one consistent header navigation, and the main area. The current page
   is marked with aria-current and in bold, never colour alone (constitution IV, V). On phones the
   links fold into a "Menu" disclosure; on wide screens your profile, settings, help and signing out
-  sit under your name. Both work without JavaScript. "Share something" is always in view.
+  sit under your name. Both work without JavaScript. "Share a new listing" is always in view, as an
+  outlined button so each page's own main action stays the one filled button (constitution II).
 -->
 <script lang="ts">
   import '../app.css';
@@ -77,7 +78,7 @@
 
       <a
         href="/listings/new"
-        class="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md bg-primary px-3 font-medium whitespace-nowrap text-primary-foreground no-underline hover:bg-primary/90"
+        class="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md border-2 border-primary bg-card px-3 font-medium whitespace-nowrap text-primary no-underline hover:bg-accent"
       >
         <PlusIcon class="size-5" aria-hidden="true" />
         <!-- One piece of text, so the button's gap only sits between the icon and the words. -->
