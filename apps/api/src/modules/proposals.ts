@@ -166,7 +166,7 @@ export function proposalIssues(p: ProposalRow, offers: OfferRow[], ctx: ListingC
     case 'lend': {
       if (!p.loanLength || !p.loanLengthUnit) add('loanLength', 'Please choose how long you would like to borrow it.');
       else if (l.loanLength && l.loanLengthUnit && lengthInMinutes(p.loanLength, p.loanLengthUnit) > lengthInMinutes(l.loanLength, l.loanLengthUnit)) {
-        add('loanLength', `${ctx.ownerName} lends this for up to ${length(l.loanLength, l.loanLengthUnit)}.`);
+        add('loanLength', `${ctx.ownerName} lends this for up to ${length(l.loanLength, l.loanLengthUnit)} but your proposal of ${length(p.loanLength, p.loanLengthUnit)} exceeds it.`);
       }
       const end = loanEnd(p);
       if (p.startsAt && end) {

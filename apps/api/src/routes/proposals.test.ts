@@ -148,7 +148,7 @@ describe('accepting', () => {
     const made = await propose(robinToken, drill.id, completeDetails('lend', { date: '2020-01-01', loanLength: 1, loanLengthUnit: 'weeks' }));
     const issues = (await get(samToken, made.id)).body.issues.map((i: { message: string }) => i.message);
     expect(issues).toContain('That time has passed. Please choose a new one.');
-    expect(issues).toContain('Sam lends this for up to 2 days.');
+    expect(issues).toContain('Sam lends this for up to 2 days but your proposal of 1 week exceeds it.');
   });
 
   it('closes other proposals when nothing is left, and tells others when less is left', async () => {
