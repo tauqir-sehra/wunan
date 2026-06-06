@@ -40,7 +40,7 @@ Expected: all pass; the OpenAPI test finds every endpoint in both the 002 and th
    Type "zzzz": no box. Screen reader: the count is announced once, politely.
 3. **Answer (Story 3)**: As Sam, open Rana's request, "I can help with this": the Lend form is fixed
    to Lend and prefilled (title, area, handovers, loan length as maximum). Change the title, post. The
-   listing says "Made for Rana's request"; the request lists it under "Offered for this request".
+   listing says "Fulfills Rana's request"; the request lists it under "Offered for this request".
    Rana gets a `request` notice only if she turned it on. As Sam, "Link one of your listings" with an
    existing Lend listing → linked; try with a Gift listing → not offered. Remove the link → gone,
    listing unchanged.

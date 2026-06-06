@@ -29,9 +29,9 @@ plainly when it's off; every other new page and action works without JavaScript.
 | Route | Actions | Access | Behaviour |
 |-------|---------|--------|-----------|
 | `/listings/new` | `default` | member | `?forRequest=<id>`: a note "You're answering <asker>'s request: <title>" with a link; the type is fixed to the one that answers the request; fields prefilled per spec FR-012 and changeable. After posting, if the link couldn't be made, the listing page says why calmly ("The request was closed, so this listing wasn't linked to it. Your listing is up as usual."). |
-| `/listings/[id]` | adds `post`, `removeMessage`, `flagMessage` | member | "Made for <asker>'s request: <title>" line with a link when it answers an open request. For the asker of a linked request, the proposal button carries the request so the form is prefilled; if linked to several of their requests, the proposal form asks "Which request is this for?" first. Public thread below the details. |
+| `/listings/[id]` | adds `post`, `removeMessage`, `flagMessage` | member | "Fulfills <asker>'s request: <title>" line with a link when it answers an open request. For the asker of a linked request, the proposal button carries the request so the form is prefilled; if linked to several of their requests, the proposal form asks "Which request is this for?" first. Public thread below the details. |
 | `/listings/[id]/propose` | `default` | non-owner | `?request=<id>`: prefilled from the request (research §3) and tied to it; a line "This is for your request: <title>. When it's accepted, your request closes." |
-| Find result cards | — | member | "Made for <asker>'s request" line when it answers an open request. |
+| Find result cards | — | member | "Fulfills <asker>'s request" line when it answers an open request. |
 
 ## Public thread (on `/requests/[id]` and `/listings/[id]`)
 

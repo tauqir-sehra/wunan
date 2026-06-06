@@ -59,7 +59,7 @@ privacy. Public messages are plain text, encoded on output
 | Principle | Gate | Status |
 |-----------|------|--------|
 | I. People Over Extraction | No engagement mechanics; export covers new data | ✅ Pass. Public threads have no likes, reactions, or counts beyond "2 offers"; requests never expire to nudge activity. Both new notification types are off by default and rate-capped (one per thread per day). Export gains `requests.json` and `public_messages.json` |
-| II. Simple, Intuitive Workflows | One primary action per page; no added complexity to core workflows without justification | ✅ Pass, justified: posting a request needs only kind + title (SC-001). Answering reuses the listing form, prefilled (SC-002). The proposal and listing flows are unchanged for anyone not using requests; the only additions to existing pages are a "Made for…" line and the public thread. Both header buttons are outlined; closing a request asks for confirmation and can be undone (reopen); links can be removed |
+| II. Simple, Intuitive Workflows | One primary action per page; no added complexity to core workflows without justification | ✅ Pass, justified: posting a request needs only kind + title (SC-001). Answering reuses the listing form, prefilled (SC-002). The proposal and listing flows are unchanged for anyone not using requests; the only additions to existing pages are a "Fulfills…" line and the public thread. Both header buttons are outlined; closing a request asks for confirmation and can be undone (reopen); links can be removed |
 | III. Security First | Authorization on every new endpoint; validated input; output encoding; review | ✅ Pass. Asker-only edit/close/reopen; link only own listings (or as asker) of the matching type; author-only message removal; plain-text messages ≤240 characters, encoded by Svelte; request areas through `viewPlace()`; proposal `requestId` checked against the caller's own open, linked requests; public messages share the existing message rate limit as a backstop. Security review checkpoints: public thread posting and removal, link authorization, request-close in the accept transaction, deletion and export |
 | IV. Accessible (WCAG 2.2 AA) | New widgets accessible | ✅ Pass. Suggestions and the character counter announced in polite live regions (counter only at 20 and 0 left); pop-ups reuse `PopupDialog` with no-JS pages; give-back rows reuse `RepeatingRows`; axe scans in both themes per story |
 | V. Calm Design | No urgency; infrequent notifications | ✅ Pass. "The date has passed" is shown only to the asker, as information. Notices are opt-in and capped. Live public messages arrive quietly in place (no sound, no motion, polite announcement); no unread badges for them |
@@ -129,7 +129,7 @@ apps/web/src/
 │   ├── RequestCard.svelte          # new
 │   ├── RequestSuggestions.svelte   # new: "These might already have what you need"
 │   ├── PublicThread.svelte         # new: messages, counter, remove, raise an issue
-│   └── ListingCard.svelte          # "Made for <asker>'s request"
+│   └── ListingCard.svelte          # "Fulfills <asker>'s request"
 ├── lib/request-form.ts             # new: form ↔ API body; request → listing and proposal prefill
 ├── lib/format.ts                   # neededText(), request kind labels
 ├── lib/help/Requests.svelte        # new help topic
@@ -139,7 +139,7 @@ apps/web/src/
     ├── listings/[id]/messages/live/ # new: stream pass-through
     ├── public-messages/[id]/issue/ # new: no-JS page
     ├── listings/new/               # ?forRequest prefill and link
-    ├── listings/[id]/              # Made-for line, public thread, request choice for the proposal
+    ├── listings/[id]/              # Fulfills line, public thread, request choice for the proposal
     ├── listings/[id]/propose/      # ?request prefill and tie
     └── settings/notifications/     # two new types
 apps/web/tests/e2e/                 # requests-us1 … us7 specs; accessibility spec covers new pages

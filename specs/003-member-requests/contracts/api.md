@@ -24,7 +24,7 @@ additive, so it stays in v1. `src/openapi.test.ts` checks the endpoints in both 
 |----------|--------|-----------|
 | `POST /listings` | member | Adds optional `forRequest` (request id). After the listing is created, it is linked as with `POST /requests/{id}/links`; if the link can't be made (request closed meanwhile, or wrong type), the listing is still created and the response says why: `201 { id, linked: false, linkProblem: "request_closed" }` (spec Edge Cases). Otherwise `{ id, linked: true }`. |
 | `GET /listings/{id}` | member | Adds `answers: [{ requestId, title, asker }]` for open requests it is linked to, and `myOpenRequestsLinked: [{ id, title }]` (the caller's own open requests this listing is linked to, for the proposal prefill and choice). |
-| `GET /listings` | member | Items add `answersRequest: { asker } | null` (the first open linked request), for "Made for <asker>'s request" (FR-014). |
+| `GET /listings` | member | Items add `answersRequest: { asker } | null` (the first open linked request), for "Fulfills <asker>'s request" (FR-014). |
 
 ## Proposals (changed)
 

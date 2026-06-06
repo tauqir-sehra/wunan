@@ -164,8 +164,7 @@ is told.
    listing is saved as an ordinary listing with the helper's values, and is linked to the request.
 4. **Given** a helper who already has a fitting available listing, **When** they answer the
    request, **Then** they may choose that listing instead of making a new one, and it is linked.
-5. **Given** a listing made for a request, **When** any member views it, **Then** it says "Made
-   for <asker>'s request: <title>" with a link, and anyone can still make a proposal on it.
+5. **Given** a listing made for a request, **When** any member views it, **Then** it says "Fulfills <asker>'s request: <title>" with a link, and anyone can still make a proposal on it.
 6. **Given** a linked listing, **When** the asker opens their request, **Then** the listing is shown
    under "Offered for this request" with the helper's name and a button to make a proposal.
 7. **Given** the asker, **When** they answer their own request, **Then** they can't ("I can help"
@@ -378,7 +377,7 @@ an account and check its open requests are closed.
 - **FR-014**: A listing answering a request MUST be an ordinary listing: visible and findable like
   any other, open to proposals from any member straight away, and following the normal listing
   lifetime rules. It MUST stay tied to the request: the listing page and its search result MUST say
-  which request it was made for ("Made for <asker>'s request"), with a link.
+  which request it was made for ("Fulfills <asker>'s request"), with a link.
 - **FR-015**: A request MUST show its linked listings ("Offered for this request") with each
   helper's name, the listing's state, and a way to make a proposal; a listing MUST show which
   request it answers, with a link.
