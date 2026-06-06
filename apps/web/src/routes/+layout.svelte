@@ -80,7 +80,8 @@
         class="ml-auto inline-flex min-h-11 items-center gap-1.5 rounded-md bg-primary px-3 font-medium whitespace-nowrap text-primary-foreground no-underline hover:bg-primary/90"
       >
         <PlusIcon class="size-5" aria-hidden="true" />
-        Share<span class="hidden sm:inline">&nbsp;something</span>
+        <!-- One piece of text, so the button's gap only sits between the icon and the words. -->
+        <span>Share<span class="hidden sm:inline">&nbsp;a new listing</span></span>
       </a>
 
       <details class="relative hidden lg:block" bind:open={accountOpen}>

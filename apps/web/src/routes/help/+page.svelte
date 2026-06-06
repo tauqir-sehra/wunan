@@ -4,7 +4,7 @@
 
 <svelte:head><title>Help · wunan</title></svelte:head>
 
-<section class="grid max-w-2xl gap-6">
+<section class="grid gap-6">
   <h1 class="text-2xl font-semibold">Help</h1>
   <p>Short guides to everything in wunan. Choose a topic.</p>
   <ul class="grid gap-3">

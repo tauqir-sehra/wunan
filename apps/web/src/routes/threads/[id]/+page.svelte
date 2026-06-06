@@ -13,7 +13,7 @@
 
 <svelte:head><title>Conversation with {names} · wunan</title></svelte:head>
 
-<section class="grid max-w-3xl gap-6">
+<section class="grid gap-6">
   <header class="grid gap-1">
     <div class="flex items-start justify-between gap-3">
       <h1 class="text-2xl font-semibold">{names}</h1>

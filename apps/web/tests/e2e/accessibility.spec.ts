@@ -99,7 +99,7 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
     expect(focused.ring, `"${focused.text}" has no visible focus ring`).toBe(true);
     seen.add(focused.text);
   }
-  for (const label of ['Find', 'Proposals', 'My listings', 'Agreements', 'Invite', 'Share\u00a0something', 'Sam']) {
+  for (const label of ['Find', 'Proposals', 'My listings', 'Agreements', 'Invite', 'Share\u00a0a new listing', 'Sam']) {
     expect([...seen].some((text) => text.startsWith(label)), `${label} reachable by keyboard (reached: ${[...seen].join(' | ')})`).toBe(true);
   }
   // The account menu opens from the keyboard too.

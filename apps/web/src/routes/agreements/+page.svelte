@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HelpLink from '#lib/components/HelpLink.svelte';
   import { agreementSentence } from '#lib/format.ts';
 
   let { data } = $props();
@@ -14,7 +15,10 @@
 <svelte:head><title>Agreements · wunan</title></svelte:head>
 
 <section class="grid gap-6">
-  <h1 class="text-2xl font-semibold">Agreements</h1>
+  <div class="flex items-start justify-between gap-3">
+    <h1 class="text-2xl font-semibold">Agreements</h1>
+    <HelpLink topic="agreements" label="Help with agreements" />
+  </div>
   {#if data.agreements.length === 0}
     <p class="text-muted-foreground">No agreements yet. When you agree to share something, it's recorded here.</p>
   {/if}

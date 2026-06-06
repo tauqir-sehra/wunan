@@ -18,7 +18,7 @@
 
 <svelte:head><title>Asking for help · wunan</title></svelte:head>
 
-<section class="grid max-w-2xl gap-6">
+<section class="grid gap-6">
   {#if page.url.searchParams.has('asked') && !form}
     <Notice
       ><p>

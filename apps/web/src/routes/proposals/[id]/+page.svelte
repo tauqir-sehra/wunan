@@ -39,7 +39,7 @@
 
 <svelte:head><title>Proposal for {p.listing.title} · wunan</title></svelte:head>
 
-<section class="grid max-w-3xl gap-6">
+<section class="grid gap-6">
   {#if page.url.searchParams.has('made') && !form}<Notice><p>Your proposal was sent to {p.lister.displayName}.</p></Notice>{/if}
   {#if form?.changed}<Notice kind="error"><p>{form.changed} The new details are shown below.</p></Notice>{/if}
   {#if form?.done}<Notice><p>{form.done === 'declined' ? 'You declined this proposal.' : 'You withdrew your proposal.'}</p></Notice>{/if}

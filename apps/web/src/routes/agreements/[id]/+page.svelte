@@ -21,7 +21,7 @@
 
 <svelte:head><title>Agreement · wunan</title></svelte:head>
 
-<section class="grid max-w-2xl gap-6">
+<section class="grid gap-6">
   {#if form?.done === 'returned'}<Notice><p>Marked as returned. Those dates are free again.</p></Notice>{/if}
   {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
 

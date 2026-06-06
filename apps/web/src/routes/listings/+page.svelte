@@ -7,9 +7,46 @@
   import { page } from '$app/state';
   import Notice from '#lib/components/Notice.svelte';
   import { typeLabels } from '#lib/format.ts';
-  import type { ListingType } from '@wunan/shared';
+  import type { Listing, ListingType } from '@wunan/shared';
+  import { tick } from 'svelte';
 
   let { data } = $props();
+
+  // "Show more" adds the next page under what's shown, so the page stays where it is. Without
+  // JavaScript it's a plain link to the next page. A new search starts the list afresh.
+  let more = $state<Listing[]>([]);
+  let nextQuery = $state<string | null>(null);
+  let loading = $state(false);
+  let announcement = $state('');
+  let list: HTMLUListElement | undefined = $state();
+  $effect(() => {
+    void data.listings;
+    more = [];
+    nextQuery = data.nextQuery;
+  });
+  const shown = $derived([...data.listings, ...more]);
+
+  async function showMore(event: MouseEvent) {
+    if (!nextQuery) return;
+    event.preventDefault();
+    loading = true;
+    const firstNew = shown.length;
+    try {
+      const response = await fetch(`/listings/more?${nextQuery}`);
+      if (!response.ok) throw new Error('Could not load more');
+      const page = (await response.json()) as { listings: Listing[]; nextQuery: string | null };
+      more.push(...page.listings);
+      nextQuery = page.nextQuery;
+      announcement = `${page.listings.length} more shown.`;
+      await tick();
+      // Keyboard and screen-reader users continue at the first new result.
+      list?.querySelectorAll<HTMLElement>(':scope > li')[firstNew]?.querySelector('a')?.focus({ preventScroll: true });
+    } catch {
+      window.location.href = `/listings?${nextQuery}`; // Fall back to the next page.
+    } finally {
+      loading = false;
+    }
+  }
   const f = $derived(data.filters);
   const active = $derived(
     [
@@ -76,31 +113,36 @@
     <div><Button type="submit">Search</Button></div>
   </form>
 
-  {#if active.length}
-    <div class="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Active filters">
-      <span class="text-muted-foreground">Showing:</span>
-      {#each active as filter (filter)}<span class="rounded-md bg-muted px-2 py-0.5">{filter}</span
-        >{/each}
-      <a href="/listings" class="inline-flex min-h-11 items-center">Clear filters</a>
+  <!-- A line and a heading set the results apart from the search form. -->
+  <section aria-labelledby="results-heading" class="grid gap-3 pt-6">
+    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      {#if active.length}
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Active filters">
+          <span class="text-muted-foreground">Showing:</span>
+          {#each active as filter (filter)}<span class="rounded-md bg-muted px-2 py-0.5">{filter}</span>{/each}
+          <a href="/listings" class="inline-flex min-h-11 items-center">Clear filters</a>
+        </div>
+      {/if}
     </div>
-  {/if}
-
-  <section aria-labelledby="results-heading" class="grid gap-3">
-    <h2 id="results-heading" class="sr-only">Results</h2>
     {#if data.listings.length === 0}
       <p class="rounded-lg border bg-card p-6 text-center">
         Nothing matches yet. Try other words or clear the filters.
       </p>
     {:else}
-      <ul class="grid gap-3">
-        {#each data.listings as listing (listing.id)}
+      <ul class="grid gap-3" bind:this={list}>
+        {#each shown as listing (listing.id)}
           <li><ListingCard {listing} /></li>
         {/each}
       </ul>
     {/if}
-    {#if data.nextPage}
-      <p><a href={data.nextPage} class="inline-flex min-h-11 items-center">Show more</a></p>
+    {#if nextQuery}
+      <p>
+        <a href="/listings?{nextQuery}" class="inline-flex min-h-11 items-center" onclick={showMore} aria-disabled={loading}>
+          {loading ? 'Loading…' : 'Show more'}
+        </a>
+      </p>
     {/if}
+    <div class="sr-only" aria-live="polite">{announcement}</div>
     {#if data.isLaterPage}
       <p><a href="/listings">Back to the newest</a></p>
     {/if}

@@ -50,3 +50,25 @@ test('search finds word forms, filters narrow it down, and clearing filters is o
   await expect(page.getByRole('link', { name: `Drill ${suffix}` })).toBeVisible();
   await expect(page.getByRole('link', { name: `Rice ${suffix}` })).toHaveCount(0);
 });
+
+test('"Show more" adds the next results below, without jumping to the top', async ({ page }) => {
+  const founder = createFounder('Sam');
+  const suffix = Math.random().toString(36).slice(2, 8);
+  for (let i = 0; i < 23; i += 1) await createListingFor(founder, { type: 'gift', title: `Jar ${i} ${suffix}` });
+  const alex = await createInvitedMember(founder, 'Alex');
+  await signInAs(page, alex);
+  await page.goto(`/listings?q=${suffix}`);
+  await page.waitForLoadState('networkidle');
+  const results = page.getByRole('main').getByRole('article');
+  await expect(results).toHaveCount(20);
+
+  const showMore = page.getByRole('link', { name: 'Show more' });
+  await showMore.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(0);
+  await showMore.click();
+  await expect(results).toHaveCount(23);
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(before);
+  await expect(page.locator('[aria-live="polite"]').filter({ hasText: '3 more shown.' })).toHaveCount(1);
+  await expect(showMore).toHaveCount(0);
+});

@@ -50,7 +50,7 @@
 
 <svelte:head><title>{listing.title} · wunan</title></svelte:head>
 
-<article class="grid max-w-3xl gap-6">
+<article class="grid gap-6">
   {#if created}
     <Notice><p>Your listing is published.</p></Notice>
   {/if}

@@ -36,7 +36,7 @@
 
 <svelte:head><title>Proposals · wunan</title></svelte:head>
 
-<section class="grid max-w-3xl gap-8">
+<section class="grid gap-8">
   <div class="grid gap-1">
     <div class="flex items-start justify-between gap-3">
       <h1 class="text-2xl font-semibold">Proposals</h1>
