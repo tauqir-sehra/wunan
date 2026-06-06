@@ -120,7 +120,8 @@ apps/api/
     ├── routes/
     │   ├── requests.ts             # new
     │   ├── public-messages.ts      # new (thread endpoints and live streams for requests and listings, removal, flags)
-    │   └── listings.ts, proposals.ts   # new fields
+    │   ├── listings.ts, proposals.ts   # new fields
+    │   └── me.ts                   # summary adds unseenRequestFlags
     └── openapi.test.ts             # reads both 002 and 003 contracts
 
 apps/web/src/
@@ -139,7 +140,7 @@ apps/web/src/
     ├── listings/[id]/messages/live/ # new: stream pass-through
     ├── public-messages/[id]/issue/ # new: no-JS page
     ├── listings/new/               # ?forRequest prefill and link
-    ├── listings/[id]/              # Fulfills line, public thread, request choice for the proposal
+    ├── listings/[id]/              # Fulfills line, public thread, "Link to my request", request choice for the proposal
     ├── listings/[id]/propose/      # ?request prefill and tie
     └── settings/notifications/     # two new types
 apps/web/tests/e2e/                 # requests-us1 … us7 specs; accessibility spec covers new pages

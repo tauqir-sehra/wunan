@@ -23,4 +23,5 @@ Rules:
   request), so a burst of edits sends one.
 - The body is a calm preview (001 `calm()`), never the full public message if it would be cut
   mid-word.
-- A member closing their own request or a helper removing their own link sends nothing.
+- Nobody is notified of their own action: the asker isn't told when they close their request, and a
+  helper isn't told when they remove their own link.

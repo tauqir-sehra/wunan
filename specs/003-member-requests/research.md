@@ -123,8 +123,8 @@ keeps both simple.
   cleared (FR-023c). No hiding by anyone else (clarification 5). No per-thread posting limit
   (clarification 3). As a safety backstop only, public messages share the existing private-message
   limit of 60 per member per hour (`checkRateLimit('message:…', 60, 60)` in `modules/messaging.ts`),
-  which no ordinary conversation reaches; past it the member sees 001's plain "slow down" message.
-  **Check with the project owner**: drop the backstop if "no limit" was meant literally.
+  which no ordinary conversation reaches; past it the member sees 001's plain "slow down" message
+  (confirmed by the project owner, 2026-06-06).
 - Account deletion deletes the member's public messages outright (FR-026).
 
 **Alternatives**: Reusing `conversation` with an "open" flag (rejected above); one thread table plus

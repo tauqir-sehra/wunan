@@ -28,7 +28,9 @@ Terms used below:
 - **Asker**: the member who posts a request. When they make a proposal on a listing they are the
   proposal's requester (002 terms).
 - **Helper**: a member who answers a request with a listing; they are that listing's lister.
-- **Linked listing**: a listing made (or chosen) to answer a request, connected to it.
+- **Linked listing**: a listing made (or chosen) to answer a request, connected to it. On screen
+  a linked listing says it **fulfils** the request ("Fulfills <asker>'s request"); these docs say
+  "answer" for the same thing.
 - **Public thread**: short messages on a request or listing page that every member can read and
   post in. Separate from a proposal's private messages (002), which stay private.
 
@@ -77,6 +79,10 @@ Request kinds mirror the listing types:
   database rebuilt from scratch.
 - Q: What do the header buttons say? → A: "Request something" and "Offer something" ("Offer
   something" replaces "Share a new listing").
+- Q: Is a safety cap on public messages acceptable despite "no limit"? → A: Yes. Public messages
+  share the existing private-message cap of 60 per member per hour; there is no per-thread limit.
+- Q: Do issues raised about a member's requests show a count? → A: Yes, on "My requests" and on the
+  Requests navigation link, like "My listings" does for listing issues.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -310,8 +316,8 @@ an account and check its open requests are closed.
 - **Asker deleted**: linked listings stay; the request disappears.
 - **Contact details in a public message**: the box says not to share them; wunan doesn't block them,
   but the author can delete the message at any time.
-- **One member posts a lot**: there's no posting limit and no hiding; anyone can raise an issue
-  about the messages. Notices stay at most one per thread per day (FR-023e), so a flood
+- **One member posts a lot**: there's no per-thread limit and no hiding, only the shared cap of 60
+  messages per member per hour (FR-023f); anyone can raise an issue about the messages. Notices stay at most one per thread per day (FR-023e), so a flood
   doesn't flood inboxes.
 - **A busy thread**: messages are shown oldest first; long threads show the latest 20 with "Show
   earlier messages".
@@ -360,7 +366,8 @@ an account and check its open requests are closed.
 
 - **FR-009**: While the asker fills in a request, wunan MUST show up to 5 available listings that
   might already answer it: matching words in the title, of the type that answers the request's
-  kind, available, not the asker's own, nearest the asker's area first when an area is given.
+  kind, available, not the asker's own, those in the same neighbourhood or city as the asker's
+  area first when an area is given.
 - **FR-010**: Suggestions MUST update as the title changes, after a short pause, and MUST be
   announced politely to screen readers; with none, nothing is shown.
 - **FR-011**: Opening a suggestion MUST keep the unfinished request so the asker can return to it.
@@ -405,7 +412,8 @@ an account and check its open requests are closed.
 - **FR-021**: Each request shown to others MUST show its title, kind, area as neighbourhood and city
   only, when it's needed in words (FR-002a), the asker's name, and the number of linked listings.
 - **FR-022**: A member MUST be able to see their own requests ("My requests"), open first, with
-  their linked listings and state.
+  their linked listings and state. "My requests" and the Requests navigation link MUST show a count
+  of issues raised about the member's requests that they haven't seen yet, as "My listings" does.
 
 **Public threads**
 
@@ -419,8 +427,9 @@ an account and check its open requests are closed.
 - **FR-023c**: An author MUST be able to delete their own message (shown as "Message removed"). Others,
   including the asker or lister, MUST NOT be able to hide or remove it. Any member MUST be
   able to raise an issue about a message.
-- **FR-023f**: There MUST be no limit on how many public messages a member posts, beyond the
-  240-character length of each.
+- **FR-023f**: There MUST be no per-thread limit on public messages beyond the 240-character length
+  of each. As an abuse backstop, public and private messages together MUST be capped at 60 per
+  member per hour, with 001's plain "slow down" message past it.
 - **FR-023g**: New public messages and removals MUST appear on an open request or listing page
   without reloading, as proposal messages do (002 FR-025), announced politely to screen readers;
   without live updates the page still shows them on reload.
@@ -467,7 +476,8 @@ an account and check its open requests are closed.
 
 - **SC-001**: A member can post a request with just a title and kind in under 1 minute.
 - **SC-002**: A helper can answer a request with a new listing in under 3 minutes, starting from the
-  request page, with at most 2 fields needing to be typed beyond what's prefilled.
+  request page, where every detail the request already gives is prefilled, so only details the
+  request left empty need typing.
 - **SC-003**: 100% of requests whose asker's proposal is accepted close without the asker doing
   anything more.
 - **SC-004**: When a matching available listing exists, it is shown to the asker within 2 seconds of
