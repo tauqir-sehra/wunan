@@ -33,5 +33,6 @@
   "imports": {
     "#lib": "./src/lib/index.ts",
     "#lib/*": "./src/lib/*"
-  }
+  },
+  "license": "AGPL-3.0-or-later"
 }
