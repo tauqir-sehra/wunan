@@ -141,6 +141,4 @@
       {form}
     />
   {/if}
-
-  <p><a href="/agreements">All agreements</a></p>
 </section>

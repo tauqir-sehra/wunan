@@ -84,6 +84,7 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
   // The messages from the proposal carry on under the agreement.
   const messages = sam.getByRole('list', { name: 'Messages' });
   await expect(messages.getByText(/Robin changed the pickup time/)).toBeVisible();
+  await expect(sam.getByRole('link', { name: 'All agreements' })).toHaveCount(0);
 
   // Now Robin sees the full address.
   await robin.goto(`/offerings/${drill.id}`);
