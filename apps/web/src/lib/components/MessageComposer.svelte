@@ -52,6 +52,21 @@
     callDate && callTime ? when(new Date(`${callDate}T${callTime}`).toISOString()) : null
   );
 
+  // Adding or taking out a pill changes the box's height above the "+". While the panel is open
+  // the page scrolls by the same amount, so the "+" and the panel stay under the pointer
+  // (constitution V).
+  let plusTop: number | null = null;
+  $effect.pre(() => {
+    void [phone, email, callText];
+    plusTop = open && panel ? panel.getBoundingClientRect().top : null;
+  });
+  $effect(() => {
+    void [phone, email, callText];
+    if (plusTop === null || !panel) return;
+    const moved = panel.getBoundingClientRect().top - plusTop;
+    if (moved) window.scrollBy({ top: moved, behavior: 'instant' });
+  });
+
   function clear() {
     phone = email = false;
     callDate = callTime = '';

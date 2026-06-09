@@ -103,3 +103,25 @@ test('withdrawing a proposal for a request keeps the page where it was', async (
   await expect(page.getByText('You withdrew your proposal.')).toBeInViewport();
   expect(await scrollY(page)).toBeGreaterThan(0);
 });
+
+test('adding a call time with "+" keeps the "+" and its panel where they are', async ({ page }) => {
+  const sam = createFounder('Sam');
+  const rana = await createInvitedMember(sam, 'Rana');
+  const ladder = await createOfferingFor(sam, { type: 'lend', title: 'Tall ladder' });
+  const proposal = await proposeOn(rana, ladder.id);
+
+  await signInAs(page, rana);
+  await page.goto(`/proposals/${proposal.id}`);
+  await page.waitForLoadState('networkidle');
+  await scrollToBottom(page);
+  const plus = page.getByLabel('Add your contact details or a time to call');
+  await plus.click();
+  await page
+    .locator('#call-date')
+    .fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  const before = (await plus.boundingBox())!.y;
+  await page.locator('#call-time').fill('10:30');
+  await expect(page.getByRole('list', { name: 'Added to your message' })).toBeVisible();
+  expect(Math.abs((await plus.boundingBox())!.y - before)).toBeLessThan(2);
+  await expect(page.locator('#call-time')).toBeInViewport();
+});

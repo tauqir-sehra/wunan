@@ -139,6 +139,9 @@
       meId={data.member?.id ?? ''}
       otherName={other.displayName}
       {form}
+      sendVariant={a.outcome === 'lent' && a.myRole === 'owner' && !a.returnedAt
+        ? 'outline'
+        : 'default'}
     />
   {/if}
 </section>

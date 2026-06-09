@@ -1,9 +1,10 @@
 <h2>Asking for something</h2>
 <p>
-  On an offering you'd like, press the button for it: "Ask to borrow", "Ask for this", "Offer a trade"
-  or "Ask for this service". That makes a <strong>proposal</strong>. You can fill in when, how and
-  where, and how much or how long, or leave any of it as "Not decided yet" and write a message
-  instead. Only you can change your proposal's details. Whatever it says is what you're agreeing to.
+  On an offering you'd like, press the button for it: "Ask to borrow", "Ask for this", "Offer a
+  trade" or "Ask for this service". That makes a <strong>proposal</strong>. You can fill in when,
+  how and where, and how much or how long, or leave any of it as "Not decided yet" and write a
+  message instead. Only you can change your proposal's details. Whatever it says is what you're
+  agreeing to.
 </p>
 
 <h2>One page for everything</h2>
@@ -28,9 +29,10 @@
 
 <h2>Sharing your phone number or email</h2>
 <p>
-  Your contact details are private. Save them in <a href="/settings">Settings</a>, then share them
-  from a proposal with "Share your phone number or email". You see exactly what will be shared
-  first. You can also suggest a time to call.
+  Your contact details are private. Save them in <a href="/settings">Settings</a> first. Then, on a proposal
+  or agreement, press the "+" beside Send and choose your phone number, your email, or a time to call.
+  You see exactly what will be shared. What you choose shows as small labels in the message box and is
+  sent with your message. The other person can accept a call time.
 </p>
 
 <h2>Places and staying safe</h2>
