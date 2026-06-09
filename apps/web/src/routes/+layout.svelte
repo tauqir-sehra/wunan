@@ -14,6 +14,7 @@
   import MenuIcon from '@lucide/svelte/icons/menu';
   import ArrowDownLeftIcon from '@lucide/svelte/icons/arrow-down-left';
   import ArrowUpRightIcon from '@lucide/svelte/icons/arrow-up-right';
+  import { Button } from '#lib/components/ui/button/index.ts';
   import ReauthForm from '#lib/components/ReauthForm.svelte';
   import type { Reauth } from '#lib/form-action.ts';
 
@@ -52,9 +53,6 @@
     { href: '/settings', label: 'Settings' },
     { href: '/help', label: 'Help' }
   ]);
-
-  const headerButton =
-    'inline-flex min-h-11 items-center gap-1.5 rounded-md border-2 border-primary bg-card px-3 font-medium whitespace-nowrap text-primary no-underline hover:bg-accent';
 
   const isCurrent = (href: string) =>
     href === '/offerings' ? page.url.pathname === '/offerings' : page.url.pathname.startsWith(href);
@@ -109,17 +107,17 @@
 
       <!-- One piece of text in each, so the button's gap only sits between the icon and the words. -->
       <div class="ml-auto flex flex-wrap gap-2">
-        <a href="/requests/new" class={headerButton}>
+        <Button href="/requests/new" variant="primaryOutline" size="action" class="shrink">
           <ArrowDownLeftIcon class="size-5" aria-hidden="true" />
           <span
             >Request<span class="hidden sm:inline lg:hidden xl:inline">&nbsp;something</span></span
           >
-        </a>
-        <a href="/offerings/new" class={headerButton}>
+        </Button>
+        <Button href="/offerings/new" variant="primaryOutline" size="action" class="shrink">
           <ArrowUpRightIcon class="size-5" aria-hidden="true" />
           <span>Offer<span class="hidden sm:inline lg:hidden xl:inline">&nbsp;something</span></span
           >
-        </a>
+        </Button>
       </div>
 
       <details class="relative hidden lg:block" bind:open={accountOpen}>

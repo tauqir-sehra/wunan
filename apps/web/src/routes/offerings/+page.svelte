@@ -75,7 +75,11 @@
 {#snippet askNote()}
   <p class="text-muted-foreground">
     Can't find what you need?
-    <a href="/requests/new{data.mine || !data.filters.q ? '' : `?title=${encodeURIComponent(data.filters.q)}`}">Request from the community</a>.
+    <a
+      href="/requests/new{data.mine || !data.filters.q
+        ? ''
+        : `?title=${encodeURIComponent(data.filters.q)}`}">Request from the community</a
+    >.
   </p>
 {/snippet}
 
@@ -88,8 +92,8 @@
   <div class="flex flex-wrap items-start justify-between gap-3">
     <h1 class="text-2xl font-semibold">What people are offering</h1>
     <div class="flex flex-wrap items-center gap-3">
-      <Button href="/offerings/new"
-        ><ArrowUpRightIcon class="size-4" aria-hidden="true" />Offer something</Button
+      <Button href="/offerings/new" size="action"
+        ><ArrowUpRightIcon class="size-5" aria-hidden="true" />Offer something</Button
       >
       <HelpLink topic="finding" label="Help with offerings" />
     </div>
