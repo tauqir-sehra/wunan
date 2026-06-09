@@ -2,9 +2,10 @@
   Writing in a private thread: the same message box as everywhere (MessageBox), with a small "+"
   beside Send. It opens a panel right there to add things to the message: my phone number or email
   (each showing exactly what will be shared, 001 FR-019) and a time to call (001 FR-020). What's
-  added shows as pills under the text, each with an X, and goes with the text as one message. The
-  panel is a <details>, so it works the same without JavaScript. Used on proposal and agreement
-  pages and request-for-help threads; the page provides the `send` action (`threadActions`).
+  added shows as pills in the top part of the text box, each with an X, and goes with the text as
+  one message. The panel is a <details>, so it works the same without JavaScript. Used on proposal
+  and agreement pages and request-for-help threads; the page provides the `send` action
+  (`threadActions`).
 -->
 <script lang="ts">
   import CalendarClockIcon from '@lucide/svelte/icons/calendar-clock';
@@ -93,7 +94,10 @@
 >
   {#snippet attached()}
     {#if phone || email || callText}
-      <ul class="flex flex-wrap gap-2" aria-label="Added to your message">
+      <ul
+        class="flex flex-wrap gap-2 border-b border-input bg-muted/40 p-2"
+        aria-label="Added to your message"
+      >
         {#if phone}<li class={pill}>
             <PhoneIcon class="size-4" aria-hidden="true" />Phone: {contact.sharePhone}
             <button
@@ -174,7 +178,7 @@
         {/if}
         <fieldset class="grid min-w-0 gap-2">
           <legend class="mb-1 text-sm">A time to call</legend>
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid gap-2">
             <div class="grid gap-1">
               <Label for="call-date" class="text-xs">Day</Label>
               <input

@@ -1,10 +1,11 @@
 <!--
-  The box for writing a message, the same everywhere: a label, the text box, a line saying who can
-  read it with the characters left, and the send button at the right. Sending keeps the page where
-  it is and empties the box (constitution V); without JavaScript the form's address ends in the
-  thread's anchor, so the reloaded page comes back to it. The page shows "sent" through `status`.
-  Private threads add things to the message: `attached` shows them (as pills) under the text box,
-  and `attach` (the "+") sits by the Send button; both are inside the form, so they're sent with it.
+  The box for writing a message, the same everywhere: a label, the text box (with the characters
+  left in its corner), a line saying who can read it, and the send button at the right. Sending
+  keeps the page where it is and empties the box (constitution V); without JavaScript the form's
+  address ends in the thread's anchor, so the reloaded page comes back to it. The page shows
+  "sent" through `status`. Private threads add things to the message: `attached` shows them (as
+  pills) in the top part of the text box, and `attach` (the "+") sits by the Send button; both are
+  inside the form, so they're sent with it.
 -->
 <script lang="ts">
   import { enhance } from '$app/forms';
@@ -47,13 +48,22 @@
     status?: string;
     /** The "+" button for adding things to the message, beside Send. */
     attach?: Snippet;
-    /** What has been added, shown under the text box. */
+    /** What has been added, shown in the top part of the text box. */
     attached?: Snippet;
     /** Called once a message has been sent, to clear what was added. */
     onSent?: () => void;
   } = $props();
 
   let text = $state(untrack(() => value));
+  // The box grows with the text instead of having a resize handle. Browsers without
+  // field-sizing get the same from a height set here.
+  let box: HTMLTextAreaElement | undefined = $state();
+  $effect(() => {
+    void text;
+    if (!box || CSS.supports('field-sizing', 'content')) return;
+    box.style.height = 'auto';
+    box.style.height = `${Math.min(box.scrollHeight + 2, 320)}px`;
+  });
   let scripted = $state(false);
   onMount(() => (scripted = true));
   const left = $derived(maxlength - text.length);
@@ -84,27 +94,33 @@
 >
   <Label for={id} class="text-sm">{label}</Label>
   {#if error}<p id="{id}-error" class="text-sm font-medium text-destructive">{error}</p>{/if}
-  <textarea
-    {id}
-    name="body"
-    rows="2"
-    class="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-base aria-invalid:border-2 aria-invalid:border-destructive"
-    aria-describedby="{id}-hint {id}-count{error ? ` ${id}-error` : ''}"
-    aria-invalid={error ? 'true' : undefined}
-    bind:value={text}></textarea>
-  {#if attached}{@render attached()}{/if}
-  <div class="flex items-start gap-3">
-    <p id="{id}-hint" class="min-w-0 flex-1 text-xs text-muted-foreground">{hint}</p>
-    <span
+  <!-- One box: what's added in its own part at the top, then the text, then the characters left. -->
+  <div
+    class="overflow-hidden rounded-md border border-input bg-background outline-offset-2 outline-ring has-[textarea:focus-visible]:outline-3 has-[textarea[aria-invalid]]:border-2 has-[textarea[aria-invalid]]:border-destructive"
+  >
+    {#if attached}{@render attached()}{/if}
+    <textarea
+      {id}
+      name="body"
+      rows="2"
+      class="block field-sizing-content max-h-80 min-h-16 w-full resize-none bg-transparent px-3 py-2 text-base focus-visible:outline-none"
+      bind:this={box}
+      aria-describedby="{id}-hint {id}-count{error ? ` ${id}-error` : ''}"
+      aria-invalid={error ? 'true' : undefined}
+      bind:value={text}></textarea>
+    <p
       id="{id}-count"
-      class="pt-0.5 text-xs whitespace-nowrap {left < 0
+      class="px-3 pb-1.5 text-right text-xs whitespace-nowrap {left < 0
         ? 'font-medium text-destructive'
         : 'text-muted-foreground'}"
     >
       {#if scripted}{left >= 0
           ? `${left} characters left`
           : `${-left} characters too many`}{:else}Up to {maxlength} characters{/if}
-    </span>
+    </p>
+  </div>
+  <div class="flex items-start gap-3">
+    <p id="{id}-hint" class="min-w-0 flex-1 text-xs text-muted-foreground">{hint}</p>
     {#if attach}{@render attach()}{/if}
     <Button type="submit" variant={buttonVariant} size="sm" class="shrink-0">{buttonLabel}</Button>
   </div>
