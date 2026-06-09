@@ -73,8 +73,6 @@ async function pagesOfACommunity() {
       '/proposals',
       `/proposals/${open.id}`,
       `/proposals/${deal.id}`,
-      `/threads/${open.conversationId}/share-contact`,
-      `/threads/${open.conversationId}/call`,
       `/offerings/${jam.id}/issue`,
       '/agreements',
       `/agreements/${agreement.id}`,

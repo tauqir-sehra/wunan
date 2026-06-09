@@ -3,7 +3,7 @@
 // stream: Server-Sent Events carrying each new message as `event: message`, plus a heartbeat
 // comment every 25 seconds so proxies keep the connection open.
 import { createRoute, z } from '@hono/zod-openapi';
-import { Message, MessagesPage, ProposeCall, SendMessage, ShareContact } from '@wunan/shared';
+import { Message, MessagesPage, SendMessage } from '@wunan/shared';
 import { streamSSE } from 'hono/streaming';
 import { createRouter } from '../app-router.ts';
 import { config } from '../config.ts';
@@ -40,8 +40,8 @@ conversationRoutes.openapi(
 );
 
 conversationRoutes.openapi(
-  createRoute({ method: 'post', path: '/conversations/{id}/messages', summary: 'Send a message', security, request: { params: Id, body: body(SendMessage) }, responses: { 201: reply(Message, 'The message') } }),
-  async (c) => c.json(await messaging.sendMessage(c.req.valid('param').id, c.get('member').id, c.req.valid('json').body), 201)
+  createRoute({ method: 'post', path: '/conversations/{id}/messages', summary: 'Send a message, with any contact details or call time added to it', security, request: { params: Id, body: body(SendMessage) }, responses: { 201: reply(Message, 'The message') } }),
+  async (c) => c.json(await messaging.sendMessage(c.req.valid('param').id, c.get('member').id, c.req.valid('json')), 201)
 );
 
 conversationRoutes.openapi(
@@ -50,23 +50,6 @@ conversationRoutes.openapi(
     await messaging.markRead(c.req.valid('param').id, c.get('member').id);
     return c.body(null, 204);
   }
-);
-
-conversationRoutes.openapi(
-  createRoute({
-    method: 'post',
-    path: '/conversations/{id}/contact-share',
-    summary: 'Share exactly the chosen saved contact details in this conversation',
-    security,
-    request: { params: Id, body: body(ShareContact) },
-    responses: { 201: reply(Message, 'The contact_shared message') }
-  }),
-  async (c) => c.json(await messaging.shareContact(c.req.valid('param').id, c.get('member').id, c.req.valid('json')), 201)
-);
-
-conversationRoutes.openapi(
-  createRoute({ method: 'post', path: '/conversations/{id}/calls', summary: 'Suggest a time to call', security, request: { params: Id, body: body(ProposeCall) }, responses: { 201: reply(Message, 'The call_proposed message') } }),
-  async (c) => c.json(await messaging.proposeCall(c.req.valid('param').id, c.get('member').id, new Date(c.req.valid('json').proposedTime)), 201)
 );
 
 conversationRoutes.openapi(

@@ -81,21 +81,24 @@ describe('conversations', () => {
 });
 
 describe('contact sharing', () => {
-  it('posts exactly the chosen details and nothing else', async () => {
+  it('adds exactly the chosen details to the message, and nothing else', async () => {
     const { samToken, alexToken, conversationId } = await pair();
     await api('PUT', '/api/v1/me/contact', { token: alexToken, body: { sharePhone: '07700 900123', shareEmail: 'alex.home@example.org' } });
-    const shared = await api('POST', `/api/v1/conversations/${conversationId}/contact-share`, { token: alexToken, body: { phone: true, email: false } });
+    const url = `/api/v1/conversations/${conversationId}/messages`;
+    const shared = await api('POST', url, { token: alexToken, body: { body: 'Call me', contact: { phone: true, email: false } } });
     expect(shared.status).toBe(201);
-    expect(shared.body).toMatchObject({ kind: 'contact_shared', body: 'Phone: 07700 900123' });
-    const seen = await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: samToken });
-    expect(JSON.stringify(seen.body)).not.toContain('alex.home');
+    expect(shared.body).toMatchObject({ kind: 'text', body: 'Call me', contact: { phone: '07700 900123', email: null } });
+    const only = await api('POST', url, { token: alexToken, body: { contact: { email: true } } });
+    expect(only.body).toMatchObject({ body: '', contact: { phone: null, email: 'alex.home@example.org' } });
+    const seen = await api('GET', url, { token: samToken });
+    expect(seen.body.items).toHaveLength(2);
   });
 
-  it('needs something chosen and saved', async () => {
+  it('needs something in the message, and the details saved', async () => {
     const { alexToken, conversationId } = await pair();
-    const url = `/api/v1/conversations/${conversationId}/contact-share`;
-    expect((await api('POST', url, { token: alexToken, body: { phone: false, email: false } })).status).toBe(400);
-    const notSaved = await api('POST', url, { token: alexToken, body: { phone: true } });
+    const url = `/api/v1/conversations/${conversationId}/messages`;
+    expect((await api('POST', url, { token: alexToken, body: { body: '', contact: { phone: false, email: false } } })).status).toBe(400);
+    const notSaved = await api('POST', url, { token: alexToken, body: { contact: { phone: true } } });
     expect(notSaved.body.error.message).toBe("You haven't saved a phone number yet. Add it in Settings first.");
   });
 });
@@ -104,8 +107,9 @@ describe('call times', () => {
   it('can be accepted only by the other participant, once', async () => {
     const { samToken, alexToken, conversationId } = await pair();
     const time = new Date(Date.now() + 86_400_000).toISOString();
-    const { body: proposal } = await api('POST', `/api/v1/conversations/${conversationId}/calls`, { token: alexToken, body: { proposedTime: time } });
-    expect(proposal).toMatchObject({ kind: 'call_proposed', accepted: false });
+    const { body: proposal } = await api('POST', `/api/v1/conversations/${conversationId}/messages`, { token: alexToken, body: { body: 'Shall we talk?', proposedTime: time } });
+    expect(proposal).toMatchObject({ kind: 'text', body: 'Shall we talk?', accepted: false });
+    expect(proposal.proposedTime).not.toBeNull();
     const accept = (token: string) => api('POST', `/api/v1/conversations/${conversationId}/calls/${proposal.id}/accept`, { token });
 
     expect((await accept(alexToken)).status).toBe(400);
@@ -118,7 +122,7 @@ describe('call times', () => {
 
   it('must be in the future', async () => {
     const { alexToken, conversationId } = await pair();
-    const past = await api('POST', `/api/v1/conversations/${conversationId}/calls`, { token: alexToken, body: { proposedTime: '2020-01-01T10:00:00Z' } });
+    const past = await api('POST', `/api/v1/conversations/${conversationId}/messages`, { token: alexToken, body: { proposedTime: '2020-01-01T10:00:00Z' } });
     expect(past.status).toBe(400);
   });
 });

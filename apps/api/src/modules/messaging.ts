@@ -1,7 +1,8 @@
 // Threads of messages (001 FR-018 to FR-020; 002 FR-022 to FR-025): each belongs to a proposal or a
 // problem report. Sending, sharing chosen contact details, agreeing a call time, and the notes the
 // API writes when a proposal changes. There is no inbox and no way to start a thread directly.
-import { and, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
+import type { SendMessage } from '@wunan/shared';
 import { db } from '../db/index.ts';
 import { conversation, conversationParticipant, offering, member, message, proposal } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
@@ -141,36 +142,34 @@ export async function getMessage(messageId: string) {
   return json ?? null;
 }
 
-export async function sendMessage(conversationId: string, memberId: string, body: string) {
+/**
+ * Sends one message: its text, plus anything added with "+": exactly the chosen saved contact
+ * details (FR-019) and a suggested time to call (FR-020).
+ */
+export async function sendMessage(conversationId: string, memberId: string, input: SendMessage) {
   await requireAccess(conversationId, memberId, { write: true });
   await checkRateLimit(`message:${memberId}`, 60, 60);
-  return post(conversationId, memberId, { kind: 'text', body });
-}
-
-/** Posts exactly the chosen saved contact details into the conversation (FR-019). */
-export async function shareContact(conversationId: string, memberId: string, choice: { phone: boolean; email: boolean }) {
-  await requireAccess(conversationId, memberId, { write: true });
-  const saved = await getContact(memberId);
-  const missing = (what: string) =>
-    new ApiError(400, 'contact_not_saved', `You haven't saved ${what} yet. Add it in Settings first.`);
-  const lines: string[] = [];
-  if (choice.phone) {
-    if (!saved.sharePhone) throw missing('a phone number');
-    lines.push(`Phone: ${saved.sharePhone}`);
+  const values: PostValues = { kind: 'text', body: input.body };
+  if (input.contact?.phone || input.contact?.email) {
+    const saved = await getContact(memberId);
+    const missing = (what: string) =>
+      new ApiError(400, 'contact_not_saved', `You haven't saved ${what} yet. Add it in Settings first.`);
+    if (input.contact.phone) {
+      if (!saved.sharePhone) throw missing('a phone number');
+      values.sharedPhone = saved.sharePhone;
+    }
+    if (input.contact.email) {
+      if (!saved.shareEmail) throw missing('an email to share');
+      values.sharedEmail = saved.shareEmail;
+    }
   }
-  if (choice.email) {
-    if (!saved.shareEmail) throw missing('an email to share');
-    lines.push(`Email: ${saved.shareEmail}`);
+  if (input.proposedTime) {
+    const time = new Date(input.proposedTime);
+    if (time.getTime() < Date.now())
+      throw new ApiError(400, 'validation_failed', 'Some details need fixing.', { proposedTime: 'Please choose a time that is still to come.' });
+    values.proposedTime = time;
   }
-  return post(conversationId, memberId, { kind: 'contact_shared', body: lines.join('\n') });
-}
-
-export async function proposeCall(conversationId: string, memberId: string, proposedTime: Date) {
-  await requireAccess(conversationId, memberId, { write: true });
-  if (proposedTime.getTime() < Date.now()) {
-    throw new ApiError(400, 'validation_failed', 'Some details need fixing.', { proposedTime: 'Please choose a time that is still to come.' });
-  }
-  return post(conversationId, memberId, { kind: 'call_proposed', proposedTime });
+  return post(conversationId, memberId, values);
 }
 
 /** The other person accepts a proposed time (FR-020). To suggest another time, they propose one. */
@@ -179,7 +178,7 @@ export async function acceptCall(conversationId: string, memberId: string, callM
   const [suggested] = await db
     .select()
     .from(message)
-    .where(and(eq(message.id, callMessageId), eq(message.conversationId, conversationId), eq(message.kind, 'call_proposed')));
+    .where(and(eq(message.id, callMessageId), eq(message.conversationId, conversationId), eq(message.kind, 'text'), isNotNull(message.proposedTime)));
   if (!suggested) throw errors.notFound('That call time');
   if (suggested.authorId === memberId) throw new ApiError(400, 'own_proposal', 'The other person needs to accept the time you suggested.');
   if ((await acceptedProposals([suggested])).has(suggested.id)) throw new ApiError(409, 'already_accepted', 'This call time was already accepted.');
@@ -211,7 +210,7 @@ export async function postSystemMessage(conversationId: string, body: string) {
   return post(conversationId, null, { kind: 'system', body });
 }
 
-type PostValues = Pick<MessageRow, 'kind'> & Partial<Pick<MessageRow, 'body' | 'proposedTime'>>;
+type PostValues = Pick<MessageRow, 'kind'> & Partial<Pick<MessageRow, 'body' | 'proposedTime' | 'sharedPhone' | 'sharedEmail'>>;
 /** Who to tell about a note, and how; `false` tells nobody (the caller sends its own notices). */
 type NoticeOverride = false | { title: string; body?: string; to?: string[] };
 
@@ -227,7 +226,15 @@ export async function postEvent(conversationId: string, authorId: string | null,
 async function post(conversationId: string, authorId: string | null, values: PostValues, notice?: NoticeOverride) {
   const [saved] = await db
     .insert(message)
-    .values({ conversationId, authorId, kind: values.kind, body: values.body ?? '', proposedTime: values.proposedTime ?? null })
+    .values({
+      conversationId,
+      authorId,
+      kind: values.kind,
+      body: values.body ?? '',
+      sharedPhone: values.sharedPhone ?? null,
+      sharedEmail: values.sharedEmail ?? null,
+      proposedTime: values.proposedTime ?? null
+    })
     .returning();
   await db.update(conversation).set({ lastMessageAt: saved!.createdAt }).where(eq(conversation.id, conversationId));
   const [c] = await db.select().from(conversation).where(eq(conversation.id, conversationId));
@@ -259,21 +266,16 @@ async function post(conversationId: string, authorId: string | null, values: Pos
 }
 
 function preview(row: MessageRow): string {
-  switch (row.kind) {
-    case 'contact_shared':
-      return 'Shared contact details';
-    case 'call_proposed':
-      return 'Suggested a time to call';
-    case 'call_accepted':
-      return 'Accepted a time to call';
-    default:
-      return row.body.length > 100 ? `${row.body.slice(0, 99)}…` : row.body;
-  }
+  if (row.kind === 'call_accepted') return 'Accepted a time to call';
+  if (row.body) return row.body.length > 100 ? `${row.body.slice(0, 99)}…` : row.body;
+  if (row.kind === 'text' && row.proposedTime) return 'Suggested a time to call';
+  if (row.sharedPhone || row.sharedEmail) return 'Shared contact details';
+  return row.body;
 }
 
 /** Which call proposals already have an acceptance for the same time later in the conversation. */
 async function acceptedProposals(rows: MessageRow[]) {
-  const proposals = rows.filter((r) => r.kind === 'call_proposed' && r.proposedTime);
+  const proposals = rows.filter((r) => r.kind === 'text' && r.proposedTime);
   if (proposals.length === 0) return new Set<string>();
   const acceptances = await db
     .select({ conversationId: message.conversationId, proposedTime: message.proposedTime, createdAt: message.createdAt })
@@ -298,6 +300,7 @@ async function toJson(rows: MessageRow[]) {
       conversationId: row.conversationId,
       kind: row.kind,
       body: row.body,
+      contact: row.sharedPhone || row.sharedEmail ? { phone: row.sharedPhone, email: row.sharedEmail } : null,
       proposedTime: row.proposedTime?.toISOString() ?? null,
       accepted: accepted.has(row.id),
       createdAt: row.createdAt.toISOString(),

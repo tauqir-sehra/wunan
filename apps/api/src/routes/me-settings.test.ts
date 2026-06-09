@@ -253,7 +253,7 @@ describe('leaving wunan', () => {
     await addPhoto(samToken, drill.id);
     const deal = await agree(samToken, alexToken, drill.id, completeDetails('lend'));
     const started = { id: deal.conversationId };
-    await api('POST', `/api/v1/conversations/${started.id}/contact-share`, { token: samToken, body: { phone: true, email: false } });
+    await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: samToken, body: { contact: { phone: true } } });
     await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: samToken, body: { body: 'See you Saturday' } });
     const loan = { id: deal.agreementId };
     // An open proposal on another of Sam's offerings closes when Sam leaves.

@@ -107,12 +107,10 @@ There is no inbox and no way to start a thread directly.
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /conversations/{id}/messages` | participant; mediators read-only once a report shares the proposal's messages | Newest first, paginated. Kinds: `text`, `contact_shared`, `call_proposed`, `call_accepted`, `detail_changed`, `accepted`, `declined`, `withdrawn`, `closed`, `messages_shared`, `system`. |
-| `POST /conversations/{id}/messages` | participant | `{ body }`. Rate-limited. `409 thread_closed` once its proposal is declined, withdrawn, or closed. Updates the proposal's `lastActivityAt`. |
+| `GET /conversations/{id}/messages` | participant; mediators read-only once a report shares the proposal's messages | Newest first, paginated. Kinds: `text`, `call_accepted`, `detail_changed`, `accepted`, `declined`, `withdrawn`, `closed`, `messages_shared`, `system`. |
+| `POST /conversations/{id}/messages` | participant | `{ body?, contact?: { phone, email }, proposedTime? }`, at least one. `contact` adds exactly the chosen saved details to the message (snapshot, returned as `contact: { phone, email }`); `proposedTime` suggests a call (future only). Rate-limited. `409 thread_closed` once its proposal is declined, withdrawn, or closed. Updates the proposal's `lastActivityAt`. |
 | `POST /conversations/{id}/read` | participant | Marks read. |
-| `POST /conversations/{id}/contact-share` | participant | `{ phone: bool, email: bool }` → posts a `contact_shared` message with exactly those details. |
-| `POST /conversations/{id}/calls` | participant | `{ proposedTime }` → `call_proposed` message. |
-| `POST /conversations/{id}/calls/{messageId}/accept` | other participant | → `call_accepted` message. |
+| `POST /conversations/{id}/calls/{messageId}/accept` | other participant | Accepts the call time on that message → `call_accepted` message. |
 | `GET /conversations/{id}/live` | participant | Server-Sent Events: event `message` with the same JSON as the messages list (detail changes included, so an open proposal page refreshes its details). Heartbeat comment every 25 s. Closes if access is lost. |
 
 ## Agreements and problem reports

@@ -28,28 +28,24 @@ function localDateTime(date: string | undefined, time: string | undefined): stri
   return Number.isNaN(value.getTime()) ? '' : value.toISOString();
 }
 
-/** The form actions the message box, call and contact forms post to; `threadOf` finds the conversation. */
+/** The form actions the message box and message list post to; `threadOf` finds the conversation. */
 export function threadActions(threadOf: (api: Api, event: RequestEvent) => Promise<string>) {
   const path = async (api: Api, event: RequestEvent) =>
     `/api/v1/conversations/${await threadOf(api, event)}`;
   return {
+    // One message: the text plus whatever was added with "+" (contact details, a call time).
     send: formAction(async ({ event, form, api }) => {
-      await api.post(`${await path(api, event)}/messages`, { body: String(form.get('body') ?? '') });
+      const phone = form.get('phone') === 'yes';
+      const email = form.get('email') === 'yes';
+      const date = text(form, 'callDate');
+      const time = text(form, 'callTime');
+      await api.post(`${await path(api, event)}/messages`, {
+        body: String(form.get('body') ?? ''),
+        ...(phone || email ? { contact: { phone, email } } : {}),
+        // Half a time is sent as nothing, so the API asks for the day and the time.
+        ...(date || time ? { proposedTime: localDateTime(date, time) } : {})
+      });
       return { sent: true };
-    }),
-    proposeCall: formAction(async ({ event, form, api }) => {
-      await api.post(`${await path(api, event)}/calls`, {
-        proposedTime: localDateTime(text(form, 'date'), text(form, 'time'))
-      });
-      return { proposed: true };
-    }),
-    // From the contact pop-up, after the member saw exactly what will be shared.
-    shareContact: formAction(async ({ event, form, api }) => {
-      await api.post(`${await path(api, event)}/contact-share`, {
-        phone: form.get('phone') === 'yes',
-        email: form.get('email') === 'yes'
-      });
-      return { shared: true };
     }),
     acceptCall: formAction(async ({ event, form, api }) => {
       await api.post(

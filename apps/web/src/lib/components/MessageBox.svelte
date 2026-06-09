@@ -3,6 +3,8 @@
   read it with the characters left, and the send button at the right. Sending keeps the page where
   it is and empties the box (constitution V); without JavaScript the form's address ends in the
   thread's anchor, so the reloaded page comes back to it. The page shows "sent" through `status`.
+  Private threads add things to the message: `attached` shows them (as pills) under the text box,
+  and `attach` (the "+") sits by the Send button; both are inside the form, so they're sent with it.
 -->
 <script lang="ts">
   import { enhance } from '$app/forms';
@@ -22,7 +24,9 @@
     error,
     problem,
     status,
-    extra
+    attach,
+    attached,
+    onSent
   }: {
     id: string;
     label: string;
@@ -41,8 +45,12 @@
     problem?: string;
     /** For example "Your message is posted." */
     status?: string;
-    /** More buttons on their own row below, such as "Share contact". */
-    extra?: Snippet;
+    /** The "+" button for adding things to the message, beside Send. */
+    attach?: Snippet;
+    /** What has been added, shown under the text box. */
+    attached?: Snippet;
+    /** Called once a message has been sent, to clear what was added. */
+    onSent?: () => void;
   } = $props();
 
   let text = $state(untrack(() => value));
@@ -68,7 +76,10 @@
   use:enhance={() =>
     async ({ result, update }) => {
       await update({ reset: false });
-      if (result.type === 'success') text = '';
+      if (result.type === 'success') {
+        text = '';
+        onSent?.();
+      }
     }}
 >
   <Label for={id} class="text-sm">{label}</Label>
@@ -81,6 +92,7 @@
     aria-describedby="{id}-hint {id}-count{error ? ` ${id}-error` : ''}"
     aria-invalid={error ? 'true' : undefined}
     bind:value={text}></textarea>
+  {#if attached}{@render attached()}{/if}
   <div class="flex items-start gap-3">
     <p id="{id}-hint" class="min-w-0 flex-1 text-xs text-muted-foreground">{hint}</p>
     <span
@@ -93,10 +105,10 @@
           ? `${left} characters left`
           : `${-left} characters too many`}{:else}Up to {maxlength} characters{/if}
     </span>
+    {#if attach}{@render attach()}{/if}
     <Button type="submit" variant={buttonVariant} size="sm" class="shrink-0">{buttonLabel}</Button>
   </div>
   <div role="status" class="text-sm text-muted-foreground">{status ?? ''}</div>
   {#if problem}<p class="text-sm font-medium text-destructive">{problem}</p>{/if}
   <div class="sr-only" aria-live="polite">{countAnnouncement}</div>
 </form>
-{#if extra}<div class="flex max-w-xl flex-wrap gap-2">{@render extra()}</div>{/if}

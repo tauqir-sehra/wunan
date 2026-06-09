@@ -1,5 +1,5 @@
 {
-  "id": "3d06e03e-d23d-4120-b05f-7f49fd46281f",
+  "id": "2deb3816-25fb-4171-8016-b2d7441385ff",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -2212,6 +2212,18 @@
           "notNull": true,
           "default": "''"
         },
+        "shared_phone": {
+          "name": "shared_phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shared_email": {
+          "name": "shared_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "proposed_time": {
           "name": "proposed_time",
           "type": "timestamp with time zone",
@@ -3834,8 +3846,6 @@
       "schema": "public",
       "values": [
         "text",
-        "contact_shared",
-        "call_proposed",
         "call_accepted",
         "system",
         "detail_changed",

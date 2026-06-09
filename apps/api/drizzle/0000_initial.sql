@@ -12,7 +12,7 @@ CREATE TYPE "public"."session_length_unit" AS ENUM('minutes', 'hours', 'days', '
 CREATE TYPE "public"."unit" AS ENUM('item', 'kg', 'g', 'lb', 'oz', 'litre', 'hour', 'portion', 'bag', 'box', 'other');--> statement-breakpoint
 CREATE TYPE "public"."proposal_closed_reason" AS ENUM('nothing_left', 'quiet', 'member_left');--> statement-breakpoint
 CREATE TYPE "public"."proposal_status" AS ENUM('open', 'accepted', 'declined', 'withdrawn', 'closed');--> statement-breakpoint
-CREATE TYPE "public"."message_kind" AS ENUM('text', 'contact_shared', 'call_proposed', 'call_accepted', 'system', 'detail_changed', 'accepted', 'declined', 'withdrawn', 'closed', 'messages_shared');--> statement-breakpoint
+CREATE TYPE "public"."message_kind" AS ENUM('text', 'call_accepted', 'system', 'detail_changed', 'accepted', 'declined', 'withdrawn', 'closed', 'messages_shared');--> statement-breakpoint
 CREATE TYPE "public"."agreement_outcome" AS ENUM('lent', 'gifted', 'traded', 'provided');--> statement-breakpoint
 CREATE TYPE "public"."escalation_level" AS ENUM('inviter', 'inviters_inviter', 'founders');--> statement-breakpoint
 CREATE TYPE "public"."report_status" AS ENUM('open', 'resolved');--> statement-breakpoint
@@ -290,6 +290,8 @@ CREATE TABLE "message" (
 	"author_id" uuid,
 	"kind" "message_kind" DEFAULT 'text' NOT NULL,
 	"body" text DEFAULT '' NOT NULL,
+	"shared_phone" text,
+	"shared_email" text,
 	"proposed_time" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "message_body_length" CHECK (char_length("message"."body") <= 4000)

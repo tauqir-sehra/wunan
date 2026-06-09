@@ -54,19 +54,14 @@
 
   {#if thread.conversation.canWrite}
     <MessageComposer
-      {conversationId}
       otherNames={otherName}
       contact={thread.contact}
       sent={Boolean(form?.sent)}
       status={form?.sent
         ? 'Your message is sent.'
-        : form?.proposed
-          ? 'Your suggested time was sent.'
-          : form?.shared
-            ? 'Your contact details were shared.'
-            : form?.callAccepted
-              ? 'You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.'
-              : ''}
+        : form?.callAccepted
+          ? 'You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.'
+          : ''}
       values={(form?.values as Record<string, string>) ?? {}}
       fields={(form?.fields as Record<string, string>) ?? {}}
       {sendVariant}

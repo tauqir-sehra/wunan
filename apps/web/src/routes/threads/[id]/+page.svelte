@@ -54,19 +54,14 @@
     {:else}
       {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
       <MessageComposer
-        conversationId={c.id}
         otherNames={names}
         contact={data.contact}
         sent={Boolean(form?.sent)}
         status={form?.sent
           ? 'Your message is sent.'
-          : form?.proposed
-            ? 'Your suggested time was sent.'
-            : form?.shared
-              ? 'Your contact details were shared.'
-              : form?.accepted
-                ? 'You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.'
-                : ''}
+          : form?.callAccepted
+            ? 'You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.'
+            : ''}
         values={form?.values ?? {}}
         fields={form?.fields ?? {}}
       />

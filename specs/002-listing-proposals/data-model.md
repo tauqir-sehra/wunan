@@ -164,6 +164,11 @@ are the requester and the lister. A proposal thread accepts new messages only wh
 pickup time to Saturday 6 June, 10 am"); `author_id` is the member who acted, or null for
 automatic closes.
 
+Contact details and call times are added to an ordinary `text` message with the composer's "+"
+(no separate kinds): `shared_phone` and `shared_email` (text, nullable) hold a snapshot of exactly
+what was chosen, and `proposed_time` a suggested call. `body` may be empty when something was added.
+The kinds `contact_shared` and `call_proposed` are gone; `call_accepted` stays.
+
 ## problem_report (changed)
 
 | Field | Change | Rules |

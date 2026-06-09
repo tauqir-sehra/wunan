@@ -1,6 +1,6 @@
 // Members: creating accounts, profiles, the invite chain, private contact details, and passwords
 // (FR-001 to FR-005, FR-019). Profiles never include email or contact details.
-import { and, asc, eq, inArray, notExists, sql as rawSql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, notExists, or, sql as rawSql } from 'drizzle-orm';
 import { auth } from '../auth.ts';
 import { db } from '../db/index.ts';
 import {
@@ -240,8 +240,9 @@ export async function deleteAccount(memberId: string, password: string) {
 
     await tx
       .update(message)
-      .set({ body: CONTACT_REMOVED })
-      .where(and(eq(message.authorId, memberId), eq(message.kind, 'contact_shared')));
+      // A message that was only contact details says why it's now empty.
+      .set({ sharedPhone: null, sharedEmail: null, body: rawSql`case when ${message.body} = '' then ${CONTACT_REMOVED} else ${message.body} end` })
+      .where(and(eq(message.authorId, memberId), or(isNotNull(message.sharedPhone), isNotNull(message.sharedEmail))));
 
     await tx
       .update(request)

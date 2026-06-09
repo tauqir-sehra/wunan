@@ -40,40 +40,54 @@ test('messages arrive live on an open proposal; calls and contact details are ar
     sam.locator('[aria-live="polite"]').filter({ hasText: 'New message from Alex' })
   ).toHaveCount(1);
 
-  // Sam suggests a call time; Alex accepts it.
-  // The pop-up's form updates the page in place: it closes, and the page stays where it was.
+  // Sam adds a call time with "+": it shows as a pill, and goes with the text as one message.
+  // Sending updates the page in place: the page stays where it was.
   await sam.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const scrolled = await sam.evaluate(() => window.scrollY);
-  await sam.getByRole('button', { name: 'Suggest a call' }).click();
-  const callDialog = sam.getByRole('dialog', { name: 'Suggest a time to call' });
-  await expectAccessible(sam, 'call time pop-up');
-  await callDialog
-    .getByLabel('Day')
-    .fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
-  await callDialog.getByLabel('Time').fill('10:30');
-  await callDialog.getByRole('button', { name: 'Suggest this time' }).click();
-  await expect(sam.getByText('Your suggested time was sent.')).toBeVisible();
-  await expect(callDialog).toBeHidden();
+  const plus = sam.getByLabel('Add your contact details or a time to call');
+  await plus.click();
+  await expect(sam.getByText('To share a phone number or email')).toBeVisible();
+  await sam.locator('#call-date').fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));
+  await sam.locator('#call-time').fill('10:30');
+  await expectAccessible(sam, 'add to message panel');
+  await sam.keyboard.press('Escape');
+  const added = sam.getByRole('list', { name: 'Added to your message' });
+  await expect(added.getByText(/Call: .*10:30 am/)).toBeVisible();
+  await sam.getByLabel('Write a message').fill('Shall we talk it through?');
+  await sam.getByRole('button', { name: 'Send' }).click();
+  await expect(sam.getByText('Your message is sent.')).toBeVisible();
+  await expect(added).toHaveCount(0);
   expect(await sam.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(scrolled - 50);
   await alex.reload();
-  await alex.getByRole('button', { name: 'Accept this time' }).click();
+  const callMessage = alex
+    .getByRole('list', { name: 'Messages' })
+    .getByRole('listitem')
+    .filter({ hasText: 'Shall we talk it through?' });
+  await expect(
+    callMessage.getByRole('list', { name: 'Added to this message' }).getByText(/Call: .*10:30 am/)
+  ).toBeVisible();
+  await callMessage.getByRole('button', { name: 'Accept this time' }).click();
   await expect(alex.getByText('You accepted the call time.')).toBeVisible();
 
-  // Alex shares a phone number after reviewing exactly what will be shown.
+  // Alex adds a phone number, seeing exactly what will be shared, and sends it with no text.
   await alex.goto('/settings');
   await alex.getByLabel('Phone number').fill('07700 900123');
   await alex.getByRole('button', { name: 'Save' }).click();
   await alex.goto(`/proposals/${made.id}`);
   await alex.waitForLoadState('networkidle');
-  await alex.getByRole('button', { name: 'Share contact' }).click();
-  const shareDialog = alex.getByRole('dialog', { name: 'Share your contact details' });
-  await shareDialog.getByLabel('My phone number').check();
-  await shareDialog.getByRole('button', { name: 'Review' }).click();
-  await expect(shareDialog.getByText('Phone: 07700 900123')).toBeVisible();
-  await shareDialog.getByRole('button', { name: 'Yes, share it' }).click();
-  await expect(alex.getByText('Your contact details were shared.')).toBeVisible();
+  await alex.getByLabel('Add your contact details or a time to call').click();
+  await expect(alex.getByText('07700 900123')).toBeVisible();
+  await alex.getByLabel(/My phone number/).check();
   await expect(
-    sam.getByRole('list', { name: 'Messages' }).getByText('Phone: 07700 900123')
+    alex.getByRole('list', { name: 'Added to your message' }).getByText('Phone: 07700 900123')
+  ).toBeVisible();
+  await alex.getByRole('button', { name: 'Send' }).click();
+  await expect(alex.getByText('Your message is sent.')).toBeVisible();
+  await expect(
+    sam
+      .getByRole('list', { name: 'Messages' })
+      .getByRole('list', { name: 'Added to this message' })
+      .getByText('Phone: 07700 900123')
   ).toBeVisible({ timeout: 4000 });
   await alexContext.close();
 });

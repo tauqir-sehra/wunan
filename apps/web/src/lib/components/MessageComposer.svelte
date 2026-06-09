@@ -1,23 +1,24 @@
 <!--
-  Writing in a private thread: the same message box as everywhere (MessageBox), then two small
-  buttons that open pop-ups: sharing chosen contact details (after seeing exactly what will be
-  shown, 001 FR-019) and suggesting a time to call (001 FR-020). Used on proposal pages and
-  request-for-help threads; the page provides the actions `send`, `shareContact`, `proposeCall`.
-  All of them update the page in place: the pop-up closes and what happened shows under the box,
-  so nothing jumps (constitution V).
+  Writing in a private thread: the same message box as everywhere (MessageBox), with a small "+"
+  beside Send. It opens a panel right there to add things to the message: my phone number or email
+  (each showing exactly what will be shared, 001 FR-019) and a time to call (001 FR-020). What's
+  added shows as pills under the text, each with an X, and goes with the text as one message. The
+  panel is a <details>, so it works the same without JavaScript. Used on proposal and agreement
+  pages and request-for-help threads; the page provides the `send` action (`threadActions`).
 -->
 <script lang="ts">
-  import { enhance, type SubmitFunction } from '$app/forms';
   import CalendarClockIcon from '@lucide/svelte/icons/calendar-clock';
-  import ContactIcon from '@lucide/svelte/icons/contact';
-  import PopupDialog from '#lib/components/PopupDialog.svelte';
-  import { Button } from '#lib/components/ui/button/index.ts';
+  import MailIcon from '@lucide/svelte/icons/mail';
+  import PhoneIcon from '@lucide/svelte/icons/phone';
+  import PlusIcon from '@lucide/svelte/icons/plus';
+  import XIcon from '@lucide/svelte/icons/x';
   import { Label } from '#lib/components/ui/label/index.ts';
   import MessageBox from '#lib/components/MessageBox.svelte';
+  import { when } from '#lib/format.ts';
   import { MESSAGE_LIMIT } from '@wunan/shared';
+  import { untrack } from 'svelte';
 
   let {
-    conversationId,
     otherNames,
     contact,
     sent = false,
@@ -26,39 +27,55 @@
     fields = {},
     sendVariant = 'default'
   }: {
-    conversationId: string;
     otherNames: string;
     contact: { sharePhone: string | null; shareEmail: string | null };
     sent?: boolean;
-    /** What just happened, e.g. "Your contact details were shared." */
+    /** What just happened, e.g. "Your message is sent." */
     status?: string;
+    /** What the member had sent, when the server sent it back with a problem. */
     values?: Record<string, string>;
     fields?: Record<string, string>;
     /** "outline" when the page already has another main button (one primary action per screen). */
     sendVariant?: 'default' | 'outline';
   } = $props();
 
-  let phone = $state(false);
-  let email = $state(false);
-  let reviewing = $state(false);
+  // What was added, kept when the server sends the message back with a problem.
+  let phone = $state(untrack(() => !sent && values.phone === 'yes'));
+  let email = $state(untrack(() => !sent && values.email === 'yes'));
+  let callDate = $state(untrack(() => (sent ? '' : (values.callDate ?? ''))));
+  let callTime = $state(untrack(() => (sent ? '' : (values.callTime ?? ''))));
+  let open = $state(untrack(() => Boolean(fields.proposedTime)));
+  let panel: HTMLDetailsElement | undefined = $state();
   const today = new Date().toISOString().slice(0, 10);
-  const nothingSaved = $derived(!contact.sharePhone && !contact.shareEmail);
-  let sharing = $state(false);
-  let calling = $state(false);
-  // A time that couldn't be used reopens the pop-up with the problem.
-  $effect(() => {
-    if (fields.proposedTime) calling = true;
-  });
-  // After a pop-up's form is sent, close the pop-up and stay where the page is.
-  const closing =
-    (close: () => void): SubmitFunction =>
-    () =>
-    async ({ result, update }) => {
-      await update({ reset: false });
-      if (result.type === 'success') close();
-    };
-  const inputClass = 'min-h-11 rounded-md border border-input bg-card px-3 text-base';
+  const callText = $derived(
+    callDate && callTime ? when(new Date(`${callDate}T${callTime}`).toISOString()) : null
+  );
+
+  function clear() {
+    phone = email = false;
+    callDate = callTime = '';
+    open = false;
+  }
+  // The panel closes on Escape or a click elsewhere, like any small pop-up.
+  function outside(event: MouseEvent) {
+    if (open && panel && !panel.contains(event.target as Node)) open = false;
+  }
+  const pill =
+    'inline-flex min-h-9 items-center gap-1.5 rounded-full border border-input bg-accent py-1 pr-1 pl-3 text-sm';
+  const pillX =
+    'inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-background hover:text-foreground';
+  const inputClass = 'min-h-11 w-full rounded-md border border-input bg-background px-3 text-base';
 </script>
+
+<svelte:window
+  onclick={outside}
+  onkeydown={(event) => {
+    if (event.key === 'Escape' && open) {
+      open = false;
+      panel?.querySelector('summary')?.focus();
+    }
+  }}
+/>
 
 <MessageBox
   id="message-body"
@@ -70,100 +87,121 @@
   buttonVariant={sendVariant}
   value={sent ? '' : (values.body ?? '')}
   error={fields.body}
-  status={status}
+  problem={fields.proposedTime}
+  {status}
+  onSent={clear}
 >
-  {#snippet extra()}
-    <PopupDialog
-      label="Share contact"
-      bind:open={sharing}
-      icon={ContactIcon}
-      title="Share your contact details"
-      description="Only {otherNames} will see what you share, here in your messages. Once shared, it stays."
-      fallbackHref="/threads/{conversationId}/share-contact"
-    >
-      {#if nothingSaved}
-        <p>You haven't saved a phone number or email to share yet.</p>
-        <p><a href="/settings">Add them in Settings</a>, then come back here.</p>
-      {:else if reviewing}
-        <p>This is exactly what {otherNames} will see:</p>
-        <div class="rounded-lg border bg-card p-4">
-          {#if phone}<p>Phone: {contact.sharePhone}</p>{/if}
-          {#if email}<p>Email: {contact.shareEmail}</p>{/if}
-        </div>
-        <form
-            method="POST"
-            action="?/shareContact#messages"
-            class="flex flex-wrap items-center gap-3"
-            use:enhance={closing(() => {
-              sharing = false;
-              reviewing = false;
-              phone = email = false;
-            })}
-          >
-          <input type="hidden" name="phone" value={phone ? 'yes' : 'no'} />
-          <input type="hidden" name="email" value={email ? 'yes' : 'no'} />
-          <Button type="submit">Yes, share it</Button>
-          <Button type="button" variant="ghost" onclick={() => (reviewing = false)}
-            >Change what to share</Button
-          >
-        </form>
-      {:else}
-        <fieldset class="grid min-w-0 gap-2">
-          <legend class="mb-1 font-medium">What would you like to share?</legend>
-          {#if contact.sharePhone}
-            <label class="flex min-h-11 items-center gap-3"
-              ><input type="checkbox" class="size-6 accent-primary" bind:checked={phone} /> My phone number</label
+  {#snippet attached()}
+    {#if phone || email || callText}
+      <ul class="flex flex-wrap gap-2" aria-label="Added to your message">
+        {#if phone}<li class={pill}>
+            <PhoneIcon class="size-4" aria-hidden="true" />Phone: {contact.sharePhone}
+            <button
+              type="button"
+              class={pillX}
+              aria-label="Take out your phone number"
+              onclick={() => (phone = false)}><XIcon class="size-4" aria-hidden="true" /></button
             >
-          {/if}
-          {#if contact.shareEmail}
-            <label class="flex min-h-11 items-center gap-3"
-              ><input type="checkbox" class="size-6 accent-primary" bind:checked={email} /> My email</label
+          </li>{/if}
+        {#if email}<li class={pill}>
+            <MailIcon class="size-4" aria-hidden="true" />Email: {contact.shareEmail}
+            <button
+              type="button"
+              class={pillX}
+              aria-label="Take out your email"
+              onclick={() => (email = false)}><XIcon class="size-4" aria-hidden="true" /></button
             >
-          {/if}
-        </fieldset>
-        <div>
-          <Button type="button" disabled={!phone && !email} onclick={() => (reviewing = true)}
-            >Review</Button
-          >
-        </div>
-      {/if}
-    </PopupDialog>
+          </li>{/if}
+        {#if callText}<li class={pill}>
+            <CalendarClockIcon class="size-4" aria-hidden="true" />Call: {callText}
+            <button
+              type="button"
+              class={pillX}
+              aria-label="Take out the call time"
+              onclick={() => (callDate = callTime = '')}
+              ><XIcon class="size-4" aria-hidden="true" /></button
+            >
+          </li>{/if}
+      </ul>
+    {/if}
+  {/snippet}
 
-    <PopupDialog
-      label="Suggest a call"
-      bind:open={calling}
-      icon={CalendarClockIcon}
-      title="Suggest a time to call"
-      description="{otherNames} can accept it. The call itself happens outside wunan, by phone or any app you both use."
-      fallbackHref="/threads/{conversationId}/call"
-    >
-      <form method="POST" action="?/proposeCall#messages" class="grid gap-4" use:enhance={closing(() => (calling = false))}>
-        {#if fields.proposedTime}<p class="font-medium text-destructive">
-            {fields.proposedTime}
-          </p>{/if}
-        <div class="flex flex-wrap gap-4">
+  {#snippet attach()}
+    <details bind:this={panel} bind:open class="relative shrink-0">
+      <summary
+        class="inline-flex size-11 cursor-pointer list-none items-center justify-center rounded-md border border-input bg-card hover:bg-accent [&::-webkit-details-marker]:hidden"
+        aria-label="Add your contact details or a time to call"
+        title="Add contact details or a call time"
+      >
+        <PlusIcon class="size-5" aria-hidden="true" />
+      </summary>
+      <div
+        class="absolute right-0 bottom-full z-10 mb-2 grid w-72 max-w-[calc(100vw-2rem)] gap-3 rounded-lg border bg-card p-3 shadow-md"
+      >
+        <p class="text-sm font-medium">Add to your message</p>
+        {#if contact.sharePhone || contact.shareEmail}
           <div class="grid gap-1">
-            <Label for="call-date">Day</Label><input
-              id="call-date"
-              name="date"
-              type="date"
-              min={today}
-              required
-              class={inputClass}
-            />
+            {#if contact.sharePhone}<label class="flex min-h-11 items-center gap-3 text-sm"
+                ><input
+                  type="checkbox"
+                  name="phone"
+                  value="yes"
+                  class="size-5 accent-primary"
+                  bind:checked={phone}
+                /><span
+                  >My phone number<br /><span class="text-muted-foreground"
+                    >{contact.sharePhone}</span
+                  ></span
+                ></label
+              >{/if}
+            {#if contact.shareEmail}<label class="flex min-h-11 items-center gap-3 text-sm"
+                ><input
+                  type="checkbox"
+                  name="email"
+                  value="yes"
+                  class="size-5 accent-primary"
+                  bind:checked={email}
+                /><span
+                  >My email<br /><span class="text-muted-foreground">{contact.shareEmail}</span
+                  ></span
+                ></label
+              >{/if}
           </div>
-          <div class="grid gap-1">
-            <Label for="call-time">Time</Label><input
-              id="call-time"
-              name="time"
-              type="time"
-              required
-              class={inputClass}
-            />
+        {:else}
+          <p class="text-sm text-muted-foreground">
+            To share a phone number or email, <a href="/settings">save it in Settings</a> first.
+          </p>
+        {/if}
+        <fieldset class="grid min-w-0 gap-2">
+          <legend class="mb-1 text-sm">A time to call</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="grid gap-1">
+              <Label for="call-date" class="text-xs">Day</Label>
+              <input
+                id="call-date"
+                name="callDate"
+                type="date"
+                min={today}
+                class={inputClass}
+                bind:value={callDate}
+              />
+            </div>
+            <div class="grid gap-1">
+              <Label for="call-time" class="text-xs">Time</Label>
+              <input
+                id="call-time"
+                name="callTime"
+                type="time"
+                class={inputClass}
+                bind:value={callTime}
+              />
+            </div>
           </div>
-        </div>
-        <div><Button type="submit">Suggest this time</Button></div>
-      </form>
-    </PopupDialog>
+          <p class="text-xs text-muted-foreground">
+            {otherNames} can accept it. The call happens outside wunan.
+          </p>
+        </fieldset>
+      </div>
+    </details>
   {/snippet}
 </MessageBox>

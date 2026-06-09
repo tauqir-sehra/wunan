@@ -6,26 +6,28 @@ import { memberRef } from './common.ts';
 /** The most characters a private message can have. */
 export const MESSAGE_LIMIT = 4000;
 
-export const SendMessage = z.object({
-  body: z
-    .string({ message: 'Please write a message.' })
-    .trim()
-    .min(1, 'Please write a message.')
-    .max(MESSAGE_LIMIT, `Please keep your message to ${MESSAGE_LIMIT} characters or fewer.`)
-});
-
-export const ShareContact = z
-  .object({ phone: z.boolean().default(false), email: z.boolean().default(false) })
-  .refine((value) => value.phone || value.email, { message: 'Please choose what to share.', path: ['phone'] });
-
-export const ProposeCall = z.object({
-  proposedTime: z.iso.datetime({ offset: true, message: 'Please choose a date and time.' })
-});
+/**
+ * One message: text, and anything added with "+": exactly the chosen saved contact details
+ * (001 FR-019) and a suggested time to call (001 FR-020). At least one of them.
+ */
+export const SendMessage = z
+  .object({
+    body: z
+      .string()
+      .trim()
+      .max(MESSAGE_LIMIT, `Please keep your message to ${MESSAGE_LIMIT} characters or fewer.`)
+      .default(''),
+    contact: z.object({ phone: z.boolean().default(false), email: z.boolean().default(false) }).optional(),
+    proposedTime: z.iso.datetime({ offset: true, message: 'Please choose a day and a time.' }).optional()
+  })
+  .refine((v) => v.body || v.contact?.phone || v.contact?.email || v.proposedTime, {
+    message: 'Please write a message.',
+    path: ['body']
+  });
+export type SendMessage = z.infer<typeof SendMessage>;
 
 export const MessageKind = z.enum([
   'text',
-  'contact_shared',
-  'call_proposed',
   'call_accepted',
   'system',
   // Written by the API when a proposal changes (002 FR-016, FR-020, FR-022a).
@@ -42,8 +44,11 @@ export const Message = z.object({
   conversationId: z.string(),
   kind: MessageKind,
   body: z.string(),
+  /** Contact details shared with this message, exactly as they were when sent. */
+  contact: z.object({ phone: z.string().nullable(), email: z.string().nullable() }).nullable(),
+  /** A suggested time to call (on a text message), or the time accepted (`call_accepted`). */
   proposedTime: z.string().nullable(),
-  /** For call proposals: whether the other person has accepted it. */
+  /** For suggested call times: whether the other person has accepted it. */
   accepted: z.boolean(),
   createdAt: z.string(),
   author: memberRef.nullable()

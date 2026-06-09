@@ -73,7 +73,7 @@ export async function createReport(agreementId: string, reporterId: string, desc
       ' This is a space to talk it through. Nobody is removed or penalised, and a request can stay open as long as needed.'
   );
   // The reporter's own words open the conversation.
-  await sendMessage(conversationId, reporterId, description);
+  await sendMessage(conversationId, reporterId, { body: description });
   await notifyHelpers(report.id, [reportedId, ...mediators.map((m) => m.id)]);
   return getReport(report.id, reporterId);
 }

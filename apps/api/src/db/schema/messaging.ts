@@ -42,8 +42,6 @@ export const conversationParticipant = pgTable(
 
 export const messageKind = pgEnum('message_kind', [
   'text',
-  'contact_shared',
-  'call_proposed',
   'call_accepted',
   'system',
   // Written by the API when a proposal changes (002 FR-016, FR-020, FR-022a).
@@ -65,9 +63,11 @@ export const message = pgTable(
     /** Must be a participant (checked in modules/messaging.ts). Null for system messages. */
     authorId: uuid().references(() => member.id, { onDelete: 'set null' }),
     kind: messageKind().notNull().default('text'),
-    /** For `contact_shared`: a snapshot of exactly what the author confirmed. */
     body: text().notNull().default(''),
-    /** For call proposals and acceptances (FR-020). */
+    /** Contact details added to the message: a snapshot of exactly what the author chose (FR-019). */
+    sharedPhone: text(),
+    sharedEmail: text(),
+    /** A suggested time to call on a text message, or the accepted time on `call_accepted` (FR-020). */
     proposedTime: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow()
   },
