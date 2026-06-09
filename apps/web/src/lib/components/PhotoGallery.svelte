@@ -3,6 +3,7 @@
   "Next" (or the arrow keys, or a swipe) move through the photos, with "2 of 4" and the photo's
   description under it. No animation (constitution V); focus stays in the pop-up and returns to
   the tile on closing (Bits UI). Without JavaScript each tile is a link to the full-size photo.
+  `cover` shows only the first photo as one small tile (on offering cards), still opening them all.
 -->
 <script lang="ts">
   import { Button } from '#lib/components/ui/button/index.ts';
@@ -10,7 +11,10 @@
   import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
   import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 
-  let { photos }: { photos: { id: string; key: string; alt: string | null }[] } = $props();
+  let {
+    photos,
+    cover = false
+  }: { photos: { id: string; key: string; alt: string | null }[]; cover?: boolean } = $props();
 
   let open = $state(false);
   let current = $state(0);
@@ -36,31 +40,60 @@
   }
 </script>
 
-<ul class="grid grid-cols-2 gap-2">
-  {#each photos as tile, index (tile.id)}
-    <li>
-      <a href="/photos/{tile.key}" class="block rounded-lg" onclick={(event) => show(index, event)}>
-        <img
-          src="/photos/{tile.key}"
-          alt={tile.alt ?? ''}
-          class="aspect-square w-full rounded-lg object-cover"
-          loading="lazy"
-        />
-        <span class="sr-only">Photo {index + 1} of {photos.length}, open larger</span>
-      </a>
-    </li>
-  {/each}
-</ul>
+{#if cover && photos[0]}
+  <a
+    href="/photos/{photos[0].key}"
+    class="relative block size-24 shrink-0 rounded-lg"
+    onclick={(event) => show(0, event)}
+  >
+    <img
+      src="/photos/{photos[0].key}"
+      alt={photos[0].alt ?? ''}
+      class="size-24 rounded-lg object-cover"
+      loading="lazy"
+      width="96"
+      height="96"
+    />
+    {#if photos.length > 1}<span
+        class="absolute right-1 bottom-1 rounded bg-background/90 px-1.5 text-xs text-foreground"
+        aria-hidden="true">{photos.length}</span
+      >{/if}
+    <span class="sr-only"
+      >{photos.length > 1 ? `See all ${photos.length} photos` : 'See the photo larger'}</span
+    >
+  </a>
+{:else}
+  <ul class="grid grid-cols-2 gap-2">
+    {#each photos as tile, index (tile.id)}
+      <li>
+        <a
+          href="/photos/{tile.key}"
+          class="block rounded-lg"
+          onclick={(event) => show(index, event)}
+        >
+          <img
+            src="/photos/{tile.key}"
+            alt={tile.alt ?? ''}
+            class="aspect-square w-full rounded-lg object-cover"
+            loading="lazy"
+          />
+          <span class="sr-only">Photo {index + 1} of {photos.length}, open larger</span>
+        </a>
+      </li>
+    {/each}
+  </ul>
+{/if}
 
 <Dialog bind:open>
-  <DialogContent class="max-w-4xl gap-3 p-4 pt-14 sm:p-6 sm:pt-14" onkeydown={keys}>
+  <DialogContent
+    class="max-w-4xl gap-3 p-4 pt-14 sm:p-6 sm:pt-14"
+    onkeydown={keys}
+    ontouchstart={(event: TouchEvent) => (touchX = event.touches[0]?.clientX ?? null)}
+    ontouchend={touchEnd}
+  >
     <DialogTitle class="sr-only">Photo {current + 1} of {photos.length}</DialogTitle>
     {#if photo}
-      <div
-        class="flex items-center justify-center"
-        ontouchstart={(event) => (touchX = event.touches[0]?.clientX ?? null)}
-        ontouchend={touchEnd}
-      >
+      <div class="flex items-center justify-center">
         <img
           src="/photos/{photo.key}"
           alt={photo.alt ?? ''}

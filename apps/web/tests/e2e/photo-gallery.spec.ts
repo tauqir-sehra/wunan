@@ -39,3 +39,22 @@ test('photos open large and can be moved through', async ({ page }) => {
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('link', { name: /Photo 1 of 2, open larger/ })).toBeFocused();
 });
+
+test('the photo on an offering card sits on the right and opens the photos', async ({ page }) => {
+  const sam = createFounder('Sam');
+  const alex = await createInvitedMember(sam, 'Alex');
+  const rice = await createOfferingFor(sam, { type: 'gift', title: 'Rice for the card' });
+  await addPhotoFor(sam, rice.id, PHOTO, 'Bag of brown rice');
+  await addPhotoFor(sam, rice.id, PHOTO, 'The label on the bag');
+  await signInAs(page, alex);
+  await page.goto('/offerings?q=Rice+for+the+card');
+  await page.waitForLoadState('networkidle');
+  const card = page.getByRole('article').filter({ hasText: 'Rice for the card' });
+  const title = await card.getByRole('link', { name: 'Rice for the card' }).boundingBox();
+  const photo = card.getByRole('link', { name: /See all 2 photos/ });
+  expect((await photo.boundingBox())!.x).toBeGreaterThan(title!.x);
+  await photo.click();
+  await expect(page.getByRole('dialog', { name: 'Photo 1 of 2' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('dialog', { name: 'Photo 2 of 2' })).toBeVisible();
+});
