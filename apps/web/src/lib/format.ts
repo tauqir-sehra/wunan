@@ -165,32 +165,8 @@ export const dayNames = [
   'Sunday'
 ];
 
-/** "Monday–Friday, 18:00–21:00; Saturday, 10:00–12:00": consecutive days with the same hours grouped. */
-export function timesText(
-  times: { weekday: number; startTime: string; endTime: string }[]
-): string {
-  const byHours = new Map<string, number[]>();
-  for (const t of times)
-    byHours.set(`${t.startTime}–${t.endTime}`, [
-      ...(byHours.get(`${t.startTime}–${t.endTime}`) ?? []),
-      t.weekday
-    ]);
-  const parts: string[] = [];
-  for (const [hours, days] of byHours) {
-    const sorted = [...new Set(days)].sort((a, b) => a - b);
-    const runs: string[] = [];
-    let start = sorted[0]!;
-    for (let i = 1; i <= sorted.length; i += 1) {
-      if (sorted[i] !== sorted[i - 1]! + 1) {
-        const end = sorted[i - 1]!;
-        runs.push(start === end ? dayNames[start]! : `${dayNames[start]}–${dayNames[end]}`);
-        start = sorted[i]!;
-      }
-    }
-    parts.push(`${runs.join(', ')}, ${hours}`);
-  }
-  return parts.join('; ');
-}
+import { clock, timesText } from '@wunan/shared';
+export { clock, timesText };
 
 /** What may be shown of a place: in full for those allowed, otherwise neighbourhood and city. */
 export const placeText = (place: PlaceView | null | undefined) =>
@@ -210,15 +186,15 @@ export function periodText(startsAt: string, endsAt: string): string {
   return `${shortDay(startsAt)} to ${shortDay(endsAt)}`;
 }
 
-/** A calm, readable time: "Sat 7 Nov, 14:30". Uses the server's time zone (set TZ for the community). */
+/** The time of day of an ISO time, as "2:30 pm". */
+export function timeOfDay(iso: string): string {
+  const d = new Date(iso);
+  return clock(`${d.getHours()}:${d.getMinutes()}`);
+}
+
+/** A calm, readable time: "Sat 7 Nov, 2:30 pm". Uses the server's time zone (set TZ for the community). */
 export function when(iso: string): string {
-  return new Date(iso).toLocaleString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return `${shortDay(iso)}, ${timeOfDay(iso)}`;
 }
 
 /** "Sat 10 January" for a YYYY-MM-DD date. */

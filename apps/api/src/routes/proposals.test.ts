@@ -85,7 +85,7 @@ describe('changing a proposal', () => {
     expect(changed.body).toMatchObject({ version: 2, details: { date: '2030-03-02', time: '10:00', hasTime: true, loanLength: 3 } });
     const messages = await api('GET', `/api/v1/conversations/${made.conversationId}/messages`, { token: samToken });
     expect(messages.body.items[0]).toMatchObject({ kind: 'detail_changed' });
-    expect(messages.body.items[0].body).toBe('Robin changed the pickup time to Saturday 2 March, 10:00, and how long to 3 days.');
+    expect(messages.body.items[0].body).toBe('Robin changed the pickup time to Saturday 2 March, 10 am, and how long to 3 days.');
 
     // Unchanged values change nothing.
     expect((await change(robinToken, made.id, { loanLength: 3 })).body.version).toBe(3);

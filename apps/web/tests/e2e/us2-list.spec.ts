@@ -134,7 +134,7 @@ test('a member lists one of each kind, and photos lose their location data', asy
     await p.getByLabel('To', { exact: true }).fill('17:00');
   });
   await expect(page.getByText('2 days')).toBeVisible();
-  await expect(page.getByText('Saturday, 09:00–17:00')).toBeVisible();
+  await expect(page.getByText('Saturday, 9 am–5 pm')).toBeVisible();
 
   await page.goto('/offerings?mine=true');
   await expect(page.getByRole('heading', { name: 'Available' })).toBeVisible();

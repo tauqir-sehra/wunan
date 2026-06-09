@@ -59,7 +59,7 @@ test('the requester is told what fits, fixes it, and the lister accepts', async 
   await signInAs(page, leo);
   await page.goto(`/proposals/${made.id}`);
   for (const text of [
-    'Jo offers this Monday–Friday, 18:00–21:00.',
+    'Jo offers this Monday–Friday, 6 pm–9 pm.',
     'Each time can be up to 1 hour.',
     'Only 4 times are left.',
     'Jo offers this in Riverside, Springfield only.'

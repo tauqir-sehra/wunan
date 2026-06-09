@@ -1,6 +1,8 @@
 // Times in the community's time zone (002 research §5). One community per installation, so one time
 // zone: the server's `TZ` (set in compose.yaml). A date without a time means midnight there.
 
+import { clock } from '@wunan/shared';
+
 /** The community's time zone name, e.g. "Europe/London". */
 export const communityTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -38,8 +40,8 @@ export function lengthInMinutes(length: number, unit: 'minutes' | 'hours' | 'day
   return length * { minutes: 1, hours: 60, days: 1440, weeks: 10080 }[unit];
 }
 
-/** "Saturday 6 June, 10:00" (or without the time), for messages and notifications. */
+/** "Saturday 6 June, 10 am" (or without the time), for messages and notifications. */
 export function describeWhen(instant: Date, hasTime: boolean) {
   const day = instant.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  return hasTime ? `${day}, ${instantToLocal(instant).time}` : day;
+  return hasTime ? `${day}, ${clock(instantToLocal(instant).time)}` : day;
 }

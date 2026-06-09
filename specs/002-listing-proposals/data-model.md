@@ -161,7 +161,7 @@ are the requester and the lister. A proposal thread accepts new messages only wh
 
 `message_kind` gains `detail_changed`, `accepted`, `declined`, `withdrawn`, `closed`,
 `messages_shared`. These are written by the API with a plain-language `body` ("Robin changed the
-pickup time to Saturday 6 June, 10:00"); `author_id` is the member who acted, or null for
+pickup time to Saturday 6 June, 10 am"); `author_id` is the member who acted, or null for
 automatic closes.
 
 ## problem_report (changed)

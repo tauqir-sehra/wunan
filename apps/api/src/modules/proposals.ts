@@ -4,6 +4,7 @@
 // agreement in one transaction. What blocks it ("issues") is worked out each time by
 // `proposalIssues`, never stored, so an offering edit never leaves a stale flag behind.
 import type { AgreementOfferSnapshot, CreateProposal, Place, ProposalDetailsInput, ProposalIssue } from '@wunan/shared';
+import { timesText } from '@wunan/shared';
 import { and, asc, desc, eq, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import {
@@ -69,31 +70,7 @@ const unitWords: Record<string, [string, string]> = {
 const length = (n: number, unit: string) => `${n} ${unitWords[unit]![n === 1 ? 0 : 1]}`;
 const quantity = (amount: string, unit: string | null) => (unit && unit !== 'item' ? `${trimDecimal(amount)} ${unit}` : trimDecimal(amount)!);
 
-const dayNames = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-/** "Monday–Friday, 18:00–21:00; Saturday, 10:00–12:00": consecutive days with the same hours grouped. */
-export function describeTimes(times: { weekday: number; startTime: string; endTime: string }[]) {
-  const byHours = new Map<string, number[]>();
-  for (const t of times) {
-    const key = `${t.startTime.slice(0, 5)}–${t.endTime.slice(0, 5)}`;
-    byHours.set(key, [...(byHours.get(key) ?? []), t.weekday]);
-  }
-  const parts: string[] = [];
-  for (const [hours, days] of byHours) {
-    const sorted = [...new Set(days)].sort();
-    const runs: string[] = [];
-    let start = sorted[0]!;
-    for (let i = 1; i <= sorted.length; i += 1) {
-      if (sorted[i] !== sorted[i - 1]! + 1) {
-        const end = sorted[i - 1]!;
-        runs.push(start === end ? dayNames[start]! : `${dayNames[start]}–${dayNames[end]}`);
-        start = sorted[i]!;
-      }
-    }
-    parts.push(`${runs.join(', ')}, ${hours}`);
-  }
-  return parts.join('; ');
-}
+export const describeTimes = timesText;
 
 // ── Loading ────────────────────────────────────────────────────────────────────────────────────
 

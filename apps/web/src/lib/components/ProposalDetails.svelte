@@ -4,7 +4,15 @@
 -->
 <script lang="ts">
   import InfoNote from '#lib/components/InfoNote.svelte';
-  import { duration, handoverText, placeText, quantity, unitLabel, when } from '#lib/format.ts';
+  import {
+    duration,
+    handoverText,
+    placeText,
+    quantity,
+    timeOfDay,
+    unitLabel,
+    when
+  } from '#lib/format.ts';
   import type { Proposal } from '@wunan/shared';
 
   let { proposal }: { proposal: Proposal } = $props();
@@ -17,12 +25,11 @@
   const notYet = 'Not decided yet';
   const whenText = $derived(
     d.startsAt
-      ? new Date(d.startsAt).toLocaleString(
-          'en-GB',
-          d.hasTime
-            ? { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }
-            : { weekday: 'long', day: 'numeric', month: 'long' }
-        )
+      ? new Date(d.startsAt).toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long'
+        }) + (d.hasTime ? `, ${timeOfDay(d.startsAt)}` : '')
       : notYet
   );
   const offerText = $derived(

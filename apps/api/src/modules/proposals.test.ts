@@ -59,13 +59,13 @@ describe('services', () => {
     const tuesday = nextWeekday(2);
     const made = await propose(leoToken, repair.id, completeDetails('service', { date: saturday, time: '18:00', sessions: 5, sessionLength: 2, sessionLengthUnit: 'hours' }));
     const issues = await issuesOf(joToken, made.id);
-    expect(issues).toContain('Jo offers this Monday–Friday, 18:00–21:00.');
+    expect(issues).toContain('Jo offers this Monday–Friday, 6 pm–9 pm.');
     expect(issues).toContain('Each time can be up to 1 hour.');
     expect(issues).toContain('Only 4 times are left.');
 
     // Starting at 20:30 for an hour runs past 21:00.
     await api('PATCH', `/api/v1/proposals/${made.id}`, { token: leoToken, body: { date: tuesday, time: '20:30', sessions: 2, sessionLength: 1 } });
-    expect(await issuesOf(joToken, made.id)).toContain('Jo offers this Monday–Friday, 18:00–21:00.');
+    expect(await issuesOf(joToken, made.id)).toContain('Jo offers this Monday–Friday, 6 pm–9 pm.');
     await api('PATCH', `/api/v1/proposals/${made.id}`, { token: leoToken, body: { time: '18:00' } });
     expect(await issuesOf(joToken, made.id)).toEqual([]);
 
@@ -135,6 +135,6 @@ describe('trades', () => {
 describe('describing times', () => {
   it('groups consecutive days with the same hours', () => {
     const row = (weekday: number, startTime = '18:00', endTime = '21:00') => ({ weekday, startTime, endTime });
-    expect(describeTimes([row(1), row(2), row(3), row(5), row(6, '10:00', '12:00')])).toBe('Monday–Wednesday, Friday, 18:00–21:00; Saturday, 10:00–12:00');
+    expect(describeTimes([row(1), row(2), row(3), row(5), row(6, '10:00', '12:00')])).toBe('Monday–Wednesday, Friday, 6 pm–9 pm; Saturday, 10 am–12 pm');
   });
 });
