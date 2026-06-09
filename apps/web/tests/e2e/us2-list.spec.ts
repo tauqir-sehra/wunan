@@ -16,6 +16,7 @@ async function createOffering(
   { area = '', photo = false, check = false } = {}
 ) {
   await page.goto('/offerings/new');
+  await page.waitForLoadState('networkidle'); // The steps need the page to be ready.
   if (check) await expectAccessible(page, 'new offering: kind');
   await page.getByRole('radio', { name: new RegExp(`^${kind}`) }).check();
   await page.getByRole('button', { name: 'Next' }).click();
