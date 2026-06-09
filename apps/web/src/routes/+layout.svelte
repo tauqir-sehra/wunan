@@ -56,12 +56,14 @@
 
   const isCurrent = (href: string) =>
     href === '/offerings' ? page.url.pathname === '/offerings' : page.url.pathname.startsWith(href);
-  // The menus close once a link in them has been followed.
-  let menuOpen = $state(false);
-  let accountOpen = $state(false);
-  afterNavigate(() => {
-    menuOpen = false;
-    accountOpen = false;
+  // The menus close once a link in them has been followed. Not on first load: a menu opened
+  // before the page finished loading stays open.
+  let menu: HTMLDetailsElement | undefined = $state();
+  let accountMenu: HTMLDetailsElement | undefined = $state();
+  afterNavigate((navigation) => {
+    if (navigation.type === 'enter') return;
+    if (menu) menu.open = false;
+    if (accountMenu) accountMenu.open = false;
   });
   const reauth = $derived((page.form as { reauth?: Reauth } | null)?.reauth);
 </script>
@@ -120,7 +122,7 @@
         </Button>
       </div>
 
-      <details class="relative hidden lg:block" bind:open={accountOpen}>
+      <details class="relative hidden lg:block" bind:this={accountMenu}>
         <summary
           class="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md px-3 whitespace-nowrap hover:bg-accent [&::-webkit-details-marker]:hidden"
         >
@@ -142,7 +144,7 @@
       </details>
 
       <!-- Narrower screens: everything under "Menu" (works without JavaScript). -->
-      <details class="lg:hidden" bind:open={menuOpen}>
+      <details class="lg:hidden" bind:this={menu}>
         <summary
           class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md border px-3 font-medium [&::-webkit-details-marker]:hidden"
         >
