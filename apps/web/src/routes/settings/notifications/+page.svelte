@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
+  import { stayPut } from '#lib/stay-put.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
   import Notice from '#lib/components/Notice.svelte';
   import { day } from '#lib/format.ts';
@@ -212,22 +214,18 @@
 <svelte:head><title>Notifications · Settings · wunan</title></svelte:head>
 
 <section class="grid gap-8">
-
-  {#if form?.saved === 'preferences'}
-    <Notice><p>Your notification settings are saved.</p></Notice>
-  {:else if form?.saved === 'removed'}
-    <Notice><p>That device won't get notifications any more.</p></Notice>
-  {:else if form?.error}
-    <Notice kind="error"><p>{form.error}</p></Notice>
-  {/if}
-
-  <section class="grid max-w-xl gap-4" aria-labelledby="kinds-heading">
+  <section id="kinds" class="grid max-w-xl gap-4" aria-labelledby="kinds-heading">
     <h2 id="kinds-heading" class="text-xl font-semibold">What to tell you about</h2>
     <p class="text-muted-foreground">
       Everything is also waiting for you in wunan, so you can leave these off. Notifications never
       include contact details or photos.
     </p>
-    <form method="POST" action="?/save" class="grid gap-4">
+    <form
+      method="POST"
+      action="?/save#kinds"
+      class="grid gap-4"
+      use:enhance={stayPut(undefined, { reset: false })}
+    >
       {#each kinds as kind (kind.type)}
         <fieldset
           class="grid min-w-0 gap-2 rounded-lg border bg-card p-4"
@@ -258,6 +256,12 @@
         </fieldset>
       {/each}
       <div><Button type="submit">Save notification settings</Button></div>
+      <!-- What happened shows next to the button, and the page stays where it is (constitution V). -->
+      {#if form?.saved === 'preferences'}
+        <Notice><p>Your notification settings are saved.</p></Notice>
+      {:else if form?.error && form?.saved === undefined}
+        <Notice kind="error"><p>{form.error}</p></Notice>
+      {/if}
     </form>
   </section>
 
@@ -302,7 +306,12 @@
           </div>
         {:else}
           <div>
-            <Button type="button" variant="outline" onclick={turnOn} disabled={deviceState === 'working'}>
+            <Button
+              type="button"
+              variant="outline"
+              onclick={turnOn}
+              disabled={deviceState === 'working'}
+            >
               {deviceState === 'working' ? 'Turning on…' : 'Turn on notifications on this device'}
             </Button>
           </div>
@@ -314,8 +323,11 @@
     {/if}
   </section>
 
-  <section class="grid max-w-xl gap-4" aria-labelledby="devices-heading">
+  <section id="devices" class="grid max-w-xl gap-4" aria-labelledby="devices-heading">
     <h2 id="devices-heading" class="text-xl font-semibold">Your devices</h2>
+    {#if form?.saved === 'removed'}
+      <Notice><p>That device won't get notifications any more.</p></Notice>
+    {/if}
     {#if data.devices.devices.length === 0}
       <p class="text-muted-foreground">No devices get notifications.</p>
     {:else}
@@ -330,7 +342,7 @@
                 >Added {day(device.createdAt.slice(0, 10))}</span
               >
             </span>
-            <form method="POST" action="?/removeDevice">
+            <form method="POST" action="?/removeDevice#devices" use:enhance={stayPut()}>
               <input type="hidden" name="id" value={device.id} />
               <Button type="submit" variant="outline"
                 >Remove<span class="sr-only"> {device.label}</span></Button

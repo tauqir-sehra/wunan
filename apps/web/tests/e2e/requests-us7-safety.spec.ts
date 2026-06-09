@@ -83,4 +83,19 @@ test('settings show the two new notification switches, off until turned on', asy
     await expect(group).toBeVisible();
     for (const box of await group.getByRole('checkbox').all()) await expect(box).not.toBeChecked();
   }
+
+  // Saving keeps the page where it is and says so next to the button (constitution V).
+  await page.waitForLoadState('networkidle');
+  const offers = page.getByRole('group', { name: /Someone offers something for your request/ });
+  await offers.getByRole('checkbox', { name: 'By email' }).check();
+  const save = page.getByRole('button', { name: 'Save notification settings' });
+  await save.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(0);
+  await save.click();
+  await expect(page.getByText('Your notification settings are saved.')).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(before - 80);
+  await expect(offers.getByRole('checkbox', { name: 'By email' })).toBeChecked();
+  await page.reload();
+  await expect(offers.getByRole('checkbox', { name: 'By email' })).toBeChecked();
 });

@@ -326,3 +326,16 @@ Task: "Playwright spec apps/web/tests/e2e/requests-us6-public.spec.ts"     # T05
 US1 → US2 (suggestions) → US3 (answer) → US4 (close on agreement: the full loop) → US5 (browse) →
 US6 (public threads) → US7 (safety and data) → Polish. Each adds value without breaking the
 previous ones.
+
+## Phase 11: Convergence
+
+- [X] T071 CRITICAL: make the remaining plain form posts on 003 pages update in place with `use:enhance` (keep the scroll position, show the result next to the control or in the pop-up it came from, close pop-ups on success), with `#anchor` actions or redirects as the no-JavaScript fallback: `apps/web/src/routes/requests/[id]/+page.svelte` (close, confirm close, reopen, unlink, flag), `apps/web/src/lib/components/HelpChoices.svelte` (offer an existing offering), `apps/web/src/lib/components/PublicThread.svelte` (flagMessage), and `apps/web/src/routes/offerings/[id]/+page.svelte` (pause, resume, remove, confirm remove, reopen, flag); add a Playwright check that one of them keeps the page where it was, per Constitution V "things on screen stay put" (contradicts)
+- [X] T072 Let the asker take any link off their own request ("Not for my request"), not only links they made: allow it in `removeLink` and `canRemove` in `apps/api/src/modules/requests.ts`, keep the offering unchanged, cover it in `apps/api/src/routes/requests.test.ts` and `apps/web/tests/e2e/requests-us3-answer.spec.ts`, per FR-017a (partial)
+
+## Phase 12: Convergence
+
+- [X] T073 CRITICAL: make saving notification settings and removing a device in `apps/web/src/routes/settings/notifications/+page.svelte` update in place with `stayPut` from `apps/web/src/lib/stay-put.ts` (keep the scroll position; show "Your notification settings are saved." / "That device won't get notifications any more." and errors next to the Save button or the device list instead of at the top; `#anchor` actions for the no-JavaScript fallback), and extend `apps/web/tests/e2e/requests-us7-safety.spec.ts` (the new switches) to check the page stays where it was, per Constitution V "things on screen stay put" (contradicts)
+
+## Phase 13: Convergence
+
+- [X] T074 CRITICAL: make Decline / Withdraw (both the first press and the "Yes, decline it" / "Yes, withdraw it" confirmation) on `apps/web/src/routes/proposals/[id]/+page.svelte` update in place with `stayPut` from `apps/web/src/lib/stay-put.ts` (keep the scroll position; show the confirmation box, "You declined this proposal." / "You withdrew your proposal.", the "changed" notice and errors next to those buttons instead of at the top; "Keep it open" with `data-sveltekit-reset="false"` (SvelteKit 3 replaced `data-sveltekit-noscroll`); `#anchor` actions for the no-JavaScript fallback), and add a check to `apps/web/tests/e2e/stay-put.spec.ts` that withdrawing a proposal tied to a request keeps the page where it was, per Constitution V "things on screen stay put" (contradicts)

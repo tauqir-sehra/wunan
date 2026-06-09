@@ -5,6 +5,8 @@
   on the request page and on its no-JavaScript page.
 -->
 <script lang="ts">
+  import { enhance } from '$app/forms';
+  import { stayPut } from '#lib/stay-put.ts';
   import { Button } from '#lib/components/ui/button/index.ts';
   import { helpWords } from '#lib/format.ts';
   import type { OfferingType } from '@wunan/shared';
@@ -14,7 +16,8 @@
     askerName,
     type,
     offerings,
-    action
+    action,
+    onSent
   }: {
     requestId: string;
     askerName: string;
@@ -22,6 +25,8 @@
     offerings: { id: string; title: string }[];
     /** The form action that links an existing offering (the page's own when left out). */
     action?: string;
+    /** Called once the offering is offered, e.g. to close the pop-up. */
+    onSent?: () => void;
   } = $props();
 </script>
 
@@ -40,7 +45,7 @@
       <p class="text-muted-foreground">
         It shows on {askerName}'s request. The offering itself doesn't change.
       </p>
-      <form method="POST" {action} class="grid gap-4">
+      <form method="POST" {action} class="grid gap-4" use:enhance={stayPut(onSent)}>
         <fieldset class="grid gap-2">
           <legend class="sr-only">{helpWords[type].listed}</legend>
           {#each offerings as offering, index (offering.id)}

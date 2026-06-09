@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { page } from '$app/state';
+  import { stayPut } from '#lib/stay-put.ts';
   import FormField from '#lib/components/FormField.svelte';
   import HelpChoices from '#lib/components/HelpChoices.svelte';
   import HelpLink from '#lib/components/HelpLink.svelte';
@@ -26,6 +28,12 @@
   let { data, form } = $props();
   const request = $derived(data.request);
   const isAsker = $derived(data.member?.id === request.asker.id);
+  // The pop-ups close once their form is sent; a problem with the text opens "Raise an issue" again.
+  let helping = $state(false);
+  let raising = $state(false);
+  $effect(() => {
+    if (form?.fields?.request) raising = true;
+  });
   const type = $derived(offeringTypeFor[request.kind]);
   const doneText: Record<string, string> = {
     close: 'Your request is closed. You can reopen it any time from this page.',
@@ -35,6 +43,19 @@
     flag: 'Your request was sent to the person who asked.',
     flagMessage: 'Your request was sent to the person who wrote it.'
   };
+  /** Results of this page's own actions show under its buttons (or under the list, for links). */
+  const actionDone = $derived(
+    form?.done
+      ? form.done !== 'unlink' && form.done !== 'flagMessage'
+        ? doneText[form.done]
+        : null
+      : // Back from the no-JavaScript pages for offering something or raising an issue.
+        page.url.searchParams.has('linked')
+        ? doneText.link
+        : page.url.searchParams.has('issueSent')
+          ? doneText.flag
+          : null
+  );
   const askWords = {
     lend: 'Ask to borrow',
     gift: 'Ask for this',
@@ -50,9 +71,7 @@
       ? 'Your request is posted. Others can now offer something for it.'
       : page.url.searchParams.has('saved')
         ? 'Your changes are saved.'
-        : page.url.searchParams.has('linked')
-          ? 'Your offering now shows on this request.'
-          : null
+        : null
   );
 
   const details = $derived.by(() => {
@@ -115,12 +134,8 @@
 <svelte:head><title>{request.title} · wunan</title></svelte:head>
 
 <article class="grid gap-6">
-  <!-- The public thread shows its own confirmations and problems, next to the message box. -->
-  {#if form?.done && doneText[form.done]}
-    <Notice><p>{doneText[form.done]}</p></Notice>
-  {:else if form?.error && form?.values?.body === undefined}
-    <Notice kind="error"><p>{form.error}</p></Notice>
-  {:else if notice}
+  <!-- Only notes about how the member got here show at the top; results of actions show next to them. -->
+  {#if notice && !form}
     <Notice><p>{notice}</p></Notice>
   {/if}
 
@@ -195,85 +210,100 @@
     </dl>
   </div>
 
-  <!-- One filled button per page: "Edit request" for the asker, "I can help with this" for others. -->
-  {#if isAsker}
-    <div class="flex flex-wrap gap-3">
-      {#if request.canEdit}<Button href="/requests/{request.id}/edit">Edit request</Button>{/if}
-      {#if request.status === 'open' && !form?.confirmClose}
-        <form method="POST" action="?/close">
-          <Button type="submit" variant="outline">Close request</Button>
-        </form>
-      {:else if request.status === 'closed'}
-        <form method="POST" action="?/reopen">
-          <Button type="submit" variant="outline">Reopen</Button>
+  <div id="actions" class="grid gap-3">
+    <!-- One filled button per page: "Edit request" for the asker, "I can help with this" for others. -->
+    {#if isAsker}
+      <div class="flex flex-wrap gap-3">
+        {#if request.canEdit}<Button href="/requests/{request.id}/edit">Edit request</Button>{/if}
+        {#if request.status === 'open' && !form?.confirmClose}
+          <form method="POST" action="?/close#actions" use:enhance={stayPut()}>
+            <Button type="submit" variant="outline">Close request</Button>
+          </form>
+        {:else if request.status === 'closed'}
+          <form method="POST" action="?/reopen#actions" use:enhance={stayPut()}>
+            <Button type="submit" variant="outline">Reopen</Button>
+          </form>
+        {/if}
+      </div>
+      {#if form?.confirmClose}
+        <form
+          method="POST"
+          action="?/close#actions"
+          class="grid gap-3 rounded-lg border border-input bg-card p-4"
+          use:enhance={stayPut()}
+        >
+          <input type="hidden" name="confirmed" value="yes" />
+          <p>
+            Close this request? People won't see it among open requests. What was offered for it
+            stays up. You can reopen it later.
+          </p>
+          <div class="flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="destructive">Yes, close it</Button>
+            <a href="/requests/{request.id}#actions" data-sveltekit-reset="false">Keep it open</a>
+          </div>
         </form>
       {/if}
-    </div>
-    {#if form?.confirmClose}
-      <form
-        method="POST"
-        action="?/close"
-        class="grid gap-3 rounded-lg border border-input bg-card p-4"
-      >
-        <input type="hidden" name="confirmed" value="yes" />
-        <p>
-          Close this request? People won't see it among open requests. What was offered for it stays
-          up. You can reopen it later.
-        </p>
-        <div class="flex flex-wrap items-center gap-3">
-          <Button type="submit" variant="destructive">Yes, close it</Button>
-          <a href="/requests/{request.id}">Keep it open</a>
+    {:else if request.canAnswer}
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-3">
+          <PopupDialog
+            label="I can help with this"
+            variant="default"
+            size="default"
+            title="How would you like to help?"
+            description="Either way, your offering shows on {request.asker
+              .displayName}'s request so they can propose on it."
+            fallbackHref="/requests/{request.id}/help"
+            bind:open={helping}
+          >
+            <HelpChoices
+              requestId={request.id}
+              askerName={request.asker.displayName}
+              {type}
+              offerings={data.myOfferings}
+              action="?/link#actions"
+              onSent={() => (helping = false)}
+            />
+          </PopupDialog>
         </div>
-      </form>
-    {/if}
-  {:else if request.canAnswer}
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap gap-3">
         <PopupDialog
-          label="I can help with this"
-          variant="default"
-          size="default"
-          title="How would you like to help?"
-          description="Either way, your offering shows on {request.asker
-            .displayName}'s request so they can propose on it."
-          fallbackHref="/requests/{request.id}/help"
+          label="Raise an issue"
+          icon={FlagIcon}
+          variant="ghost"
+          title="Raise an issue with {request.asker.displayName}"
+          description="For example, to ask them to change or close this request. It goes only to {request
+            .asker.displayName}, and the request stays as it is."
+          fallbackHref="/requests/{request.id}/issue"
+          bind:open={raising}
         >
-          <HelpChoices
-            requestId={request.id}
-            askerName={request.asker.displayName}
-            {type}
-            offerings={data.myOfferings}
-            action="?/link"
-          />
+          <form
+            method="POST"
+            action="?/flag#actions"
+            class="grid gap-4"
+            use:enhance={stayPut(() => (raising = false))}
+          >
+            <FormField
+              label="What would you like to ask?"
+              name="request"
+              multiline
+              required
+              maxlength={500}
+              value={form?.values?.request}
+              error={form?.fields?.request}
+            />
+            <div><Button type="submit">Send to {request.asker.displayName}</Button></div>
+          </form>
         </PopupDialog>
       </div>
-      <PopupDialog
-        label="Raise an issue"
-        icon={FlagIcon}
-        variant="ghost"
-        title="Raise an issue with {request.asker.displayName}"
-        description="For example, to ask them to change or close this request. It goes only to {request
-          .asker.displayName}, and the request stays as it is."
-        fallbackHref="/requests/{request.id}/issue"
-        open={Boolean(form?.fields?.request)}
-      >
-        <form method="POST" action="?/flag" class="grid gap-4">
-          <FormField
-            label="What would you like to ask?"
-            name="request"
-            multiline
-            required
-            maxlength={500}
-            value={form?.values?.request}
-            error={form?.fields?.request}
-          />
-          <div><Button type="submit">Send to {request.asker.displayName}</Button></div>
-        </form>
-      </PopupDialog>
-    </div>
-  {/if}
+    {/if}
 
-  <section class="grid gap-3" aria-labelledby="offered-heading">
+    {#if actionDone}<Notice><p>{actionDone}</p></Notice>{/if}
+    {#if form?.error && form?.values?.body === undefined && form?.done === undefined}<Notice
+        kind="error"><p>{form.error}</p></Notice
+      >{/if}
+  </div>
+
+  <section id="offered" class="grid gap-3" aria-labelledby="offered-heading">
     <h2 id="offered-heading" class="text-xl font-semibold">Offered for this request</h2>
     {#if request.links.length}
       <ul class="grid gap-3">
@@ -303,12 +333,14 @@
                 >
               {/if}
               {#if link.canRemove}
-                <form method="POST" action="?/unlink">
+                <form method="POST" action="?/unlink#offered" use:enhance={stayPut()}>
                   <input type="hidden" name="linkId" value={link.id} /><Button
                     type="submit"
                     variant="ghost"
                     size="sm"
-                    >{link.offering.owner.id === data.member?.id ? 'Withdraw this offer' : 'Not for my request'}</Button
+                    >{link.offering.owner.id === data.member?.id
+                      ? 'Withdraw this offer'
+                      : 'Not for my request'}</Button
                   >
                 </form>
               {/if}
@@ -319,6 +351,7 @@
     {:else}
       <p class="text-muted-foreground">Nothing offered yet.</p>
     {/if}
+    {#if form?.done === 'unlink'}<Notice><p>{doneText.unlink}</p></Notice>{/if}
   </section>
 
   <PublicThread

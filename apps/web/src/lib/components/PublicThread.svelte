@@ -9,6 +9,8 @@
   import { enhance, type SubmitFunction } from '$app/forms';
   import { page } from '$app/state';
   import FormField from '#lib/components/FormField.svelte';
+  import Notice from '#lib/components/Notice.svelte';
+  import { stayPut } from '#lib/stay-put.ts';
   import MessageBox from '#lib/components/MessageBox.svelte';
   import MessageItem from '#lib/components/MessageItem.svelte';
   import PopupDialog from '#lib/components/PopupDialog.svelte';
@@ -44,6 +46,8 @@
     return [...merged, ...changed.filter((m) => !thread.items.some((i) => i.id === m.id))];
   });
   let announcement = $state('');
+  // Each message's "Raise an issue" pop-up, closed once its request is sent.
+  let raising = $state<Record<string, boolean>>({});
 
   onMount(() => {
     if (!('EventSource' in window)) return;
@@ -118,7 +122,9 @@
             <input type="hidden" name="confirmed" value="yes" />
             <span class="text-sm">Remove this message?</span>
             <Button type="submit" variant="destructive" size="sm">Yes, remove it</Button>
-            <a href="{page.url.pathname}#public-messages" class="text-sm">Keep it</a>
+            <a href="{page.url.pathname}#public-messages" class="text-sm" data-sveltekit-reset="false"
+              >Keep it</a
+            >
           </form>
         {/if}
         {#if message.flags?.length}
@@ -141,6 +147,7 @@
           {:else}
             <PopupDialog
               label="Raise an issue"
+              bind:open={() => raising[message.id] ?? false, (value) => (raising[message.id] = value)}
               variant="ghost"
               class="text-sm font-normal"
               title="Raise an issue with {message.author.displayName}"
@@ -150,7 +157,12 @@
                 page.url.pathname
               )}"
             >
-              <form method="POST" action="?/flagMessage" class="grid gap-4">
+              <form
+                method="POST"
+                action="?/flagMessage#public-messages"
+                class="grid gap-4"
+                use:enhance={stayPut(() => (raising[message.id] = false))}
+              >
                 <input type="hidden" name="messageId" value={message.id} />
                 <FormField
                   label="What would you like to ask?"
@@ -167,6 +179,9 @@
       </MessageItem>
     {/each}
   </ol>
+  {#if form?.done === 'flagMessage' || (!form && page.url.searchParams.get('messageIssue') === 'sent')}
+    <Notice><p>Your request was sent to the person who wrote it.</p></Notice>
+  {/if}
 
   {#if thread.canPost}
     <MessageBox

@@ -18,6 +18,6 @@ export const actions: Actions = {
     await api.post(`/api/v1/requests/${encodeURIComponent(event.params.id ?? '')}/flags`, {
       request: text(form, 'request') ?? ''
     });
-    redirect(303, `/requests/${event.params.id}?issueSent=1`);
+    redirect(303, `/requests/${event.params.id}?issueSent=1#actions`);
   })
 };

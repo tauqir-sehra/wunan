@@ -274,7 +274,7 @@ export async function getRequest(requestId: string, viewerId: string) {
       .from(requestAvailability)
       .where(eq(requestAvailability.requestId, requestId))
       .orderBy(asc(requestAvailability.weekday), asc(requestAvailability.startTime)),
-    linksOf(requestId, viewerId)
+    linksOf(requestId, viewerId, row.askerId === viewerId)
   ]);
 
   const result = {
@@ -300,8 +300,9 @@ export async function getRequest(requestId: string, viewerId: string) {
   return { ...result, flags: await flagsFor(requestId), myOtherOpenProposals: await otherOpenProposals(row) };
 }
 
-/** The offerings linked to a request, with whether they're still available and who may remove each link. */
-async function linksOf(requestId: string, viewerId: string) {
+/** The offerings linked to a request, with whether they're still available and who may remove each
+    link: who made it, the offering's owner ("Withdraw this offer"), or the asker ("Not for my request"). */
+async function linksOf(requestId: string, viewerId: string, isAsker: boolean) {
   const rows = await db
     .select({ link: requestLink, offering: { id: offering.id, title: offering.title, type: offering.type, status: offering.status, ownerId: offering.ownerId } })
     .from(requestLink)
@@ -318,7 +319,7 @@ async function linksOf(requestId: string, viewerId: string) {
     offering: { id: l.id, title: l.title, type: l.type, status: l.status, owner: ref(l.ownerId)! },
     linkedBy: ref(link.linkedById),
     available: l.status === 'available',
-    canRemove: link.linkedById === viewerId || l.ownerId === viewerId
+    canRemove: isAsker || link.linkedById === viewerId || l.ownerId === viewerId
   }));
 }
 
@@ -461,15 +462,18 @@ export async function linkOffering(requestId: string, offeringId: string, member
   return { id: created.id };
 }
 
-/** Removes a link; only who made it or the offering's owner can. The offering is unchanged. */
+/** Removes a link; who made it, the offering's owner, or the asker can (FR-017a). The offering is unchanged. */
 export async function unlinkOffering(requestId: string, linkId: string, memberId: string) {
   const [row] = await db
-    .select({ link: requestLink, ownerId: offering.ownerId })
+    .select({ link: requestLink, ownerId: offering.ownerId, askerId: request.askerId })
     .from(requestLink)
     .innerJoin(offering, eq(offering.id, requestLink.offeringId))
+    .innerJoin(request, eq(request.id, requestLink.requestId))
     .where(and(eq(requestLink.id, linkId), eq(requestLink.requestId, requestId)));
   if (!row) throw errors.notFound('That link');
-  if (row.link.linkedById !== memberId && row.ownerId !== memberId) throw new ApiError(403, 'not_allowed', 'Only who linked it or the offering’s owner can remove this link.');
+  if (row.link.linkedById !== memberId && row.ownerId !== memberId && row.askerId !== memberId) {
+    throw new ApiError(403, 'not_allowed', 'Only the person who asked, who linked it, or the offering’s owner can remove this link.');
+  }
   await db.delete(requestLink).where(eq(requestLink.id, linkId));
 }
 

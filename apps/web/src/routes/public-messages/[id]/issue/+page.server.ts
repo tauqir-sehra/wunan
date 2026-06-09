@@ -8,6 +8,6 @@ export const actions: Actions = {
   default: formAction(async ({ event, form, api }) => {
     await api.post(`/api/v1/public-messages/${encodeURIComponent(event.params.id ?? '')}/flags`, { request: text(form, 'request') ?? '' });
     const back = text(form, 'back');
-    redirect(303, back?.startsWith('/') && !back.startsWith('//') ? back : '/requests');
+    redirect(303, back?.startsWith('/') && !back.startsWith('//') ? `${back}?messageIssue=sent#public-messages` : '/requests');
   })
 };

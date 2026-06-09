@@ -173,7 +173,7 @@ describe('answering with an offering (US3)', () => {
     expect(made.body).toMatchObject({ linked: true, answersRequest: { requestId: id, title: 'Drill for shelves', asker: { displayName: 'Rana' } } });
     const request = await api('GET', `/api/v1/requests/${id}`, { token: ranaToken });
     expect(request.body.links).toEqual([
-      expect.objectContaining({ offering: expect.objectContaining({ id: made.body.id, title: 'My drill', owner: expect.objectContaining({ displayName: 'Sam' }) }), available: true, canRemove: false })
+      expect.objectContaining({ offering: expect.objectContaining({ id: made.body.id, title: 'My drill', owner: expect.objectContaining({ displayName: 'Sam' }) }), available: true, canRemove: true }) // The asker can take it off (FR-017a).
     ]);
     expect(request.body.linkCount).toBe(1);
     expect(testOutbox.filter((e) => e.to === rana.email).map((e) => e.subject)).toEqual(['Sam can help with “Drill for shelves”']);
@@ -219,7 +219,10 @@ describe('answering with an offering (US3)', () => {
     expect(kimsLink.canRemove).toBe(true); // Kim owns the offering.
     const samsLink = links.find((l) => l.offering.id === samsDrill.id)!;
     expect((await api('DELETE', `/api/v1/requests/${id}/links/${samsLink.id}`, { token: kimToken })).status).toBe(403);
-    expect((await api('DELETE', `/api/v1/requests/${id}/links/${samsLink.id}`, { token: samToken })).status).toBe(204);
+    // The asker can take any offer off their request ("Not for my request"), even one a helper made.
+    const asAsker = (await api('GET', `/api/v1/requests/${id}`, { token: ranaToken })).body.links as { id: string; canRemove: boolean }[];
+    expect(asAsker.find((l) => l.id === samsLink.id)!.canRemove).toBe(true);
+    expect((await api('DELETE', `/api/v1/requests/${id}/links/${samsLink.id}`, { token: ranaToken })).status).toBe(204);
     expect((await api('DELETE', `/api/v1/requests/${id}/links/${kimsLink.id}`, { token: ranaToken })).status).toBe(204);
     expect((await api('GET', `/api/v1/requests/${id}`, { token: ranaToken })).body.links).toEqual([]);
     // The offerings themselves are unchanged.

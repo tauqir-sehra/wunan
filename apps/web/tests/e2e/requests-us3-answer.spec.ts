@@ -5,7 +5,8 @@ import {
   createFounder,
   createInvitedMember,
   createOfferingFor,
-  createRequestFor
+  createRequestFor,
+  linkOfferingFor
 } from './helpers/members.ts';
 import { signInAs } from './helpers/ui.ts';
 
@@ -63,7 +64,9 @@ test('a helper answers with a prefilled offering, links another, and removes a l
   await expectAccessible(page, 'request page with offers');
 });
 
-test('asking for an offering found on its own asks whether it is for an open request', async ({ page }) => {
+test('asking for an offering found on its own asks whether it is for an open request', async ({
+  page
+}) => {
   const sam = createFounder('Sam');
   const rana = await createInvitedMember(sam, 'Rana');
   const request = await createRequestFor(rana, { kind: 'borrow', title: 'Ladder' });
@@ -84,4 +87,26 @@ test('asking for an offering found on its own asks whether it is for an open req
       .getByRole('region', { name: 'Offered for this request' })
       .getByRole('link', { name: 'Tall ladder' })
   ).toBeVisible();
+});
+
+test('the asker can take an offer off their request, and the offering stays up', async ({
+  page
+}) => {
+  const rana = createFounder('Rana');
+  const sam = await createInvitedMember(rana, 'Sam');
+  const request = await createRequestFor(rana, { kind: 'borrow', title: 'Ladder' });
+  const ladder = await createOfferingFor(sam, { type: 'lend', title: 'Short ladder' });
+  await linkOfferingFor(sam, request.id, ladder.id);
+  await signInAs(page, rana);
+  await page.goto(`/requests/${request.id}`);
+  const offered = page.getByRole('region', { name: 'Offered for this request' });
+  await offered
+    .getByRole('listitem')
+    .filter({ hasText: 'Short ladder' })
+    .getByRole('button', { name: 'Not for my request' })
+    .click();
+  await expect(page.getByText('It no longer shows on this request.')).toBeVisible();
+  await expect(offered.getByRole('link', { name: 'Short ladder' })).toHaveCount(0);
+  await page.goto(`/offerings/${ladder.id}`);
+  await expect(page.getByRole('heading', { name: 'Short ladder', level: 1 })).toBeVisible();
 });

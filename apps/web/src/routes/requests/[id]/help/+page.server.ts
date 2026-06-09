@@ -23,6 +23,6 @@ export const actions: Actions = {
     await api.post(`/api/v1/requests/${encodeURIComponent(event.params.id ?? '')}/links`, {
       offeringId: text(form, 'offeringId') ?? ''
     });
-    redirect(303, `/requests/${event.params.id}?linked=1`);
+    redirect(303, `/requests/${event.params.id}?linked=1#actions`);
   })
 };

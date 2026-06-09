@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { page } from '$app/state';
   import FormField from '#lib/components/FormField.svelte';
   import HelpLink from '#lib/components/HelpLink.svelte';
@@ -6,6 +7,7 @@
   import MessageList from '#lib/components/MessageList.svelte';
   import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
   import Notice from '#lib/components/Notice.svelte';
+  import { stayPut } from '#lib/stay-put.ts';
   import ProposalDetails from '#lib/components/ProposalDetails.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
 
@@ -47,15 +49,6 @@
   {#if page.url.searchParams.has('made') && !form}<Notice
       ><p>Your proposal was sent to {p.lister.displayName}.</p></Notice
     >{/if}
-  {#if form?.changed}<Notice kind="error"
-      ><p>{form.changed} The new details are shown below.</p></Notice
-    >{/if}
-  {#if form?.done}<Notice
-      ><p>
-        {form.done === 'declined' ? 'You declined this proposal.' : 'You withdrew your proposal.'}
-      </p></Notice
-    >{/if}
-  {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
 
   <header class="grid gap-1">
     <div class="flex items-start justify-between gap-3">
@@ -86,62 +79,80 @@
   <ProposalDetails proposal={p} />
   {#if waitingFor}<p>Everything is filled in. Waiting for {waitingFor}.</p>{/if}
 
-  {#if p.status === 'open'}
-    {#if p.myRole === 'lister'}
-      <!-- Always shown, so the lister knows where it will be; it can't be pressed until nothing blocks it. -->
-      <form method="POST" action="?/accept" class="grid gap-2">
-        <input type="hidden" name="version" value={p.version} />
-        <p id="accept-note" class={p.canAccept ? '' : 'text-muted-foreground'}>
-          {p.canAccept
-            ? 'Accepting makes this an agreement on exactly these details.'
-            : `You can accept once ${p.requester.displayName} has filled in everything above. You can ask them in a message.`}
-        </p>
-        <div>
-          <Button type="submit" disabled={!p.canAccept} aria-describedby="accept-note"
-            >Accept</Button
-          >
-        </div>
-      </form>
-    {:else}
-      <div><Button href="/proposals/{p.id}/edit">Change details</Button></div>
-    {/if}
-
-    {@const action = p.myRole === 'lister' ? 'decline' : 'withdraw'}
-    {#if form?.confirm === action}
-      <form
-        method="POST"
-        action="?/{action}"
-        class="grid gap-3 rounded-lg border border-input bg-card p-4"
-      >
-        <input type="hidden" name="confirmed" value="yes" />
-        <p>
-          {action === 'decline'
-            ? `Decline this proposal? ${p.requester.displayName} is told, and can make a new one.`
-            : `Withdraw your proposal? ${p.lister.displayName} is told.`}
-        </p>
-        <FormField
-          label="A note"
-          name="note"
-          multiline
-          optional
-          maxlength={500}
-          hint="Optional. Shown to {other.displayName}."
-        />
-        <div class="flex flex-wrap items-center gap-3">
-          <Button type="submit" variant="destructive"
-            >{action === 'decline' ? 'Yes, decline it' : 'Yes, withdraw it'}</Button
-          >
-          <a href="/proposals/{p.id}">Keep it open</a>
-        </div>
-      </form>
-    {:else}
-      <form method="POST" action="?/{action}">
-        <Button type="submit" variant="outline"
-          >{action === 'decline' ? 'Decline' : 'Withdraw'}</Button
+  <!-- Accept, decline and withdraw update the page in place; their results show here (constitution V). -->
+  <div id="decision" class="grid gap-4">
+    {#if p.status === 'open'}
+      {#if p.myRole === 'lister'}
+        <!-- Always shown, so the lister knows where it will be; it can't be pressed until nothing blocks it. -->
+        <form
+          method="POST"
+          action="?/accept#decision"
+          class="grid gap-2"
+          use:enhance={stayPut(undefined, { reset: false })}
         >
-      </form>
+          <input type="hidden" name="version" value={p.version} />
+          <p id="accept-note" class={p.canAccept ? '' : 'text-muted-foreground'}>
+            {p.canAccept
+              ? 'Accepting makes this an agreement on exactly these details.'
+              : `You can accept once ${p.requester.displayName} has filled in everything above. You can ask them in a message.`}
+          </p>
+          <div>
+            <Button type="submit" disabled={!p.canAccept} aria-describedby="accept-note"
+              >Accept</Button
+            >
+          </div>
+        </form>
+      {:else}
+        <div><Button href="/proposals/{p.id}/edit">Change details</Button></div>
+      {/if}
+
+      {@const action = p.myRole === 'lister' ? 'decline' : 'withdraw'}
+      {#if form?.confirm === action}
+        <form
+          method="POST"
+          action="?/{action}#decision"
+          class="grid gap-3 rounded-lg border border-input bg-card p-4"
+          use:enhance={stayPut()}
+        >
+          <input type="hidden" name="confirmed" value="yes" />
+          <p>
+            {action === 'decline'
+              ? `Decline this proposal? ${p.requester.displayName} is told, and can make a new one.`
+              : `Withdraw your proposal? ${p.lister.displayName} is told.`}
+          </p>
+          <FormField
+            label="A note"
+            name="note"
+            multiline
+            optional
+            maxlength={500}
+            hint="Optional. Shown to {other.displayName}."
+          />
+          <div class="flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="destructive"
+              >{action === 'decline' ? 'Yes, decline it' : 'Yes, withdraw it'}</Button
+            >
+            <a href="/proposals/{p.id}#decision" data-sveltekit-reset="false">Keep it open</a>
+          </div>
+        </form>
+      {:else}
+        <form method="POST" action="?/{action}#decision" use:enhance={stayPut()}>
+          <Button type="submit" variant="outline"
+            >{action === 'decline' ? 'Decline' : 'Withdraw'}</Button
+          >
+        </form>
+      {/if}
     {/if}
-  {/if}
+    {#if form?.changed}<Notice kind="error"
+        ><p>{form.changed} The new details are shown above.</p></Notice
+      >{/if}
+    {#if form?.done}<Notice
+        ><p>
+          {form.done === 'declined' ? 'You declined this proposal.' : 'You withdrew your proposal.'}
+        </p></Notice
+      >{/if}
+    {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
+  </div>
 
   <section id="messages" class="grid gap-4" aria-labelledby="messages-heading">
     <div class="flex items-center gap-1">

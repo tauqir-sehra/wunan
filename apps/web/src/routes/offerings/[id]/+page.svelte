@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
+  import { stayPut } from '#lib/stay-put.ts';
   import PhotoGallery from '#lib/components/PhotoGallery.svelte';
   import { page } from '$app/state';
   import { Badge } from '#lib/components/ui/badge/index.ts';
@@ -36,6 +38,11 @@
     flag: 'Your request was sent to the person who listed this.',
     flagMessage: 'Your request was sent to the person who wrote it.'
   };
+  // "Raise an issue" closes once sent; a problem with the text opens it again.
+  let raising = $state(false);
+  $effect(() => {
+    if (form?.fields?.request) raising = true;
+  });
   const notLinked = $derived(page.url.searchParams.has('notLinked'));
   // Proposals from the asker of a linked request start from that request (003 FR-017).
   const proposeHref = $derived.by(() => {
@@ -103,6 +110,17 @@
   );
 </script>
 
+{#snippet actionResult()}
+  <!-- Results of this page's own actions show under its buttons; the public thread shows its own. -->
+  {#if form?.done && form.done !== 'flagMessage' && doneText[form.done]}
+    <Notice><p>{doneText[form.done]}</p></Notice>
+  {:else if form?.error && form?.values?.body === undefined && form?.done === undefined}
+    <Notice kind="error"><p>{form.error}</p></Notice>
+  {:else if issueSent && !form}
+    <Notice><p>{doneText.flag}</p></Notice>
+  {/if}
+{/snippet}
+
 <svelte:head><title>{offering.title} · wunan</title></svelte:head>
 
 <article class="grid gap-6">
@@ -118,13 +136,6 @@
     <Notice kind="error"
       ><p>Some photos couldn't be added. {photoProblems} You can try again from Edit.</p></Notice
     >
-  {/if}
-  {#if issueSent && !form}<Notice><p>{doneText.flag}</p></Notice>{/if}
-  <!-- The public thread shows its own confirmations and problems, next to the message box. -->
-  {#if form?.done && doneText[form.done]}
-    <Notice><p>{doneText[form.done]}</p></Notice>
-  {:else if form?.error && form?.values?.body === undefined}
-    <Notice kind="error"><p>{form.error}</p></Notice>
   {/if}
 
   <header class="grid gap-2">
@@ -178,7 +189,7 @@
   </div>
 
   {#if isOwner}
-    <section class="grid gap-4" aria-labelledby="manage-heading">
+    <section id="actions" class="grid gap-4" aria-labelledby="manage-heading">
       <h2 id="manage-heading" class="text-xl font-semibold">Manage your offering</h2>
       <div class="flex flex-wrap gap-3">
         {#if offering.openProposalCount}<Button href="/proposals?role=lister"
@@ -189,19 +200,21 @@
             variant="outline">Edit</Button
           >{/if}
         {#if offering.status === 'available'}
-          <form method="POST" action="?/pause">
+          <form method="POST" action="?/pause#actions" use:enhance={stayPut()}>
             <Button type="submit" variant="outline">Pause</Button>
           </form>
         {:else if offering.status === 'paused'}
-          <form method="POST" action="?/resume">
+          <form method="POST" action="?/resume#actions" use:enhance={stayPut()}>
             <Button type="submit" variant="outline">Make available again</Button>
           </form>
         {/if}
         {#if offering.status === 'closed' && offering.closedReason === 'removed'}
-          <form method="POST" action="?/reopen"><Button type="submit">Reopen</Button></form>
+          <form method="POST" action="?/reopen#actions" use:enhance={stayPut()}>
+            <Button type="submit">Reopen</Button>
+          </form>
         {/if}
         {#if offering.status !== 'closed' && !form?.confirmRemove}
-          <form method="POST" action="?/remove">
+          <form method="POST" action="?/remove#actions" use:enhance={stayPut()}>
             <Button type="submit" variant="outline">Remove</Button>
           </form>
         {/if}
@@ -209,17 +222,19 @@
       {#if form?.confirmRemove}
         <form
           method="POST"
-          action="?/remove"
+          action="?/remove#actions"
           class="grid gap-3 rounded-lg border border-input bg-card p-4"
+          use:enhance={stayPut()}
         >
           <input type="hidden" name="confirmed" value="yes" />
           <p>Remove this offering? People won't find it any more. You can reopen it later.</p>
           <div class="flex flex-wrap items-center gap-3">
             <Button type="submit" variant="destructive">Yes, remove it</Button>
-            <a href="/offerings/{offering.id}">Keep it</a>
+            <a href="/offerings/{offering.id}#actions" data-sveltekit-reset="false">Keep it</a>
           </div>
         </form>
       {/if}
+      {@render actionResult()}
 
       <h3 class="text-lg font-semibold">Requests from members</h3>
       {#if offering.flags?.length}
@@ -243,37 +258,45 @@
       {/if}
     </section>
   {:else}
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      {#if offering.myOpenProposalId}
-        <Button href="/proposals/{offering.myOpenProposalId}">See your proposal</Button>
-      {:else if offering.status === 'available'}
-        <Button href={proposeHref}>{askWords[offering.type]}</Button>
-      {:else}
-        <span></span>
-      {/if}
-      <PopupDialog
-        label="Raise an issue"
-        icon={FlagIcon}
-        variant="ghost"
-        title="Raise an issue with {offering.owner.displayName}"
-        description="For example, to ask them to update or take down this offering. It goes only to {offering
-          .owner.displayName}, and the offering stays as it is."
-        fallbackHref="/offerings/{offering.id}/issue"
-        open={Boolean(form?.fields?.request)}
-      >
-        <form method="POST" action="?/flag" class="grid gap-4">
-          <FormField
-            label="What would you like to ask?"
-            name="request"
-            multiline
-            required
-            maxlength={500}
-            value={form?.values?.request}
-            error={form?.fields?.request}
-          />
-          <div><Button type="submit">Send to {offering.owner.displayName}</Button></div>
-        </form>
-      </PopupDialog>
+    <div id="actions" class="grid gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        {#if offering.myOpenProposalId}
+          <Button href="/proposals/{offering.myOpenProposalId}">See your proposal</Button>
+        {:else if offering.status === 'available'}
+          <Button href={proposeHref}>{askWords[offering.type]}</Button>
+        {:else}
+          <span></span>
+        {/if}
+        <PopupDialog
+          label="Raise an issue"
+          icon={FlagIcon}
+          variant="ghost"
+          title="Raise an issue with {offering.owner.displayName}"
+          description="For example, to ask them to update or take down this offering. It goes only to {offering
+            .owner.displayName}, and the offering stays as it is."
+          fallbackHref="/offerings/{offering.id}/issue"
+          bind:open={raising}
+        >
+          <form
+            method="POST"
+            action="?/flag#actions"
+            class="grid gap-4"
+            use:enhance={stayPut(() => (raising = false))}
+          >
+            <FormField
+              label="What would you like to ask?"
+              name="request"
+              multiline
+              required
+              maxlength={500}
+              value={form?.values?.request}
+              error={form?.fields?.request}
+            />
+            <div><Button type="submit">Send to {offering.owner.displayName}</Button></div>
+          </form>
+        </PopupDialog>
+      </div>
+      {@render actionResult()}
     </div>
   {/if}
 

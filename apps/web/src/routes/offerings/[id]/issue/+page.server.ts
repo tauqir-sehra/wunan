@@ -14,6 +14,6 @@ export const load: PageServerLoad = memberLoad(async (event) => ({
 export const actions: Actions = {
   default: formAction(async ({ event, form, api }) => {
     await api.post(`/api/v1/offerings/${encodeURIComponent(event.params.id ?? '')}/flags`, { request: text(form, 'request') ?? '' });
-    redirect(303, `/offerings/${event.params.id}?issueSent=1`);
+    redirect(303, `/offerings/${event.params.id}?issueSent=1#actions`);
   })
 };
