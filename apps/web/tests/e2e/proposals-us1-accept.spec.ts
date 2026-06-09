@@ -81,6 +81,9 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
   await sam.getByRole('button', { name: 'Accept' }).click();
   await expect(sam.getByRole('heading', { name: 'Agreement' })).toBeVisible();
   await expect(sam.getByText('You lent Robin Drill')).toBeVisible();
+  // The messages from the proposal carry on under the agreement.
+  const messages = sam.getByRole('list', { name: 'Messages' });
+  await expect(messages.getByText(/Robin changed the pickup time/)).toBeVisible();
 
   // Now Robin sees the full address.
   await robin.goto(`/offerings/${drill.id}`);

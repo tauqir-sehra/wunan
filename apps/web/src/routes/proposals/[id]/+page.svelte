@@ -3,13 +3,11 @@
   import { page } from '$app/state';
   import FormField from '#lib/components/FormField.svelte';
   import HelpLink from '#lib/components/HelpLink.svelte';
-  import MessageComposer from '#lib/components/MessageComposer.svelte';
-  import MessageList from '#lib/components/MessageList.svelte';
-  import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
   import Notice from '#lib/components/Notice.svelte';
-  import { stayPut } from '#lib/stay-put.ts';
+  import ProposalMessages from '#lib/components/ProposalMessages.svelte';
   import ProposalDetails from '#lib/components/ProposalDetails.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
+  import { stayPut } from '#lib/stay-put.ts';
 
   let { data, form } = $props();
   const p = $derived(data.proposal);
@@ -154,51 +152,12 @@
     {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
   </div>
 
-  <section id="messages" class="grid gap-4" aria-labelledby="messages-heading">
-    <div class="flex items-center gap-1">
-      <h2 id="messages-heading" class="text-xl font-semibold">Messages</h2>
-      <a
-        href="{page.url.pathname}#messages"
-        aria-label="Check for new messages"
-        title="Check for new messages"
-        class="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-      >
-        <RefreshCwIcon class="size-4" aria-hidden="true" />
-      </a>
-    </div>
-    {#if data.hasEarlier}<p class="text-sm text-muted-foreground">
-        Showing the latest 50 messages.
-      </p>{/if}
-    {#if data.messages.length === 0}<p class="text-muted-foreground">No messages yet.</p>{/if}
-    {#key data.messages}
-      <MessageList
-        messages={data.messages}
-        meId={data.member?.id ?? ''}
-        conversationId={p.conversationId}
-      />
-    {/key}
-
-    {#if data.conversation.canWrite}
-      <MessageComposer
-        conversationId={p.conversationId}
-        otherNames={other.displayName}
-        contact={data.contact}
-        sent={Boolean(form?.sent)}
-        status={form?.sent
-          ? 'Your message is sent.'
-          : form?.proposed
-            ? 'Your suggested time was sent.'
-            : form?.shared
-              ? 'Your contact details were shared.'
-              : form?.callAccepted
-                ? 'You accepted the call time. The call itself happens outside wunan, by phone or any app you both use.'
-                : ''}
-        values={form?.values ?? {}}
-        fields={form?.fields ?? {}}
-        sendVariant={p.status === 'open' ? 'outline' : 'default'}
-      />
-    {:else}
-      <p class="text-muted-foreground">This proposal has ended, so no new messages can be added.</p>
-    {/if}
-  </section>
+  <ProposalMessages
+    thread={data}
+    conversationId={p.conversationId}
+    meId={data.member?.id ?? ''}
+    otherName={other.displayName}
+    {form}
+    sendVariant={p.status === 'open' ? 'outline' : 'default'}
+  />
 </section>
