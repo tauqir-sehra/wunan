@@ -27,3 +27,6 @@ apps/web/playwright-report/
 Thumbs.db
 .vscode/
 .idea/
+
+# Personal AI tool settings
+.claude/settings.local.json
