@@ -10,12 +10,14 @@
   import '../app.css';
   import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
+  import { untrack } from 'svelte';
   import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
   import MenuIcon from '@lucide/svelte/icons/menu';
   import ArrowDownLeftIcon from '@lucide/svelte/icons/arrow-down-left';
   import ArrowUpRightIcon from '@lucide/svelte/icons/arrow-up-right';
   import { Button } from '#lib/components/ui/button/index.ts';
   import ReauthForm from '#lib/components/ReauthForm.svelte';
+  import ThemePicker from '#lib/components/ThemePicker.svelte';
   import type { Reauth } from '#lib/form-action.ts';
 
   let { data, children } = $props();
@@ -65,6 +67,8 @@
     if (menu) menu.open = false;
     if (accountMenu) accountMenu.open = false;
   });
+  // Shared by both menus, so the one in view always shows the current choice.
+  let theme = $state(untrack(() => data.theme));
   const reauth = $derived((page.form as { reauth?: Reauth } | null)?.reauth);
 </script>
 
@@ -130,7 +134,7 @@
           <ChevronDownIcon class="size-4" aria-hidden="true" />
         </summary>
         <ul
-          class="absolute right-0 z-40 mt-1 grid min-w-48 gap-0.5 rounded-md border bg-card p-1 shadow-sm"
+          class="absolute right-0 z-40 mt-1 grid min-w-60 gap-0.5 rounded-md border bg-card p-1 shadow-sm"
         >
           {#each account as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
           <li class="border-t pt-0.5">
@@ -140,6 +144,7 @@
               >Sign out</a
             >
           </li>
+          <li class="border-t pt-1"><ThemePicker bind:theme /></li>
         </ul>
       </details>
 
@@ -170,6 +175,7 @@
                 >Sign out</a
               >
             </li>
+            <li class="mt-1 border-t pt-1"><ThemePicker bind:theme /></li>
           </ul>
         </nav>
       </details>

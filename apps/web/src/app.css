@@ -8,55 +8,52 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
 
-/* Dark theme follows the device setting; there is no separate switch to remember. */
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/*
+ * Light or dark follows the device setting, unless the member picks one in the menu: the page
+ * then has data-theme="light" or "dark". Each colour token holds both values with light-dark().
+ */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme='system'], [data-theme='system'] *) {
+      @slot;
+    }
+  }
+}
 
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --popover: #ffffff;
-  --popover-foreground: #1c1917;
-  --primary: #355e50;
-  --primary-foreground: #ffffff;
-  --secondary: #f0eeec;
-  --secondary-foreground: #1c1917;
-  --muted: #f0eeec;
-  --muted-foreground: #57534e;
-  --accent: #e7efeb;
-  --accent-foreground: #1f3d33;
-  --destructive: #b42318;
-  --destructive-foreground: #ffffff;
+  color-scheme: light dark;
+  --background: light-dark(#fafaf9, #171514);
+  --foreground: light-dark(#1c1917, #f5f5f4);
+  --card: light-dark(#ffffff, #211f1d);
+  --card-foreground: light-dark(#1c1917, #f5f5f4);
+  --popover: light-dark(#ffffff, #211f1d);
+  --popover-foreground: light-dark(#1c1917, #f5f5f4);
+  --primary: light-dark(#355e50, #9cc9b6);
+  --primary-foreground: light-dark(#ffffff, #122a22);
+  --secondary: light-dark(#f0eeec, #2a2725);
+  --secondary-foreground: light-dark(#1c1917, #f5f5f4);
+  --muted: light-dark(#f0eeec, #2a2725);
+  --muted-foreground: light-dark(#57534e, #b8b2ad);
+  --accent: light-dark(#e7efeb, #24352f);
+  --accent-foreground: light-dark(#1f3d33, #d7ebe2);
+  --destructive: light-dark(#b42318, #f4847a);
+  --destructive-foreground: light-dark(#ffffff, #1c1917);
   /* Decorative lines (cards, separators) may be light; form controls use --input (≥ 3:1). */
-  --border: #e2dfdc;
-  --input: #78716c;
-  --ring: #355e50;
+  --border: light-dark(#e2dfdc, #3a3633);
+  --input: light-dark(#78716c, #8a837d);
+  --ring: light-dark(#355e50, #9cc9b6);
   --radius: 0.625rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #171514;
-    --foreground: #f5f5f4;
-    --card: #211f1d;
-    --card-foreground: #f5f5f4;
-    --popover: #211f1d;
-    --popover-foreground: #f5f5f4;
-    --primary: #9cc9b6;
-    --primary-foreground: #122a22;
-    --secondary: #2a2725;
-    --secondary-foreground: #f5f5f4;
-    --muted: #2a2725;
-    --muted-foreground: #b8b2ad;
-    --accent: #24352f;
-    --accent-foreground: #d7ebe2;
-    --destructive: #f4847a;
-    --destructive-foreground: #1c1917;
-    --border: #3a3633;
-    --input: #8a837d;
-    --ring: #9cc9b6;
-  }
+/* A choice made in the menu overrides the device setting (see hooks.server.ts). */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 @theme inline {

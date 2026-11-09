@@ -1,9 +1,11 @@
 // Runs on every request to the web app:
 // 1. Reads the session cookie and asks the API who is signed in.
-// 2. Adds security headers to every response (constitution III).
+// 2. Marks the page with the member's light/dark choice on this device (theme.ts).
+// 3. Adds security headers to every response (constitution III).
 import type { Handle } from '@sveltejs/kit/hooks';
 import { clearSessionCookie, SESSION_COOKIE } from '#lib/session.ts';
 import { loadMember } from '#lib/sign-in.ts';
+import { themeFrom } from '#lib/theme.ts';
 
 export const handle: Handle = async ({ event, resolve }) => {
   event.locals.token = event.cookies.get(SESSION_COOKIE);
@@ -15,7 +17,10 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.token = undefined;
   }
 
-  const response = await resolve(event);
+  const theme = themeFrom(event.cookies);
+  const response = await resolve(event, {
+    transformPageChunk: ({ html }) => html.replace('%wunan.theme%', theme)
+  });
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   response.headers.set('Referrer-Policy', 'same-origin');
   response.headers.set('X-Content-Type-Options', 'nosniff');
