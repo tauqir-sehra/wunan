@@ -52,7 +52,12 @@ export default defineConfig({
       command: `npx vite dev --port ${webPort}`,
       url: WEB_URL,
       reuseExistingServer: false,
-      env: { API_INTERNAL_URL: API_URL, SITE_URL: WEB_URL, SVELTEKIT_OUT_DIR: '.svelte-kit-e2e' }
+      env: {
+        API_INTERNAL_URL: API_URL,
+        SITE_URL: WEB_URL,
+        SVELTEKIT_OUT_DIR: '.svelte-kit-e2e',
+        VITE_CACHE_DIR: 'node_modules/.vite-e2e'
+      }
     }
   ]
 });

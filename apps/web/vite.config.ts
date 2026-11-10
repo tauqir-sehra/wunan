@@ -33,5 +33,8 @@ export default defineConfig({
       }
     })
   ],
+  // The browser tests' dev server keeps its own cache of prepared dependencies too; sharing one
+  // makes a running `npm run dev` serve stale files ("Outdated Optimize Dep") after a test run.
+  cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
   server: { port: 5173, strictPort: true }
 });
