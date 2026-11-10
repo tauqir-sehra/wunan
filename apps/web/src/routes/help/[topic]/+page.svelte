@@ -10,7 +10,7 @@
 
 <article class="help grid max-w-2xl gap-4">
   <p><a href="/help">All help topics</a></p>
-  <h1 class="text-2xl font-semibold">{topic.title}</h1>
+  <h1 class="text-2xl font-semibold sm:text-3xl">{topic.title}</h1>
   <topic.content />
   {#if next}
     <p class="mt-4 border-t pt-4">Next: <a href="/help/{next.slug}">{next.title}</a></p>

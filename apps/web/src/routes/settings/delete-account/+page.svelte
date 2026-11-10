@@ -10,7 +10,6 @@
 <svelte:head><title>Leave wunan · Settings · wunan</title></svelte:head>
 
 <section class="grid gap-8">
-
   {#if form?.error && !form?.fields?.password}
     <Notice kind="error"><p>{form.error}</p></Notice>
   {/if}
@@ -43,7 +42,7 @@
       </p>
       <ul class="grid gap-2">
         {#each data.openLoans as loan (loan.id)}
-          <li class="rounded-lg border bg-card p-4">
+          <li class="surface p-4">
             <a href="/agreements/{loan.id}" class="font-medium">{loan.offering.title}</a>
             <span class="block text-sm text-muted-foreground">
               {loan.myRole === 'owner'

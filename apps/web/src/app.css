@@ -25,27 +25,31 @@
 
 :root {
   color-scheme: light dark;
-  --background: light-dark(#fafaf9, #171514);
-  --foreground: light-dark(#1c1917, #f5f5f4);
-  --card: light-dark(#ffffff, #211f1d);
-  --card-foreground: light-dark(#1c1917, #f5f5f4);
-  --popover: light-dark(#ffffff, #211f1d);
-  --popover-foreground: light-dark(#1c1917, #f5f5f4);
-  --primary: light-dark(#355e50, #9cc9b6);
-  --primary-foreground: light-dark(#ffffff, #122a22);
-  --secondary: light-dark(#f0eeec, #2a2725);
-  --secondary-foreground: light-dark(#1c1917, #f5f5f4);
-  --muted: light-dark(#f0eeec, #2a2725);
-  --muted-foreground: light-dark(#57534e, #b8b2ad);
-  --accent: light-dark(#e7efeb, #24352f);
-  --accent-foreground: light-dark(#1f3d33, #d7ebe2);
-  --destructive: light-dark(#b42318, #f4847a);
-  --destructive-foreground: light-dark(#ffffff, #1c1917);
+  --background: light-dark(#f6f5f1, #131211);
+  --foreground: light-dark(#1a1917, #f3f2ef);
+  --card: light-dark(#ffffff, #1c1b19);
+  --card-foreground: light-dark(#1a1917, #f3f2ef);
+  --popover: light-dark(#ffffff, #1c1b19);
+  --popover-foreground: light-dark(#1a1917, #f3f2ef);
+  --primary: light-dark(#2d5a4b, #a3cfbc);
+  --primary-foreground: light-dark(#ffffff, #0f251e);
+  --secondary: light-dark(#eeece7, #262422);
+  --secondary-foreground: light-dark(#1a1917, #f3f2ef);
+  --muted: light-dark(#eeece7, #262422);
+  --muted-foreground: light-dark(#57534c, #b5afa8);
+  --accent: light-dark(#e3ede8, #22332d);
+  --accent-foreground: light-dark(#1c3a30, #d5eae0);
+  --destructive: light-dark(#b3261a, #f2857b);
+  --destructive-foreground: light-dark(#ffffff, #1a1917);
   /* Decorative lines (cards, separators) may be light; form controls use --input (≥ 3:1). */
-  --border: light-dark(#e2dfdc, #3a3633);
-  --input: light-dark(#78716c, #8a837d);
-  --ring: light-dark(#355e50, #9cc9b6);
-  --radius: 0.625rem;
+  --border: light-dark(#e4e1db, #322f2c);
+  --input: light-dark(#77716a, #8a837c);
+  --ring: light-dark(#2d5a4b, #a3cfbc);
+  --radius: 0.875rem;
+  /* Depth without lines: a very soft shadow under cards and the header. No shadow in dark. */
+  --soft-shadow:
+    0 1px 2px light-dark(rgb(26 25 23 / 0.05), transparent),
+    0 4px 16px -6px light-dark(rgb(26 25 23 / 0.08), transparent);
 }
 
 /* A choice made in the menu overrides the device setting (see hooks.server.ts). */
@@ -81,6 +85,121 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --shadow-soft: var(--soft-shadow);
+}
+
+/* A card: the one raised surface used for lists, panels and forms. */
+@utility surface {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background-color: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--soft-shadow);
+}
+
+/*
+ * A choice shown as a pill: a label with a real checkbox or radio inside, so it works without
+ * JavaScript and its state is never colour alone (the box stays visible).
+ */
+@utility choice-chip {
+  display: inline-flex;
+  min-height: 2.75rem;
+  cursor: pointer;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--input);
+  border-radius: 9999px;
+  background-color: var(--card);
+  padding-inline: 1rem;
+  &:hover {
+    background-color: var(--accent);
+  }
+  &:has(:checked) {
+    border-color: var(--primary);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+}
+
+/*
+ * A page with a conversation: what it's about on the left (details, description, status, actions),
+ * its messages on the right. One column on narrow screens, with the messages last.
+ */
+@utility page-columns {
+  display: grid;
+  gap: 1.5rem 2.5rem;
+  @media (min-width: 64rem) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+    align-items: start;
+  }
+}
+
+/*
+ * The conversation itself (MessagePanel.svelte). On wide screens it's a card of fixed height: the
+ * messages scroll inside it and the message box sits at its foot, so neither a new message nor
+ * something added to the one being written moves the box or its buttons (constitution V). When
+ * the window is tall enough it also stays in view while the left side scrolls.
+ */
+@utility message-panel {
+  display: grid;
+  gap: 1rem;
+  @media (min-width: 64rem) {
+    display: flex;
+    flex-direction: column;
+    height: max(30rem, calc(100dvh - 18rem));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background-color: var(--card);
+    box-shadow: var(--soft-shadow);
+    padding: 1rem 1.25rem 1.25rem;
+  }
+  @media (min-width: 64rem) and (min-height: 44rem) {
+    position: sticky;
+    top: 5.25rem;
+  }
+}
+
+/* The scrolling part of the panel. Reversed, so it opens at the newest message (the bottom) and
+   stays there as messages arrive, without JavaScript. It holds one child, so order is unchanged. */
+@utility message-scroll {
+  display: flex;
+  flex-direction: column-reverse;
+  @media (min-width: 64rem) {
+    min-height: 0;
+    flex: 1 1 0;
+    overflow-y: auto;
+    margin-inline: -0.5rem;
+    padding-inline: 0.5rem;
+  }
+}
+
+/*
+ * Two views of one list ("All offerings" / "My offerings"): a quiet track with the current view
+ * raised on it. The links keep their size and weight, so nothing shifts (constitution V).
+ */
+@utility segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-radius: 1.625rem;
+  background-color: var(--muted);
+  padding: 0.25rem;
+  & a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    border-radius: 9999px;
+    padding-inline: 1rem;
+    color: var(--foreground);
+    text-decoration: none;
+  }
+  & a:hover {
+    background-color: color-mix(in oklab, var(--card) 60%, transparent);
+  }
+  & a[aria-current='page'] {
+    background-color: var(--card);
+    box-shadow: var(--soft-shadow);
+  }
 }
 
 @layer base {
@@ -104,8 +223,26 @@
     outline-offset: 2px;
   }
 
+  /* Headings sit a little tighter and never leave one word alone on a line. */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.017em;
+    text-wrap: balance;
+  }
+
+  /* Links stay underlined (never colour alone), with a finer line. */
   a {
-    @apply underline underline-offset-2;
+    @apply underline decoration-1 underline-offset-[3px];
+    text-decoration-color: color-mix(in oklab, currentColor 45%, transparent);
+  }
+  a:hover {
+    text-decoration-color: currentColor;
+  }
+
+  /* Pages jump to #anchors below the fixed header, not under it. */
+  html {
+    scroll-padding-top: 5rem;
   }
 }
 

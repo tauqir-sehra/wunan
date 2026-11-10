@@ -10,7 +10,7 @@
 <svelte:head><title>Help with a request · wunan</title></svelte:head>
 
 <section class="grid max-w-xl gap-5">
-  <h1 class="text-2xl font-semibold">How would you like to help?</h1>
+  <h1 class="text-2xl font-semibold sm:text-3xl">How would you like to help?</h1>
   <p class="text-muted-foreground">
     With <a href="/requests/{request.id}">{request.asker.displayName}'s request: {request.title}</a
     >. Either way, your offering shows on the request so {request.asker.displayName} can propose on it.

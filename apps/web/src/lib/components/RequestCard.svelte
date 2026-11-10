@@ -15,7 +15,8 @@
   );
 </script>
 
-<article class="grid gap-1 rounded-xl border bg-card p-4">
+<!-- The title's link covers the whole card, so anywhere on it opens the request. -->
+<article class="relative grid h-full content-start gap-1.5 surface p-5 hover:border-input">
   <div class="flex flex-wrap items-center gap-2">
     <Badge>{kindLabels[request.kind]}</Badge>
     {#if request.status === 'closed'}<Badge variant="outline"
@@ -26,7 +27,9 @@
       >{/if}
   </div>
   <h3 class="text-lg leading-snug font-semibold">
-    <a href="/requests/{request.id}" class="text-foreground">{request.title}</a>
+    <a href="/requests/{request.id}" class="text-foreground after:absolute after:inset-0"
+      >{request.title}</a
+    >
   </h3>
   <p>{neededText(request.neededAfter, request.neededBy)} · {offers}</p>
   <p class="text-sm text-muted-foreground">

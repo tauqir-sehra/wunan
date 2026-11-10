@@ -40,7 +40,7 @@
 <section class="grid gap-6">
   <header class="grid gap-2">
     <div class="flex items-start justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Agreement</h1>
+      <h1 class="text-2xl font-semibold sm:text-3xl">Agreement</h1>
       <HelpLink topic="agreements" label="Help with agreements" />
     </div>
     <p class="text-lg">{agreementSentence(a)}</p>
@@ -52,96 +52,99 @@
         · <a href="/proposals/{a.proposalId}">The proposal</a>{/if}
     </p>
   </header>
+  <!-- Wide screens: what was agreed on the left, the messages about it on the right. -->
+  <div class="page-columns">
+    <div class="grid gap-6">
+      <dl class="grid gap-x-4 gap-y-3 surface p-5 sm:grid-cols-[10rem_1fr]">
+        {#if a.startsAt}<dt class="font-medium">When</dt>
+          <dd>
+            {a.hasTime
+              ? when(a.startsAt)
+              : new Date(a.startsAt).toLocaleDateString('en-GB', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'long'
+                })}
+          </dd>{/if}
+        {#if a.handover}<dt class="font-medium">How</dt>
+          <dd>{handoverText(a.offering.type, a.handover, names)}</dd>{/if}
+        {#if a.place}<dt class="font-medium">Where</dt>
+          <dd>{placeText(a.place)}</dd>{/if}
+        {#if a.amount}<dt class="font-medium">How much</dt>
+          <dd>{quantity(a.amount, a.offering.unit)}</dd>{/if}
+        {#if offer}<dt class="font-medium">In return</dt>
+          <dd>{offer}</dd>{/if}
+        {#if a.sessionLength && a.sessionLengthUnit}<dt class="font-medium">Each time</dt>
+          <dd>{duration(a.sessionLength, a.sessionLengthUnit)}</dd>{/if}
+        {#if a.sessions}<dt class="font-medium">How many times</dt>
+          <dd>{a.sessions}</dd>{/if}
+        {#if a.loanStartsAt && a.loanEndsAt}<dt class="font-medium">Loan</dt>
+          <dd>{when(a.loanStartsAt)} to {when(a.loanEndsAt)}</dd>{/if}
+      </dl>
 
-  <dl class="grid gap-2 rounded-lg border bg-card p-4 sm:grid-cols-[10rem_1fr]">
-    {#if a.startsAt}<dt class="font-medium">When</dt>
-      <dd>
-        {a.hasTime
-          ? when(a.startsAt)
-          : new Date(a.startsAt).toLocaleDateString('en-GB', {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'long'
-            })}
-      </dd>{/if}
-    {#if a.handover}<dt class="font-medium">How</dt>
-      <dd>{handoverText(a.offering.type, a.handover, names)}</dd>{/if}
-    {#if a.place}<dt class="font-medium">Where</dt>
-      <dd>{placeText(a.place)}</dd>{/if}
-    {#if a.amount}<dt class="font-medium">How much</dt>
-      <dd>{quantity(a.amount, a.offering.unit)}</dd>{/if}
-    {#if offer}<dt class="font-medium">In return</dt>
-      <dd>{offer}</dd>{/if}
-    {#if a.sessionLength && a.sessionLengthUnit}<dt class="font-medium">Each time</dt>
-      <dd>{duration(a.sessionLength, a.sessionLengthUnit)}</dd>{/if}
-    {#if a.sessions}<dt class="font-medium">How many times</dt>
-      <dd>{a.sessions}</dd>{/if}
-    {#if a.loanStartsAt && a.loanEndsAt}<dt class="font-medium">Loan</dt>
-      <dd>{when(a.loanStartsAt)} to {when(a.loanEndsAt)}</dd>{/if}
-  </dl>
-
-  {#if a.earlierLoanNotBack}
-    <InfoNote
-      >The previous loan of this item hasn't been marked returned yet (it was due back {when(
-        a.earlierLoanNotBack.endsAt
-      )}). It may be worth checking with each other before the pickup.</InfoNote
-    >
-  {/if}
-
-  {#if a.outcome === 'lent'}
-    <div id="loan" class="grid gap-3">
-      <p>
-        {#if a.returnedAt}Returned on {fullDay(a.returnedAt)}.
-        {:else if a.overdue}It was due back {when(a.loanEndsAt ?? a.createdAt)}. No rush: talk it
-          over, and the owner can mark it returned when it's back.
-        {/if}
-      </p>
-      {#if a.myRole === 'owner' && !a.returnedAt}
-        <form method="POST" action="?/returned#loan" use:enhance={stayPut()}>
-          <Button type="submit">Mark returned</Button>
-        </form>
+      {#if a.earlierLoanNotBack}
+        <InfoNote
+          >The previous loan of this item hasn't been marked returned yet (it was due back {when(
+            a.earlierLoanNotBack.endsAt
+          )}). It may be worth checking with each other before the pickup.</InfoNote
+        >
       {/if}
-      {#if form?.done === 'returned'}<Notice
-          ><p>Marked as returned. Those dates are free again.</p></Notice
-        >{/if}
-      {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
+
+      {#if a.outcome === 'lent'}
+        <div id="loan" class="grid gap-3">
+          <p>
+            {#if a.returnedAt}Returned on {fullDay(a.returnedAt)}.
+            {:else if a.overdue}It was due back {when(a.loanEndsAt ?? a.createdAt)}. No rush: talk
+              it over, and the owner can mark it returned when it's back.
+            {/if}
+          </p>
+          {#if a.myRole === 'owner' && !a.returnedAt}
+            <form method="POST" action="?/returned#loan" use:enhance={stayPut()}>
+              <Button type="submit">Mark returned</Button>
+            </form>
+          {/if}
+          {#if form?.done === 'returned'}<Notice
+              ><p>Marked as returned. Those dates are free again.</p></Notice
+            >{/if}
+          {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
+        </div>
+      {/if}
+
+      {#if a.reports?.length}
+        <section class="grid gap-2" aria-labelledby="help-heading">
+          <h2 id="help-heading" class="text-lg font-semibold">Asking for help</h2>
+          <ul class="grid gap-2">
+            {#each a.reports as report (report.id)}
+              <li>
+                <a href="/reports/{report.id}"
+                  >{report.status === 'open' ? 'Open request for help' : 'Settled'}</a
+                >
+                {#if report.outcomeNote}<span class="text-muted-foreground">
+                    — {report.outcomeNote}</span
+                  >{/if}
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      {#if a.myRole !== 'mediator' && !a.reports?.some((r) => r.status === 'open')}
+        <p class="text-muted-foreground">
+          Something went wrong? <a href="/agreements/{a.id}/report">Ask for help</a> from the invite chain.
+        </p>
+      {/if}
     </div>
-  {/if}
-
-  {#if a.reports?.length}
-    <section class="grid gap-2" aria-labelledby="help-heading">
-      <h2 id="help-heading" class="text-lg font-semibold">Asking for help</h2>
-      <ul class="grid gap-2">
-        {#each a.reports as report (report.id)}
-          <li>
-            <a href="/reports/{report.id}"
-              >{report.status === 'open' ? 'Open request for help' : 'Settled'}</a
-            >
-            {#if report.outcomeNote}<span class="text-muted-foreground">
-                — {report.outcomeNote}</span
-              >{/if}
-          </li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
-
-  {#if a.myRole !== 'mediator' && !a.reports?.some((r) => r.status === 'open')}
-    <p class="text-muted-foreground">
-      Something went wrong? <a href="/agreements/{a.id}/report">Ask for help</a> from the invite chain.
-    </p>
-  {/if}
-
-  {#if data.thread && data.conversationId}
-    <ProposalMessages
-      thread={data.thread}
-      conversationId={data.conversationId}
-      meId={data.member?.id ?? ''}
-      otherName={other.displayName}
-      {form}
-      sendVariant={a.outcome === 'lent' && a.myRole === 'owner' && !a.returnedAt
-        ? 'outline'
-        : 'default'}
-    />
-  {/if}
+    {#if data.thread && data.conversationId}
+      <ProposalMessages
+        thread={data.thread}
+        conversationId={data.conversationId}
+        meId={data.member?.id ?? ''}
+        otherName={other.displayName}
+        {form}
+        sendVariant={a.outcome === 'lent' && a.myRole === 'owner' && !a.returnedAt
+          ? 'outline'
+          : 'default'}
+      />
+    {/if}
+  </div>
 </section>

@@ -13,10 +13,10 @@
   import { stayPut } from '#lib/stay-put.ts';
   import MessageBox from '#lib/components/MessageBox.svelte';
   import MessageItem from '#lib/components/MessageItem.svelte';
+  import MessagePanel from '#lib/components/MessagePanel.svelte';
   import PopupDialog from '#lib/components/PopupDialog.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import { PUBLIC_MESSAGE_LIMIT, type PublicMessage, type PublicThread } from '@wunan/shared';
-  import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
   import { onMount } from 'svelte';
 
   let {
@@ -83,19 +83,11 @@
   const posting = $derived(form?.values?.body !== undefined);
 </script>
 
-<section id="public-messages" class="grid gap-4" aria-labelledby="public-heading">
-  <div class="flex items-center gap-1">
-    <h2 id="public-heading" class="text-xl font-semibold">Public messages</h2>
-    <a
-      href="{page.url.pathname}#public-messages"
-      aria-label="Check for new public messages"
-      title="Check for new public messages"
-      class="inline-flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-    >
-      <RefreshCwIcon class="size-4" aria-hidden="true" />
-    </a>
-  </div>
-
+<MessagePanel
+  id="public-messages"
+  heading="Public messages"
+  refreshLabel="Check for new public messages"
+>
   {#if thread.hasEarlier}<p>
       <a href={earlierHref} class="inline-flex min-h-11 items-center">Show earlier messages</a>
     </p>{/if}
@@ -122,8 +114,10 @@
             <input type="hidden" name="confirmed" value="yes" />
             <span class="text-sm">Remove this message?</span>
             <Button type="submit" variant="destructive" size="sm">Yes, remove it</Button>
-            <a href="{page.url.pathname}#public-messages" class="text-sm" data-sveltekit-reset="false"
-              >Keep it</a
+            <a
+              href="{page.url.pathname}#public-messages"
+              class="text-sm"
+              data-sveltekit-reset="false">Keep it</a
             >
           </form>
         {/if}
@@ -147,7 +141,9 @@
           {:else}
             <PopupDialog
               label="Raise an issue"
-              bind:open={() => raising[message.id] ?? false, (value) => (raising[message.id] = value)}
+              bind:open={
+                () => raising[message.id] ?? false, (value) => (raising[message.id] = value)
+              }
               variant="ghost"
               class="text-sm font-normal"
               title="Raise an issue with {message.author.displayName}"
@@ -183,21 +179,24 @@
     <Notice><p>Your request was sent to the person who wrote it.</p></Notice>
   {/if}
 
-  {#if thread.canPost}
-    <MessageBox
-      id="public-body"
-      label="Add a public message"
-      action="?/post#public-messages"
-      hint="Everyone on wunan can read this. Don't share phone numbers or addresses."
-      maxlength={PUBLIC_MESSAGE_LIMIT}
-      buttonLabel="Post"
-      value={posting ? form?.values?.body : ''}
-      error={form?.fields?.body}
-      problem={posting && !form?.fields?.body ? form?.error : undefined}
-      status={form?.done === 'post' ? 'Your message is posted.' : ''}
-    />
-  {:else}
-    <p class="text-muted-foreground">{closedText}</p>
-  {/if}
   <div class="sr-only" aria-live="polite">{announcement}</div>
-</section>
+
+  {#snippet footer()}
+    {#if thread.canPost}
+      <MessageBox
+        id="public-body"
+        label="Add a public message"
+        action="?/post#public-messages"
+        hint="Everyone on wunan can read this. Don't share phone numbers or addresses."
+        maxlength={PUBLIC_MESSAGE_LIMIT}
+        buttonLabel="Post"
+        value={posting ? form?.values?.body : ''}
+        error={form?.fields?.body}
+        problem={posting && !form?.fields?.body ? form?.error : undefined}
+        status={form?.done === 'post' ? 'Your message is posted.' : ''}
+      />
+    {:else}
+      <p class="text-muted-foreground">{closedText}</p>
+    {/if}
+  {/snippet}
+</MessagePanel>

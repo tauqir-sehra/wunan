@@ -28,7 +28,7 @@
 
 <section class="grid max-w-2xl gap-6">
   <div class="grid gap-1">
-    <h1 class="text-2xl font-semibold">Change your proposal</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Change your proposal</h1>
     <p class="text-muted-foreground">
       For <a href="/offerings/{data.offering.id}">{data.offering.title}</a> ·
       <a href="/proposals/{data.proposal.id}">Back to the proposal</a>

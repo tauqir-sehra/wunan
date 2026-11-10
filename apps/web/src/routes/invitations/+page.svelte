@@ -32,7 +32,7 @@
 <section class="grid gap-6">
   <div class="grid gap-2">
     <div class="flex items-start justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Invite someone</h1>
+      <h1 class="text-2xl font-semibold sm:text-3xl">Invite someone</h1>
       <HelpLink topic="joining" label="How invitations work" />
     </div>
     <p class="text-muted-foreground">
@@ -42,7 +42,7 @@
   </div>
 
   {#if form?.created}
-    <div class="grid gap-3 rounded-lg border border-input bg-card p-4">
+    <div class="grid gap-3 surface p-4">
       <p role="status" class="font-medium">Your invitation link is ready. Send it to one person.</p>
       <label for="invite-link" class="text-sm text-muted-foreground">
         This link is shown only once and works for 14 days.
@@ -79,7 +79,7 @@
   {:else}
     <ul class="grid gap-3">
       {#each data.invitations as invite (invite.id)}
-        <li class="grid gap-2 rounded-lg border bg-card p-4">
+        <li class="grid gap-2 surface p-4">
           <p>
             <span class="font-medium">{statusText[invite.status]}</span>
             {#if invite.usedBy}

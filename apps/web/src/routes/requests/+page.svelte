@@ -1,5 +1,6 @@
 <script lang="ts">
   import HelpLink from '#lib/components/HelpLink.svelte';
+  import PlaceField from '#lib/components/PlaceField.svelte';
   import RequestCard from '#lib/components/RequestCard.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import { Input } from '#lib/components/ui/input/index.ts';
@@ -7,6 +8,7 @@
   import { kindLabels } from '#lib/format.ts';
   import type { RequestKind, RequestSummary } from '@wunan/shared';
   import ArrowDownLeftIcon from '@lucide/svelte/icons/arrow-down-left';
+  import SearchIcon from '@lucide/svelte/icons/search';
   import { tick } from 'svelte';
 
   let { data } = $props();
@@ -56,8 +58,6 @@
       f.area && `Area: ${f.area}`
     ].filter(Boolean) as string[]
   );
-  const tabClass =
-    'inline-flex min-h-11 items-center rounded-md px-3 no-underline hover:bg-accent aria-[current=page]:bg-accent';
   const unseen = $derived(data.summary?.unseenRequestFlags ?? 0);
 </script>
 
@@ -65,7 +65,7 @@
 
 <section class="grid gap-6">
   <div class="flex flex-wrap items-start justify-between gap-3">
-    <h1 class="text-2xl font-semibold">What people are asking for</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">What people are asking for</h1>
     <div class="flex flex-wrap items-center gap-3">
       <Button href="/requests/new" size="action"
         ><ArrowDownLeftIcon class="size-5" aria-hidden="true" />Request something</Button
@@ -75,18 +75,12 @@
   </div>
 
   <nav aria-label="Which requests">
-    <ul class="flex flex-wrap gap-1">
+    <ul class="segmented">
       <li>
-        <a href="/requests" class={tabClass} aria-current={data.mine ? undefined : 'page'}
-          >All requests</a
-        >
+        <a href="/requests" aria-current={data.mine ? undefined : 'page'}>All requests</a>
       </li>
       <li>
-        <a
-          href="/requests?mine=true"
-          class={tabClass}
-          aria-current={data.mine ? 'page' : undefined}
-        >
+        <a href="/requests?mine=true" aria-current={data.mine ? 'page' : undefined}>
           My requests
           {#if unseen}<span
               class="ml-1.5 rounded-full bg-primary px-1.5 text-xs leading-5 font-semibold text-primary-foreground"
@@ -98,80 +92,81 @@
   </nav>
 
   {#if !data.mine}
-    <form
-      method="GET"
-      action="/requests"
-      class="grid gap-4 rounded-xl border bg-card p-4"
-      role="search"
-    >
+    <form method="GET" action="/requests" class="grid gap-5 surface p-5" role="search">
       <div class="grid gap-1.5">
         <Label for="q">What could you help with?</Label>
-        <Input
-          id="q"
-          name="q"
-          type="search"
-          value={f.q}
-          placeholder="For example: drill, sofa, haircut"
-        />
-      </div>
-      <fieldset class="grid min-w-0 gap-2">
-        <legend class="text-base font-medium">Kind</legend>
-        <div class="flex flex-wrap gap-x-5 gap-y-1">
-          {#each Object.entries(kindLabels) as [value, label] (value)}
-            <label class="flex min-h-11 items-center gap-2">
-              <input
-                type="checkbox"
-                name="kind"
-                {value}
-                checked={data.kinds.includes(value as RequestKind)}
-                class="size-5 accent-primary"
-              />
-              {label}
-            </label>
-          {/each}
+        <div class="relative">
+          <SearchIcon
+            class="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="q"
+            name="q"
+            type="search"
+            value={f.q}
+            placeholder="For example: drill, sofa, haircut"
+            class="min-h-12 rounded-full pr-4 pl-12"
+          />
         </div>
-      </fieldset>
-      <div class="grid gap-1.5">
-        <Label for="area"
-          >Area <span class="font-normal text-muted-foreground">(optional)</span></Label
-        >
-        <Input id="area" name="area" value={f.area} class="sm:max-w-xs" />
       </div>
-      <div><Button type="submit" variant="outline">Search</Button></div>
+      <div class="grid gap-x-8 gap-y-5 md:grid-cols-[1fr_18rem]">
+        <fieldset class="grid min-w-0 gap-2">
+          <legend class="text-base font-medium">Kind</legend>
+          <div class="flex flex-wrap gap-2">
+            {#each Object.entries(kindLabels) as [value, label] (value)}
+              <label class="choice-chip">
+                <input
+                  type="checkbox"
+                  name="kind"
+                  {value}
+                  checked={data.kinds.includes(value as RequestKind)}
+                  class="size-5 accent-primary"
+                />
+                {label}
+              </label>
+            {/each}
+          </div>
+        </fieldset>
+        <PlaceField label="Area" name="area" value={f.area} optional filter />
+      </div>
+      <div class="flex justify-end">
+        <Button type="submit" variant="outline" class="px-7">Search</Button>
+      </div>
     </form>
   {/if}
 
-  <section aria-labelledby="results-heading" class="grid gap-3 border-t pt-6">
-    <h2 id="results-heading" class="text-lg font-semibold">
+  <section aria-labelledby="results-heading" class="grid gap-4">
+    <h2 id="results-heading" class="text-xl font-semibold">
       {data.mine ? 'Your requests' : 'Open requests'}
     </h2>
     {#if active.length && !data.mine}
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Active filters">
         <span class="text-muted-foreground">Showing:</span>
-        {#each active as filter (filter)}<span class="rounded-md bg-muted px-2 py-0.5"
+        {#each active as filter (filter)}<span class="rounded-full bg-muted px-3 py-0.5"
             >{filter}</span
           >{/each}
         <a href="/requests" class="inline-flex min-h-11 items-center">Clear filters</a>
       </div>
     {/if}
     {#if data.requests.length === 0}
-      <p class="rounded-lg border bg-card p-6 text-center">
+      <p class="surface p-6 text-center">
         {data.mine
           ? "You haven't asked for anything yet."
           : "Nobody's asking for anything that matches."}
       </p>
     {:else}
-      <ul class="grid gap-3" bind:this={list}>
+      <ul class="grid gap-4 md:grid-cols-2" bind:this={list}>
         {#each shown as request (request.id)}
           <li><RequestCard {request} showAsker={!data.mine} /></li>
         {/each}
       </ul>
     {/if}
     {#if nextQuery}
-      <p>
+      <p class="text-center">
         <a
           href="/requests?{nextQuery}"
-          class="inline-flex min-h-11 items-center"
+          class="inline-flex min-h-11 items-center rounded-full border border-input bg-card px-6 font-medium no-underline hover:bg-accent"
           onclick={showMore}
           aria-disabled={loading}
         >

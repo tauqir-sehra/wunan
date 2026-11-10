@@ -1,6 +1,7 @@
 <!--
   The app shell: skip link, one consistent header navigation, and the main area. The current page
-  is marked with aria-current and in bold, never colour alone (constitution IV, V). On phones the
+  is marked with aria-current and a filled pill behind it, never colour alone and never a change
+  of weight or size (constitution IV, V). On wide screens the header stays in view. On phones the
   links fold into a "Menu" disclosure; on wide screens your profile, settings, help and signing out
   sit under your name. Both work without JavaScript. "Request something" and "Offer something" are
   always in view, as outlined buttons so each page's own main action stays the one filled button
@@ -79,19 +80,32 @@
   Skip to main content
 </a>
 
-<header class="relative border-b bg-card">
-  <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
+<!-- On wide screens the header stays at the top while the page scrolls; nothing in it moves. -->
+<header class="relative border-b bg-card lg:sticky lg:top-0 lg:z-30">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
     <a
       href="/offerings"
-      class="mr-2 inline-flex min-h-11 items-center text-xl font-semibold text-foreground no-underline"
-      >wunan</a
+      class="mr-3 inline-flex min-h-11 items-center gap-2 text-lg font-semibold tracking-tight text-foreground no-underline"
     >
+      <svg viewBox="0 0 32 32" class="size-7" aria-hidden="true">
+        <rect width="32" height="32" rx="10" class="fill-primary" />
+        <path
+          d="M8 11l3 11 5-8 5 8 3-11"
+          fill="none"
+          class="stroke-primary-foreground"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      wunan
+    </a>
     {#if data.member}
       {#snippet navLink(link: NavLink, extra: string)}
         <a
           href={link.href}
           aria-current={isCurrent(link.href) ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 whitespace-nowrap text-foreground no-underline hover:bg-accent aria-[current=page]:bg-accent {extra}"
+          class="inline-flex min-h-11 items-center gap-1.5 px-3.5 whitespace-nowrap text-foreground no-underline hover:bg-accent aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground {extra}"
         >
           {link.label}
           {#if link.count}
@@ -107,7 +121,7 @@
       <!-- Wide screens: one row of the main places, then your account in a small menu. -->
       <nav aria-label="Main" class="hidden lg:block">
         <ul class="flex items-center gap-0.5">
-          {#each main as link (link.href)}<li>{@render navLink(link, '')}</li>{/each}
+          {#each main as link (link.href)}<li>{@render navLink(link, 'rounded-full')}</li>{/each}
         </ul>
       </nav>
 
@@ -128,19 +142,25 @@
 
       <details class="relative hidden lg:block" bind:this={accountMenu}>
         <summary
-          class="inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md px-3 whitespace-nowrap hover:bg-accent [&::-webkit-details-marker]:hidden"
+          class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full py-1 pr-3 pl-1.5 whitespace-nowrap hover:bg-accent [&::-webkit-details-marker]:hidden"
         >
+          <!-- The initial is drawn by CSS, so the menu's own text is just the name. -->
+          <span
+            class="inline-flex size-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground before:content-[attr(data-initial)]"
+            data-initial={data.member.displayName.slice(0, 1).toUpperCase()}
+            aria-hidden="true"
+          ></span>
           {data.member.displayName}
           <ChevronDownIcon class="size-4" aria-hidden="true" />
         </summary>
-        <ul
-          class="absolute right-0 z-40 mt-1 grid min-w-60 gap-0.5 rounded-md border bg-card p-1 shadow-sm"
-        >
-          {#each account as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
+        <ul class="absolute right-0 z-40 mt-2 grid min-w-60 gap-0.5 surface p-1.5">
+          {#each account as link (link.href)}<li>
+              {@render navLink(link, 'w-full rounded-lg')}
+            </li>{/each}
           <li class="border-t pt-0.5">
             <a
               href="/sign-out"
-              class="inline-flex min-h-11 w-full items-center rounded-md px-3 text-muted-foreground hover:bg-accent"
+              class="inline-flex min-h-11 w-full items-center rounded-lg px-3.5 text-muted-foreground no-underline hover:bg-accent"
               >Sign out</a
             >
           </li>
@@ -151,7 +171,7 @@
       <!-- Narrower screens: everything under "Menu" (works without JavaScript). -->
       <details class="lg:hidden" bind:this={menu}>
         <summary
-          class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md border px-3 font-medium [&::-webkit-details-marker]:hidden"
+          class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-input px-4 font-medium [&::-webkit-details-marker]:hidden"
         >
           <MenuIcon class="size-5" aria-hidden="true" />
           Menu
@@ -162,16 +182,20 @@
         </summary>
         <nav
           aria-label="Main"
-          class="absolute inset-x-0 z-40 mt-2 border-b bg-card px-4 pb-4 shadow-sm"
+          class="absolute inset-x-0 z-40 mt-2 border-b bg-card px-4 pb-4 shadow-soft"
         >
           <ul class="grid gap-0.5">
-            {#each main as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
+            {#each main as link (link.href)}<li>
+                {@render navLink(link, 'w-full rounded-lg')}
+              </li>{/each}
             <li class="mt-1 border-t pt-1"></li>
-            {#each account as link (link.href)}<li>{@render navLink(link, 'w-full')}</li>{/each}
+            {#each account as link (link.href)}<li>
+                {@render navLink(link, 'w-full rounded-lg')}
+              </li>{/each}
             <li>
               <a
                 href="/sign-out"
-                class="inline-flex min-h-11 w-full items-center rounded-md px-3 text-muted-foreground hover:bg-accent"
+                class="inline-flex min-h-11 w-full items-center rounded-lg px-3.5 text-muted-foreground no-underline hover:bg-accent"
                 >Sign out</a
               >
             </li>
@@ -183,7 +207,7 @@
   </div>
 </header>
 
-<main id="main" tabindex="-1" class="mx-auto max-w-5xl px-4 py-8 outline-none">
+<main id="main" tabindex="-1" class="mx-auto max-w-6xl px-4 py-8 outline-none lg:py-10">
   {#if reauth}
     <ReauthForm {reauth} />
   {:else}

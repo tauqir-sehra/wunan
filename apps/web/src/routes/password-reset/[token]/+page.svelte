@@ -9,7 +9,7 @@
 <svelte:head><title>Choose a new password · wunan</title></svelte:head>
 
 <section class="mx-auto grid max-w-md gap-5">
-  <h1 class="text-2xl font-semibold">Choose a new password</h1>
+  <h1 class="text-2xl font-semibold sm:text-3xl">Choose a new password</h1>
   {#if form?.done}
     <Notice><p>Your password has been changed. You can sign in with it now.</p></Notice>
     <div><Button href="/sign-in">Sign in</Button></div>

@@ -17,7 +17,7 @@
 
 <section class="grid max-w-2xl gap-6">
   <div class="grid gap-1">
-    <h1 class="text-2xl font-semibold">Edit request</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Edit request</h1>
     <p class="text-muted-foreground">
       {kindLabels[request.kind]} · <a href="/requests/{request.id}">Back to the request</a>
     </p>

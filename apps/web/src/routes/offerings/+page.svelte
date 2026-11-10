@@ -3,12 +3,14 @@
   import { Button } from '#lib/components/ui/button/index.ts';
   import { Input } from '#lib/components/ui/input/index.ts';
   import { Label } from '#lib/components/ui/label/index.ts';
+  import PlaceField from '#lib/components/PlaceField.svelte';
   import OfferingCard from '#lib/components/OfferingCard.svelte';
   import { page } from '$app/state';
   import Notice from '#lib/components/Notice.svelte';
   import { typeLabels } from '#lib/format.ts';
   import type { Offering, OfferingType } from '@wunan/shared';
   import ArrowUpRightIcon from '@lucide/svelte/icons/arrow-up-right';
+  import SearchIcon from '@lucide/svelte/icons/search';
   import { tick } from 'svelte';
 
   let { data } = $props();
@@ -66,9 +68,6 @@
     { status: 'paused', heading: 'Paused' },
     { status: 'closed', heading: 'Closed' }
   ] as const;
-  // The current tab is shown by its background only, so nothing shifts (constitution V).
-  const tabClass =
-    'inline-flex min-h-11 items-center rounded-md px-3 no-underline hover:bg-accent aria-[current=page]:bg-accent';
   const unseen = $derived(data.summary?.unseenFlags ?? 0);
 </script>
 
@@ -90,7 +89,7 @@
       ><p>Welcome to wunan. You're now a member.</p></Notice
     >{/if}
   <div class="flex flex-wrap items-start justify-between gap-3">
-    <h1 class="text-2xl font-semibold">What people are offering</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">What people are offering</h1>
     <div class="flex flex-wrap items-center gap-3">
       <Button href="/offerings/new" size="action"
         ><ArrowUpRightIcon class="size-5" aria-hidden="true" />Offer something</Button
@@ -100,18 +99,12 @@
   </div>
 
   <nav aria-label="Which offerings">
-    <ul class="flex flex-wrap gap-1">
+    <ul class="segmented">
       <li>
-        <a href="/offerings" class={tabClass} aria-current={data.mine ? undefined : 'page'}
-          >All offerings</a
-        >
+        <a href="/offerings" aria-current={data.mine ? undefined : 'page'}>All offerings</a>
       </li>
       <li>
-        <a
-          href="/offerings?mine=true"
-          class={tabClass}
-          aria-current={data.mine ? 'page' : undefined}
-        >
+        <a href="/offerings?mine=true" aria-current={data.mine ? 'page' : undefined}>
           My offerings
           {#if unseen}<span
               class="ml-1.5 rounded-full bg-primary px-1.5 text-xs leading-5 font-semibold text-primary-foreground"
@@ -124,7 +117,7 @@
 
   {#if data.mine}
     {#if data.myOfferings.length === 0}
-      <p class="rounded-lg border bg-card p-6 text-center">
+      <p class="surface p-6 text-center">
         You haven't offered anything yet. When you do, it shows up here.
       </p>
     {/if}
@@ -133,9 +126,9 @@
       {#if items.length}
         <section class="grid gap-3" aria-labelledby="group-{group.status}">
           <h2 id="group-{group.status}" class="text-lg font-semibold">{group.heading}</h2>
-          <ul class="grid gap-3">
+          <ul class="grid gap-4 md:grid-cols-2">
             {#each items as offering (offering.id)}
-              <li class="grid gap-1">
+              <li class="grid content-start gap-1">
                 <OfferingCard {offering} showOwner={false} />
                 {#if offering.unseenFlags}
                   <p class="text-sm">
@@ -153,86 +146,87 @@
       {/if}
     {/each}
   {:else}
-    <form
-      method="GET"
-      action="/offerings"
-      class="grid gap-4 rounded-xl border bg-card p-4"
-      role="search"
-    >
+    <form method="GET" action="/offerings" class="grid gap-5 surface p-5" role="search">
       <div class="grid gap-1.5">
         <Label for="q">What are you looking for?</Label>
-        <Input
-          id="q"
-          name="q"
-          type="search"
-          value={data.filters.q}
-          placeholder="For example: drill, rice, haircut"
-        />
-      </div>
-      <fieldset class="grid min-w-0 gap-2">
-        <legend class="text-base font-medium">Kind</legend>
-        <div class="flex flex-wrap gap-x-5 gap-y-1">
-          {#each Object.entries(typeLabels) as [value, label] (value)}
-            <label class="flex min-h-11 items-center gap-2">
-              <input
-                type="checkbox"
-                name="type"
-                {value}
-                checked={data.kinds.includes(value as OfferingType)}
-                class="size-5 accent-primary"
-              />
-              {label}
-            </label>
-          {/each}
+        <div class="relative">
+          <SearchIcon
+            class="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="q"
+            name="q"
+            type="search"
+            value={data.filters.q}
+            placeholder="For example: drill, rice, haircut"
+            class="min-h-12 rounded-full pr-4 pl-12"
+          />
         </div>
-      </fieldset>
-      <div class="grid gap-1.5">
-        <Label for="area"
-          >Area <span class="font-normal text-muted-foreground">(optional)</span></Label
-        >
-        <Input id="area" name="area" value={data.filters.area} class="sm:max-w-xs" />
       </div>
-      <label class="flex min-h-11 items-center gap-3">
-        <input
-          type="checkbox"
-          name="includeLent"
-          value="true"
-          checked={Boolean(data.filters.includeLent)}
-          class="size-6 accent-primary"
-        />
-        Include items currently lent out
-      </label>
-      <div><Button type="submit" variant="outline">Search</Button></div>
+      <div class="grid gap-x-8 gap-y-5 md:grid-cols-[1fr_18rem]">
+        <fieldset class="grid min-w-0 gap-2">
+          <legend class="text-base font-medium">Kind</legend>
+          <div class="flex flex-wrap gap-2">
+            {#each Object.entries(typeLabels) as [value, label] (value)}
+              <label class="choice-chip">
+                <input
+                  type="checkbox"
+                  name="type"
+                  {value}
+                  checked={data.kinds.includes(value as OfferingType)}
+                  class="size-5 accent-primary"
+                />
+                {label}
+              </label>
+            {/each}
+          </div>
+        </fieldset>
+        <PlaceField label="Area" name="area" value={data.filters.area} optional filter />
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <label class="flex min-h-11 items-center gap-3">
+          <input
+            type="checkbox"
+            name="includeLent"
+            value="true"
+            checked={Boolean(data.filters.includeLent)}
+            class="size-6 accent-primary"
+          />
+          Include items currently lent out
+        </label>
+        <Button type="submit" variant="outline" class="px-7">Search</Button>
+      </div>
     </form>
 
-    <section aria-labelledby="results-heading" class="grid gap-3 border-t pt-6">
-      <h2 id="results-heading" class="text-lg font-semibold">Results</h2>
+    <section aria-labelledby="results-heading" class="grid gap-4">
+      <h2 id="results-heading" class="text-xl font-semibold">Results</h2>
       {#if active.length}
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label="Active filters">
           <span class="text-muted-foreground">Showing:</span>
-          {#each active as filter (filter)}<span class="rounded-md bg-muted px-2 py-0.5"
+          {#each active as filter (filter)}<span class="rounded-full bg-muted px-3 py-0.5"
               >{filter}</span
             >{/each}
           <a href="/offerings" class="inline-flex min-h-11 items-center">Clear filters</a>
         </div>
       {/if}
       {#if data.offerings.length === 0}
-        <div class="grid gap-2 rounded-lg border bg-card p-6 text-center">
+        <div class="grid gap-2 surface p-6 text-center">
           <p>Nothing matches yet. Try other words or clear the filters.</p>
           {@render askNote()}
         </div>
       {:else}
-        <ul class="grid gap-3" bind:this={list}>
+        <ul class="grid gap-4 md:grid-cols-2" bind:this={list}>
           {#each shown as offering (offering.id)}
             <li><OfferingCard {offering} /></li>
           {/each}
         </ul>
       {/if}
       {#if nextQuery}
-        <p>
+        <p class="text-center">
           <a
             href="/offerings?{nextQuery}"
-            class="inline-flex min-h-11 items-center"
+            class="inline-flex min-h-11 items-center rounded-full border border-input bg-card px-6 font-medium no-underline hover:bg-accent"
             onclick={showMore}
             aria-disabled={loading}
           >

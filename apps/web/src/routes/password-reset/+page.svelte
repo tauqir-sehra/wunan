@@ -9,7 +9,7 @@
 <svelte:head><title>Reset your password · wunan</title></svelte:head>
 
 <section class="mx-auto grid max-w-md gap-5">
-  <h1 class="text-2xl font-semibold">Reset your password</h1>
+  <h1 class="text-2xl font-semibold sm:text-3xl">Reset your password</h1>
   {#if form?.sent}
     <Notice>
       <p>If that email is registered, we've sent a link. It works for one hour.</p>

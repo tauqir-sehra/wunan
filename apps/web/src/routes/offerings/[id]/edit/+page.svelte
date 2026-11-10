@@ -28,7 +28,9 @@
     meetingPlace: 'Meeting place'
   };
   const offering = $derived(data.offering);
-  const values = $derived<Record<string, string>>(form?.values ? { ...offeringValues(offering), ...form.values } : offeringValues(offering));
+  const values = $derived<Record<string, string>>(
+    form?.values ? { ...offeringValues(offering), ...form.values } : offeringValues(offering)
+  );
   const room = $derived(6 - offering.photos.length);
 </script>
 
@@ -36,19 +38,38 @@
 
 <section class="grid max-w-2xl gap-8">
   <div class="grid gap-1">
-    <h1 class="text-2xl font-semibold">Edit offering</h1>
-    <p class="text-muted-foreground">{typeLabels[offering.type]} · <a href="/offerings/{offering.id}">Back to the offering</a></p>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Edit offering</h1>
+    <p class="text-muted-foreground">
+      {typeLabels[offering.type]} · <a href="/offerings/{offering.id}">Back to the offering</a>
+    </p>
   </div>
 
   {#if form?.error}
-    <Notice kind="error"><p>{form.error}</p><FieldProblems fields={form.fields} {labels} /></Notice>
+    <Notice kind="error"
+      ><p>{form.error}</p>
+      <FieldProblems fields={form.fields} {labels} /></Notice
+    >
   {/if}
 
   <form method="POST" action="?/save" class="grid gap-5">
     <input type="hidden" name="type" value={offering.type} />
     <OfferingFields type={offering.type} {values} fields={form?.fields ?? {}} />
-    <PlaceField label="Area" name="area" optional value={values.area} error={form?.fields?.area} hint="Your neighbourhood, or your address if people pick up from you. Others see only the neighbourhood and city until you accept their proposal." />
-    <PlaceField label="Meeting place" name="meetingPlace" optional value={values.meetingPlace} error={form?.fields?.meetingPlace} hint="Needed if you offer to meet somewhere else. A public place works best, like a library or a café." />
+    <PlaceField
+      label="Area"
+      name="area"
+      optional
+      value={values.area}
+      error={form?.fields?.area}
+      hint="Your neighbourhood, or your address if people pick up from you. Others see only the neighbourhood and city until you accept their proposal."
+    />
+    <PlaceField
+      label="Meeting place"
+      name="meetingPlace"
+      optional
+      value={values.meetingPlace}
+      error={form?.fields?.meetingPlace}
+      hint="Needed if you offer to meet somewhere else. A public place works best, like a library or a café."
+    />
     <div><Button type="submit">Save changes</Button></div>
   </form>
 
@@ -65,7 +86,7 @@
     {/if}
 
     {#each offering.photos as photo, index (photo.id)}
-      <div class="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-[8rem_1fr]">
+      <div class="grid gap-3 surface p-4 sm:grid-cols-[8rem_1fr]">
         <img src="/photos/{photo.key}" alt={photo.alt ?? ''} class="w-32 rounded-md" />
         <div class="grid gap-3">
           <form method="POST" action="?/updatePhoto" class="grid gap-2">

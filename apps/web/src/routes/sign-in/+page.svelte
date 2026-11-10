@@ -8,12 +8,14 @@
 
 <svelte:head><title>Sign in · wunan</title></svelte:head>
 
-<section class="mx-auto grid max-w-md gap-5">
-  <h1 class="text-2xl font-semibold">Sign in</h1>
+<section class="mx-auto mt-4 grid max-w-md gap-5 surface p-6 sm:mt-10 sm:p-8">
+  <h1 class="text-2xl font-semibold sm:text-3xl">Sign in</h1>
 
   {#if form?.resent}
     <Notice>
-      <p>If that account is waiting for confirmation, we've sent a new link. Please check your email.</p>
+      <p>
+        If that account is waiting for confirmation, we've sent a new link. Please check your email.
+      </p>
     </Notice>
   {:else if form?.notConfirmed}
     <Notice kind="info">
@@ -28,8 +30,21 @@
   {/if}
 
   <form method="POST" action="?/signIn" class="grid gap-4">
-    <FormField label="Email" name="email" type="email" autocomplete="email" required value={form?.email} />
-    <FormField label="Password" name="password" type="password" autocomplete="current-password" required />
+    <FormField
+      label="Email"
+      name="email"
+      type="email"
+      autocomplete="email"
+      required
+      value={form?.email}
+    />
+    <FormField
+      label="Password"
+      name="password"
+      type="password"
+      autocomplete="current-password"
+      required
+    />
     <Button type="submit">Sign in</Button>
   </form>
 

@@ -29,7 +29,9 @@
   {#if form?.done === 'escalate'}<Notice
       ><p>More help has been asked for. They've joined the conversation.</p></Notice
     >{/if}
-  {#if form?.done === 'share'}<Notice><p>The helpers can now read your messages about this agreement.</p></Notice>{/if}
+  {#if form?.done === 'share'}<Notice
+      ><p>The helpers can now read your messages about this agreement.</p></Notice
+    >{/if}
   {#if form?.done === 'resolve'}<Notice
       ><p>Marked as settled. The note is kept with the agreement.</p></Notice
     >{/if}
@@ -37,7 +39,7 @@
 
   <header class="grid gap-2">
     <div class="flex items-start justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Asking for help: {r.offeringTitle}</h1>
+      <h1 class="text-2xl font-semibold sm:text-3xl">Asking for help: {r.offeringTitle}</h1>
       <HelpLink topic="asking-for-help" label="How asking for help works" />
     </div>
     <p class="text-muted-foreground">
@@ -60,15 +62,18 @@
     {#if r.proposalMessagesShared}
       <p>The messages you two wrote about this agreement are shared with the helpers.</p>
       {#if r.proposalConversationId && r.reporter.id !== data.member?.id && r.reportedMember.id !== data.member?.id}
-        <p><a href="/threads/{r.proposalConversationId}">Read the messages about the agreement</a></p>
+        <p>
+          <a href="/threads/{r.proposalConversationId}">Read the messages about the agreement</a>
+        </p>
       {/if}
     {:else if r.canShareProposalMessages}
       {#if (form as { confirmShare?: boolean } | null)?.confirmShare}
-        <form method="POST" action="?/share" class="grid gap-3 rounded-lg border border-input bg-card p-4">
+        <form method="POST" action="?/share" class="grid gap-3 surface p-4">
           <input type="hidden" name="confirmed" value="yes" />
           <p>
-            Let {r.mediators.map((m) => m.displayName).join(', ') || 'the helpers'} read every message you two wrote about this
-            agreement? They can read them but not write there. This can't be undone.
+            Let {r.mediators.map((m) => m.displayName).join(', ') || 'the helpers'} read every message
+            you two wrote about this agreement? They can read them but not write there. This can't be
+            undone.
           </p>
           <div class="flex flex-wrap items-center gap-3">
             <Button type="submit">Yes, share them</Button>
@@ -76,16 +81,24 @@
           </div>
         </form>
       {:else}
-        <p class="text-muted-foreground">The helpers can't see what you two wrote to each other. You can let them read it, if it would help.</p>
-        <form method="POST" action="?/share"><Button type="submit" variant="outline">Let the helpers read your messages</Button></form>
+        <p class="text-muted-foreground">
+          The helpers can't see what you two wrote to each other. You can let them read it, if it
+          would help.
+        </p>
+        <form method="POST" action="?/share">
+          <Button type="submit" variant="outline">Let the helpers read your messages</Button>
+        </form>
       {/if}
     {:else}
-      <p class="text-muted-foreground">The helpers can't see the messages you two wrote about this agreement unless one of you shares them.</p>
+      <p class="text-muted-foreground">
+        The helpers can't see the messages you two wrote about this agreement unless one of you
+        shares them.
+      </p>
     {/if}
   </section>
 
   {#if r.status === 'resolved'}
-    <section class="grid gap-1 rounded-lg border bg-card p-4" aria-labelledby="settled-heading">
+    <section class="grid gap-1 surface p-4" aria-labelledby="settled-heading">
       <h2 id="settled-heading" class="font-semibold">How it was settled</h2>
       <p class="whitespace-pre-line">{r.outcomeNote}</p>
     </section>

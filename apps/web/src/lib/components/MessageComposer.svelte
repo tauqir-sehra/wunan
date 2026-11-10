@@ -148,14 +148,14 @@
   {#snippet attach()}
     <details bind:this={panel} bind:open class="relative shrink-0">
       <summary
-        class="inline-flex size-11 cursor-pointer list-none items-center justify-center rounded-md border border-input bg-card hover:bg-accent [&::-webkit-details-marker]:hidden"
+        class="inline-flex size-11 cursor-pointer list-none items-center justify-center rounded-full border border-input bg-card hover:bg-accent [&::-webkit-details-marker]:hidden"
         aria-label="Add your contact details or a time to call"
         title="Add contact details or a call time"
       >
         <PlusIcon class="size-5" aria-hidden="true" />
       </summary>
       <div
-        class="absolute right-0 bottom-full z-10 mb-2 grid w-72 max-w-[calc(100vw-2rem)] gap-3 rounded-lg border bg-card p-3 shadow-md"
+        class="absolute right-0 bottom-full z-10 mb-2 grid w-72 max-w-[calc(100vw-2rem)] gap-3 surface p-3 shadow-md"
       >
         <p class="text-sm font-medium">Add to your message</p>
         {#if contact.sharePhone || contact.shareEmail}

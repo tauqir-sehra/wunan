@@ -14,7 +14,7 @@
 <div
   bind:this={ref}
   data-slot="card"
-  class={cn('flex flex-col gap-4 rounded-xl border bg-card py-5 text-card-foreground', className)}
+  class={cn('flex flex-col gap-4 surface py-5 text-card-foreground', className)}
   {...restProps}
 >
   {@render children?.()}

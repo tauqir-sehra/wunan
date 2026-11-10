@@ -16,15 +16,21 @@
   );
 </script>
 
-<!-- The photo sits on the right at a fixed size, so every card's text starts at the same place. -->
-<article class="flex items-start gap-4 rounded-xl border bg-card p-4">
-  <div class="grid min-w-0 flex-1 content-start gap-1">
+<!--
+  The photo sits on the right at a fixed size, so every card's text starts at the same place.
+  The title's link covers the whole card, so anywhere on it opens the offering; the photo sits
+  above that and still opens the photos.
+-->
+<article class="relative flex h-full items-start gap-4 surface p-5 hover:border-input">
+  <div class="grid min-w-0 flex-1 content-start gap-1.5">
     <div class="flex flex-wrap items-center gap-2">
       <Badge>{typeLabels[offering.type]}</Badge>
       {#if status !== 'Available'}<Badge variant="outline">{status}</Badge>{/if}
     </div>
     <h3 class="text-lg leading-snug font-semibold">
-      <a href="/offerings/{offering.id}" class="text-foreground">{offering.title}</a>
+      <a href="/offerings/{offering.id}" class="text-foreground after:absolute after:inset-0"
+        >{offering.title}</a
+      >
     </h3>
     {#if line}<p>{line}</p>{/if}
     {#if wanted}<p>{wanted}</p>{/if}
@@ -33,5 +39,7 @@
       </p>{/if}
     {#if byline}<p class="text-sm text-muted-foreground">{byline}</p>{/if}
   </div>
-  {#if offering.photos.length}<PhotoGallery photos={offering.photos} cover />{/if}
+  {#if offering.photos.length}<div class="relative z-10">
+      <PhotoGallery photos={offering.photos} cover />
+    </div>{/if}
 </article>

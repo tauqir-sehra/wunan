@@ -15,3 +15,12 @@ export function stayPut(
       if (result.type === 'success') onSuccess?.();
     };
 }
+
+/**
+ * For a confirmation that opens under the button that was pressed ("Yes, withdraw it"): if part of
+ * it would be below the bottom of the window, the page scrolls just far enough to show it, and
+ * not at all when it already fits. Use as `use:reveal`.
+ */
+export function reveal(node: HTMLElement) {
+  node.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+}

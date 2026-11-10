@@ -170,7 +170,7 @@
       <div class="grid gap-3 sm:grid-cols-2">
         {#each Object.keys(kindLabels) as option (option)}
           <label
-            class="flex cursor-pointer items-start gap-4 rounded-xl border-2 border-input bg-card p-4 has-[:checked]:border-primary has-[:checked]:bg-accent"
+            class="flex cursor-pointer items-start gap-4 rounded-xl border border-input bg-card p-4 shadow-soft hover:bg-accent/50 has-[:checked]:border-primary has-[:checked]:bg-accent has-[:checked]:ring-1 has-[:checked]:ring-primary"
           >
             <input
               type="radio"

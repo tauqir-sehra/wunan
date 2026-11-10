@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
   import HelpLink from '#lib/components/HelpLink.svelte';
   import { agreementSentence } from '#lib/format.ts';
 
@@ -16,25 +17,43 @@
 
 <section class="grid gap-6">
   <div class="flex items-start justify-between gap-3">
-    <h1 class="text-2xl font-semibold">Agreements</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Agreements</h1>
     <HelpLink topic="agreements" label="Help with agreements" />
   </div>
   {#if data.agreements.length === 0}
-    <p class="text-muted-foreground">No agreements yet. When you agree to share something, it's recorded here.</p>
+    <p class="text-muted-foreground">
+      No agreements yet. When you agree to share something, it's recorded here.
+    </p>
   {/if}
   {#each groups as group (group.key)}
     {@const items = data.agreements.filter((a) => a.group === group.key)}
     {#if items.length}
       <section class="grid gap-3" aria-labelledby="group-{group.key}">
         <h2 id="group-{group.key}" class="text-xl font-semibold">{group.heading}</h2>
-        <ul class="grid gap-3">
+        <ul class="grid gap-4 md:grid-cols-2">
           {#each items as agreement (agreement.id)}
             <li>
-              <a href="/agreements/{agreement.id}" class="grid gap-1 rounded-xl border bg-card p-4 text-foreground no-underline hover:bg-accent">
-                <span class="underline underline-offset-2">{agreementSentence(agreement)}</span>
-                <span class="text-sm text-muted-foreground">
-                  Agreed {new Date(agreement.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}{#if agreement.returnedAt} · Returned{:else if agreement.overdue} · It was due back already{/if}
+              <a
+                href="/agreements/{agreement.id}"
+                class="flex h-full items-center gap-3 surface p-5 text-foreground no-underline hover:border-input"
+              >
+                <span class="grid min-w-0 flex-1 gap-1">
+                  <span class="font-medium underline underline-offset-[3px]"
+                    >{agreementSentence(agreement)}</span
+                  >
+                  <span class="text-sm text-muted-foreground">
+                    Agreed {new Date(agreement.createdAt).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'long'
+                    })}{#if agreement.returnedAt}
+                      · Returned{:else if agreement.overdue}
+                      · It was due back already{/if}
+                  </span>
                 </span>
+                <ChevronRightIcon
+                  class="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
               </a>
             </li>
           {/each}

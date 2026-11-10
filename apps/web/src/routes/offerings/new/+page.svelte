@@ -8,7 +8,15 @@
   import PhotoPicker from '#lib/components/PhotoPicker.svelte';
   import PlaceField from '#lib/components/PlaceField.svelte';
   import Steps from '#lib/components/Steps.svelte';
-  import { duration, handoverText, quantity, timesText, typeHints, typeLabels, unitLabel } from '#lib/format.ts';
+  import {
+    duration,
+    handoverText,
+    quantity,
+    timesText,
+    typeHints,
+    typeLabels,
+    unitLabel
+  } from '#lib/format.ts';
   import { placeValue } from '#lib/offering-form.ts';
   import type { Handover, OfferingType, Unit } from '@wunan/shared';
 
@@ -19,7 +27,9 @@
     form?.values ?? data.prefill ?? (data.startType ? { type: data.startType } : {})
   );
   // Answering a request starts at the details: its type is already fixed.
-  const step = $derived<number>(form?.step ?? Number(form?.values?._step ?? (data.prefill ? 2 : 1)));
+  const step = $derived<number>(
+    form?.step ?? Number(form?.values?._step ?? (data.prefill ? 2 : 1))
+  );
   const fields = $derived<Record<string, string>>(form?.fields ?? {});
   const type = $derived(values.type as OfferingType | undefined);
 
@@ -75,20 +85,35 @@
     const handovers = json<Handover[]>('handovers', []);
     lines.push([
       'Handover',
-      handovers.length ? handovers.map((h) => handoverText(type, h, { lister: 'me', requester: 'the recipient' })).join(', ') : 'To be agreed'
+      handovers.length
+        ? handovers
+            .map((h) => handoverText(type, h, { lister: 'me', requester: 'the recipient' }))
+            .join(', ')
+        : 'To be agreed'
     ]);
     if (type === 'trade') {
       const accepts = json<{ description: string; amount?: string; unit?: Unit }[]>('accepts', []);
       lines.push([
         'In return',
-        accepts.length ? accepts.map((a) => (a.amount ? `${a.description} (${a.amount} ${a.unit ? unitLabel(a.unit) : ''})` : a.description)).join(', ') : 'Open to offers'
+        accepts.length
+          ? accepts
+              .map((a) =>
+                a.amount
+                  ? `${a.description} (${a.amount} ${a.unit ? unitLabel(a.unit) : ''})`
+                  : a.description
+              )
+              .join(', ')
+          : 'Open to offers'
       ]);
     }
     if (type === 'service') {
       if (values.sessionLength && values.sessionLengthUnit)
         lines.push(['Each time', duration(Number(values.sessionLength), values.sessionLengthUnit)]);
       lines.push(['Times available', values.sessionsAvailable || 'No limit']);
-      const times = json<{ weekday: number; startTime: string; endTime: string }[]>('availability', []);
+      const times = json<{ weekday: number; startTime: string; endTime: string }[]>(
+        'availability',
+        []
+      );
       lines.push(['When', times.length ? timesText(times) : 'To be agreed']);
     }
     const label = (name: string) => {
@@ -105,11 +130,15 @@
 
 <section class="grid max-w-2xl gap-6">
   <div class="flex items-start justify-between gap-3">
-    <h1 class="text-2xl font-semibold">Offer something</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Offer something</h1>
     <HelpLink topic="offering" label="Help with offering something" />
   </div>
   {#if data.request}
-    <InfoNote>You're answering {data.request.asker.displayName}'s request: <a href="/requests/{data.request.id}">{data.request.title}</a>. It starts filled in from the request; change anything you like.</InfoNote>
+    <InfoNote
+      >You're answering {data.request.asker.displayName}'s request:
+      <a href="/requests/{data.request.id}">{data.request.title}</a>. It starts filled in from the
+      request; change anything you like.</InfoNote
+    >
   {/if}
   <Steps current={step} {labels} />
 
@@ -117,7 +146,16 @@
     <Notice kind="error">
       <p>{form.error}</p>
       {#if step === 4 && Object.keys(fields).length}
-        <FieldProblems {fields} labels={{ area: 'Area', meetingPlace: 'Meeting place', handovers: 'How it happens', accepts: 'What you’d accept', availability: 'When it’s offered' }} />
+        <FieldProblems
+          {fields}
+          labels={{
+            area: 'Area',
+            meetingPlace: 'Meeting place',
+            handovers: 'How it happens',
+            accepts: 'What you’d accept',
+            availability: 'When it’s offered'
+          }}
+        />
         <p>Use Back to fix them.</p>
       {/if}
     </Notice>
@@ -130,14 +168,17 @@
     {/each}
 
     {#if step === 1}
-      <fieldset class="grid min-w-0 gap-3" aria-describedby={fields.type ? 'type-error' : undefined}>
+      <fieldset
+        class="grid min-w-0 gap-3"
+        aria-describedby={fields.type ? 'type-error' : undefined}
+      >
         <legend class="mb-2 text-lg font-medium">What would you like to share?</legend>
         {#if fields.type}<p id="type-error" class="font-medium text-destructive">
             {fields.type}
           </p>{/if}
         {#each Object.keys(typeLabels) as option (option)}
           <label
-            class="flex cursor-pointer items-start gap-4 rounded-xl border-2 border-input bg-card p-4 has-[:checked]:border-primary has-[:checked]:bg-accent"
+            class="flex cursor-pointer items-start gap-4 rounded-xl border border-input bg-card p-4 shadow-soft hover:bg-accent/50 has-[:checked]:border-primary has-[:checked]:bg-accent has-[:checked]:ring-1 has-[:checked]:ring-primary"
           >
             <input
               type="radio"
@@ -176,7 +217,7 @@
       />
     {:else if step === 4}
       <h2 class="text-lg font-medium">Check it over</h2>
-      <dl class="grid gap-2 rounded-lg border bg-card p-4 sm:grid-cols-[10rem_1fr]">
+      <dl class="grid gap-2 surface p-4 sm:grid-cols-[10rem_1fr]">
         {#each summary as [label, value] (label)}
           <dt class="font-medium">{label}</dt>
           <dd class="whitespace-pre-line text-muted-foreground sm:text-foreground">{value}</dd>

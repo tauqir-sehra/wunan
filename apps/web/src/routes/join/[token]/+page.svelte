@@ -11,10 +11,10 @@
 
 <section class="mx-auto grid max-w-md gap-5">
   {#if !data.valid}
-    <h1 class="text-2xl font-semibold">This invitation can't be used</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">This invitation can't be used</h1>
     <p>{data.message}</p>
   {:else if form?.sent}
-    <h1 class="text-2xl font-semibold">Check your email</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Check your email</h1>
     <p>We've emailed a link to <strong>{form.email}</strong>. The link works for 7 days.</p>
     <p>Open it to finish joining. If you can't find it, check your spam folder.</p>
     {#if form.resent}
@@ -28,7 +28,7 @@
     </form>
     <p><a href={page.url.pathname}>Wrong email? Start again</a></p>
   {:else}
-    <h1 class="text-2xl font-semibold">Join {data.inviterName}'s community</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Join {data.inviterName}'s community</h1>
     <p>{data.inviterName} invited you to wunan, a place to share things with people you trust.</p>
     {#if form?.error}
       <Notice kind="error"><p>{form.error}</p></Notice>

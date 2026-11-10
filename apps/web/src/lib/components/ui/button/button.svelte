@@ -5,30 +5,30 @@
   import { type VariantProps, tv } from 'tailwind-variants';
 
   export const buttonVariants = tv({
-    base: "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md text-base font-medium whitespace-nowrap no-underline disabled:pointer-events-none disabled:opacity-60 aria-disabled:pointer-events-none aria-disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+    base: "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full text-base font-medium whitespace-nowrap no-underline disabled:pointer-events-none disabled:opacity-60 aria-disabled:pointer-events-none aria-disabled:opacity-60 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline: 'border border-input bg-card hover:bg-accent hover:text-accent-foreground',
         // The header's "Request" / "Offer": the filled button's shape and size, outlined in its colour.
-        primaryOutline: 'border-2 border-primary bg-card text-primary hover:bg-accent',
+        primaryOutline: 'border-[1.5px] border-primary bg-card text-primary hover:bg-accent',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline underline-offset-2'
       },
       size: {
         default: 'min-h-11 px-5 py-2',
-        sm: 'min-h-11 px-3',
+        sm: 'min-h-11 px-4',
         // Same box as primaryOutline, so a filled "Offer something" matches the header's outlined one.
-        action: 'min-h-11 gap-1.5 px-3',
+        action: 'min-h-11 gap-1.5 px-4',
         lg: 'min-h-12 px-6 text-lg',
         icon: 'size-11'
       }
     },
     // A filled action button gets an invisible border as wide as primaryOutline's, so both are one size.
     compoundVariants: [
-      { variant: 'default', size: 'action', class: 'border-2 border-transparent' }
+      { variant: 'default', size: 'action', class: 'border-[1.5px] border-transparent' }
     ],
     defaultVariants: { variant: 'default', size: 'default' }
   });

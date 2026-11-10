@@ -3,7 +3,9 @@
 
   let { data } = $props();
   const profile = $derived(data.profile);
-  const joined = $derived(new Date(profile.joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }));
+  const joined = $derived(
+    new Date(profile.joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+  );
   const isMe = $derived(data.member?.id === profile.id);
 </script>
 
@@ -11,7 +13,7 @@
 
 <article class="grid gap-6">
   <header class="grid gap-2">
-    <h1 class="text-2xl font-semibold">{profile.displayName}</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">{profile.displayName}</h1>
     <p class="text-muted-foreground">Joined {joined}</p>
     {#if profile.isFounder}<div><Badge>Founding member</Badge></div>{/if}
   </header>

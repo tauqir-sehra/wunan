@@ -33,7 +33,10 @@ test('raising an issue about a request and closing it keep the page where it was
   await signInAs(page, sam);
   await page.goto(`/requests/${request.id}`);
   await page.waitForLoadState('networkidle');
-  const before = await scrollToBottom(page);
+  // Measured with the button already on screen, so the click itself doesn't scroll the page.
+  await scrollToBottom(page);
+  await page.getByRole('button', { name: 'Raise an issue' }).scrollIntoViewIfNeeded();
+  const before = await scrollY(page);
   expect(before).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Raise an issue' }).click();
   const dialog = page.getByRole('dialog', { name: 'Raise an issue with Rana' });
@@ -69,7 +72,10 @@ test('pausing an offering keeps the page where it was', async ({ page }) => {
   await signInAs(page, sam);
   await page.goto(`/offerings/${drill.id}`);
   await page.waitForLoadState('networkidle');
-  const before = await scrollToBottom(page);
+  await scrollToBottom(page);
+  await page.getByRole('button', { name: 'Pause' }).scrollIntoViewIfNeeded();
+  const before = await scrollY(page);
+  expect(before).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Pause' }).click();
   await expect(page.getByText('Your offering is paused.')).toBeInViewport();
   expect(await scrollY(page)).toBeGreaterThanOrEqual(before - 80);

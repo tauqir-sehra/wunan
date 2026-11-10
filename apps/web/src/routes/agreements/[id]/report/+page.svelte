@@ -15,7 +15,7 @@
 
 <section class="grid max-w-2xl gap-5">
   <div class="flex items-start justify-between gap-3">
-    <h1 class="text-2xl font-semibold">Ask for help</h1>
+    <h1 class="text-2xl font-semibold sm:text-3xl">Ask for help</h1>
     <HelpLink topic="asking-for-help" label="How asking for help works" />
   </div>
   <p>{agreementSentence(a)}</p>
@@ -27,7 +27,7 @@
 
   {#if form?.review !== undefined && form.review !== ''}
     <p>This is what you'll share with {other.displayName} and the person helping:</p>
-    <p class="rounded-lg border border-input bg-card p-4 whitespace-pre-line">{form.review}</p>
+    <p class="surface p-4 whitespace-pre-line">{form.review}</p>
     <form method="POST" action="?/send" class="flex flex-wrap items-center gap-3">
       <input type="hidden" name="description" value={form.review} />
       <Button type="submit">Ask for help</Button>

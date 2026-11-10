@@ -87,3 +87,36 @@ test('"Show more" adds the next results below, without jumping to the top', asyn
   ).toHaveCount(1);
   await expect(showMore).toHaveCount(0);
 });
+
+test('the Area filter suggests neighbourhoods and cities, and says where each one is', async ({
+  page
+}) => {
+  const founder = createFounder('Sam');
+  const suffix = Date.now().toString(36);
+  await createOfferingFor(founder, { type: 'lend', title: `Ladder ${suffix}`, area: 'Riverside' });
+  await createOfferingFor(founder, { type: 'lend', title: `Tent ${suffix}`, area: 'Old Town' });
+  const alex = await createInvitedMember(founder, 'Alex');
+  await signInAs(page, alex);
+  await page.goto('/offerings');
+  await page.waitForLoadState('networkidle');
+
+  const area = page.getByRole('combobox', { name: /^Area/ });
+  await area.pressSequentially('Riv', { delay: 50 });
+  const options = page.getByRole('listbox', { name: 'Suggestions for Area' }).getByRole('option');
+  // Only areas, each once: no street addresses or businesses.
+  await expect(options).toHaveCount(2);
+  await expect(options.nth(0)).toHaveText(
+    /Riverside\s*Neighbourhood · Springfield, United Kingdom/
+  );
+  await expect(options.nth(1)).toHaveText(/Springfield\s*City or town · United Kingdom/);
+  await expectAccessible(page, 'area suggestions on search');
+  await options.nth(0).click();
+  await expect(area).toHaveValue('Riverside');
+
+  await page.getByLabel('What are you looking for?').fill(suffix);
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page).toHaveURL(/area=Riverside/);
+  const results = page.getByRole('main').getByRole('article');
+  await expect(results).toHaveCount(1);
+  await expect(results.getByRole('link', { name: `Ladder ${suffix}` })).toBeVisible();
+});

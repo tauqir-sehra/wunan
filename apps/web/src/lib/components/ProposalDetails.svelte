@@ -71,7 +71,7 @@
   });
 </script>
 
-<dl class="grid gap-2 rounded-lg border bg-card p-4 sm:grid-cols-[10rem_1fr]">
+<dl class="grid gap-x-4 gap-y-3 surface p-5 sm:grid-cols-[10rem_1fr]">
   {#each rows as [label, value] (label)}
     <dt class="font-medium">{label}</dt>
     <dd class={value === notYet ? 'text-muted-foreground' : ''}>{value}</dd>
@@ -99,7 +99,7 @@
   >
 {/if}
 {#if proposal.status === 'open' && proposal.issues.length}
-  <section class="grid gap-1 rounded-lg border border-dashed p-4" aria-labelledby="issues-heading">
+  <section class="grid gap-1.5 rounded-xl bg-muted p-5" aria-labelledby="issues-heading">
     <h2 id="issues-heading" class="font-semibold">
       {proposal.myRole === 'requester'
         ? 'Still to settle before it can be accepted'

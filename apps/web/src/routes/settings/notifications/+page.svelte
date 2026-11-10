@@ -227,10 +227,7 @@
       use:enhance={stayPut(undefined, { reset: false })}
     >
       {#each kinds as kind (kind.type)}
-        <fieldset
-          class="grid min-w-0 gap-2 rounded-lg border bg-card p-4"
-          aria-describedby="hint-{kind.type}"
-        >
+        <fieldset class="grid min-w-0 gap-2 surface p-4" aria-describedby="hint-{kind.type}">
           <legend class="px-1 font-medium">{kind.label}</legend>
           <p id="hint-{kind.type}" class="text-sm text-muted-foreground">{kind.hint}</p>
           <div class="flex flex-wrap gap-x-8">
@@ -333,9 +330,7 @@
     {:else}
       <ul class="grid gap-2">
         {#each data.devices.devices as device (device.id)}
-          <li
-            class="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card p-4"
-          >
+          <li class="flex flex-wrap items-center justify-between gap-3 surface p-4">
             <span>
               <span class="font-medium">{device.label}</span>
               <span class="block text-sm text-muted-foreground"

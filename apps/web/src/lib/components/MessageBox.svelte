@@ -96,7 +96,7 @@
   {#if error}<p id="{id}-error" class="text-sm font-medium text-destructive">{error}</p>{/if}
   <!-- One box: what's added in its own part at the top, then the text, then the characters left. -->
   <div
-    class="overflow-hidden rounded-md border border-input bg-background outline-offset-2 outline-ring has-[textarea:focus-visible]:outline-3 has-[textarea[aria-invalid]]:border-2 has-[textarea[aria-invalid]]:border-destructive"
+    class="overflow-hidden rounded-md border border-input bg-card outline-offset-2 outline-ring has-[textarea:focus-visible]:outline-3 has-[textarea[aria-invalid]]:border-2 has-[textarea[aria-invalid]]:border-destructive"
   >
     {#if attached}{@render attached()}{/if}
     <textarea

@@ -10,7 +10,7 @@
 <svelte:head><title>Raise an issue · wunan</title></svelte:head>
 
 <section class="grid max-w-xl gap-5">
-  <h1 class="text-2xl font-semibold">Raise an issue with {asker}</h1>
+  <h1 class="text-2xl font-semibold sm:text-3xl">Raise an issue with {asker}</h1>
   <p class="text-muted-foreground">
     About <a href="/requests/{data.request.id}">{data.request.title}</a>. For example, to ask them
     to change or close it. It goes only to

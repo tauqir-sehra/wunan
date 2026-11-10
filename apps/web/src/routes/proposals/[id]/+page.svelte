@@ -7,7 +7,7 @@
   import ProposalMessages from '#lib/components/ProposalMessages.svelte';
   import ProposalDetails from '#lib/components/ProposalDetails.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
-  import { stayPut } from '#lib/stay-put.ts';
+  import { reveal, stayPut } from '#lib/stay-put.ts';
 
   let { data, form } = $props();
   const p = $derived(data.proposal);
@@ -50,7 +50,7 @@
 
   <header class="grid gap-1">
     <div class="flex items-start justify-between gap-3">
-      <h1 class="text-2xl font-semibold">
+      <h1 class="text-2xl font-semibold sm:text-3xl">
         {p.myRole === 'requester'
           ? `You asked ${asked[p.offering.type]}`
           : `${p.requester.displayName} asked ${asked[p.offering.type]}`}
@@ -73,91 +73,102 @@
     >
     {#if p.agreementId}<p><a href="/agreements/{p.agreementId}">See the agreement</a></p>{/if}
   {/if}
+  <!-- Wide screens: what's being arranged on the left, the messages about it on the right. -->
+  <div class="page-columns">
+    <div class="grid gap-6">
+      <ProposalDetails proposal={p} />
+      {#if waitingFor}<p>Everything is filled in. Waiting for {waitingFor}.</p>{/if}
 
-  <ProposalDetails proposal={p} />
-  {#if waitingFor}<p>Everything is filled in. Waiting for {waitingFor}.</p>{/if}
-
-  <!-- Accept, decline and withdraw update the page in place; their results show here (constitution V). -->
-  <div id="decision" class="grid gap-4">
-    {#if p.status === 'open'}
-      {#if p.myRole === 'lister'}
-        <!-- Always shown, so the lister knows where it will be; it can't be pressed until nothing blocks it. -->
-        <form
-          method="POST"
-          action="?/accept#decision"
-          class="grid gap-2"
-          use:enhance={stayPut(undefined, { reset: false })}
-        >
-          <input type="hidden" name="version" value={p.version} />
-          <p id="accept-note" class={p.canAccept ? '' : 'text-muted-foreground'}>
-            {p.canAccept
-              ? 'Accepting makes this an agreement on exactly these details.'
-              : `You can accept once ${p.requester.displayName} has filled in everything above. You can ask them in a message.`}
-          </p>
-          <div>
-            <Button type="submit" disabled={!p.canAccept} aria-describedby="accept-note"
-              >Accept</Button
+      <!-- Accept, decline and withdraw update the page in place; their results show here (constitution V). -->
+      <div id="decision" class="flex flex-wrap items-start gap-3">
+        {#if p.status === 'open'}
+          {#if p.myRole === 'lister'}
+            <!-- Always shown, so the lister knows where it will be; it can't be pressed until nothing blocks it. -->
+            <form
+              method="POST"
+              action="?/accept#decision"
+              class="grid w-full gap-2"
+              use:enhance={stayPut(undefined, { reset: false })}
             >
-          </div>
-        </form>
-      {:else}
-        <div><Button href="/proposals/{p.id}/edit">Change details</Button></div>
-      {/if}
+              <input type="hidden" name="version" value={p.version} />
+              <p id="accept-note" class={p.canAccept ? '' : 'text-muted-foreground'}>
+                {p.canAccept
+                  ? 'Accepting makes this an agreement on exactly these details.'
+                  : `You can accept once ${p.requester.displayName} has filled in everything above. You can ask them in a message.`}
+              </p>
+              <div>
+                <Button type="submit" disabled={!p.canAccept} aria-describedby="accept-note"
+                  >Accept</Button
+                >
+              </div>
+            </form>
+          {:else}
+            <div><Button href="/proposals/{p.id}/edit">Change details</Button></div>
+          {/if}
 
-      {@const action = p.myRole === 'lister' ? 'decline' : 'withdraw'}
-      {#if form?.confirm === action}
-        <form
-          method="POST"
-          action="?/{action}#decision"
-          class="grid gap-3 rounded-lg border border-input bg-card p-4"
-          use:enhance={stayPut()}
-        >
-          <input type="hidden" name="confirmed" value="yes" />
-          <p>
-            {action === 'decline'
-              ? `Decline this proposal? ${p.requester.displayName} is told, and can make a new one.`
-              : `Withdraw your proposal? ${p.lister.displayName} is told.`}
-          </p>
-          <FormField
-            label="A note"
-            name="note"
-            multiline
-            optional
-            maxlength={500}
-            hint="Optional. Shown to {other.displayName}."
-          />
-          <div class="flex flex-wrap items-center gap-3">
-            <Button type="submit" variant="destructive"
-              >{action === 'decline' ? 'Yes, decline it' : 'Yes, withdraw it'}</Button
+          {@const action = p.myRole === 'lister' ? 'decline' : 'withdraw'}
+          {#if form?.confirm === action}
+            <form
+              method="POST"
+              action="?/{action}#decision"
+              class="grid w-full gap-3 surface p-5"
+              use:enhance={stayPut()}
+              use:reveal
             >
-            <a href="/proposals/{p.id}#decision" data-sveltekit-reset="false">Keep it open</a>
-          </div>
-        </form>
-      {:else}
-        <form method="POST" action="?/{action}#decision" use:enhance={stayPut()}>
-          <Button type="submit" variant="outline"
-            >{action === 'decline' ? 'Decline' : 'Withdraw'}</Button
-          >
-        </form>
-      {/if}
-    {/if}
-    {#if form?.changed}<Notice kind="error"
-        ><p>{form.changed} The new details are shown above.</p></Notice
-      >{/if}
-    {#if form?.done}<Notice
-        ><p>
-          {form.done === 'declined' ? 'You declined this proposal.' : 'You withdrew your proposal.'}
-        </p></Notice
-      >{/if}
-    {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
+              <input type="hidden" name="confirmed" value="yes" />
+              <p>
+                {action === 'decline'
+                  ? `Decline this proposal? ${p.requester.displayName} is told, and can make a new one.`
+                  : `Withdraw your proposal? ${p.lister.displayName} is told.`}
+              </p>
+              <FormField
+                label="A note"
+                name="note"
+                multiline
+                optional
+                maxlength={500}
+                hint="Optional. Shown to {other.displayName}."
+              />
+              <div class="flex flex-wrap items-center gap-3">
+                <Button type="submit" variant="destructive"
+                  >{action === 'decline' ? 'Yes, decline it' : 'Yes, withdraw it'}</Button
+                >
+                <a href="/proposals/{p.id}#decision" data-sveltekit-reset="false">Keep it open</a>
+              </div>
+            </form>
+          {:else}
+            <form method="POST" action="?/{action}#decision" use:enhance={stayPut()}>
+              <Button type="submit" variant="outline"
+                >{action === 'decline' ? 'Decline' : 'Withdraw'}</Button
+              >
+            </form>
+          {/if}
+        {/if}
+        {#if form?.changed}<div class="w-full">
+            <Notice kind="error"><p>{form.changed} The new details are shown above.</p></Notice>
+          </div>{/if}
+        {#if form?.done}<div class="w-full">
+            <Notice
+              ><p>
+                {form.done === 'declined'
+                  ? 'You declined this proposal.'
+                  : 'You withdrew your proposal.'}
+              </p></Notice
+            >
+          </div>{/if}
+        {#if form?.error}<div class="w-full">
+            <Notice kind="error"><p>{form.error}</p></Notice>
+          </div>{/if}
+      </div>
+    </div>
+
+    <ProposalMessages
+      thread={data}
+      conversationId={p.conversationId}
+      meId={data.member?.id ?? ''}
+      otherName={other.displayName}
+      {form}
+      sendVariant={p.status === 'open' ? 'outline' : 'default'}
+    />
   </div>
-
-  <ProposalMessages
-    thread={data}
-    conversationId={p.conversationId}
-    meId={data.member?.id ?? ''}
-    otherName={other.displayName}
-    {form}
-    sendVariant={p.status === 'open' ? 'outline' : 'default'}
-  />
 </section>

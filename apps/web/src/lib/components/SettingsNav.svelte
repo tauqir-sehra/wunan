@@ -11,14 +11,10 @@
 </script>
 
 <nav aria-label="Settings">
-  <ul class="flex flex-wrap gap-1">
+  <ul class="segmented">
     {#each links as link (link.href)}
       <li>
-        <a
-          href={link.href}
-          aria-current={page.url.pathname === link.href ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center rounded-md px-3 text-foreground no-underline hover:bg-accent aria-[current=page]:bg-accent"
-        >
+        <a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
           {link.label}
         </a>
       </li>
