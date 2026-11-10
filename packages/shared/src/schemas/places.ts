@@ -20,6 +20,9 @@ const PlaceObject = z
     postcode: part,
     neighbourhood: part,
     city: part,
+    // Tell two places with the same name apart ("Berkeley, California" / "Berkeley, England").
+    region: part,
+    country: part,
     lat: z.number().min(-90).max(90).optional(),
     lon: z.number().min(-180).max(180).optional()
   })
@@ -53,6 +56,8 @@ export const PlaceView = z.union([
     postcode: z.string().optional(),
     neighbourhood: z.string().optional(),
     city: z.string().optional(),
+    region: z.string().optional(),
+    country: z.string().optional(),
     lat: z.number().optional(),
     lon: z.number().optional(),
     display: z.string()

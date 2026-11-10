@@ -3,9 +3,14 @@
   While typing, up to 8 suggestions (addresses, neighbourhoods, cities, businesses) appear from
   the operator's place service, following the ARIA combobox pattern: arrow keys move, Enter picks,
   Escape closes, and the number of suggestions is announced. Picking one keeps its parts (so wunan
-  can show "neighbourhood, city" and compare areas); typing your own words is always fine.
+  can show "neighbourhood, city" and compare areas); typing your own words is always fine. Each
+  suggestion says what it is and where ("City or town · California, United States"), because
+  many places share a name.
   The picked place travels in a hidden field `name` as JSON; the text box is `name_text`, so the
   field still works as plain text without JavaScript or when suggestions aren't available.
+  With `filter` (the Area box on the search pages) it's a plain text field called `name` that
+  suggests only neighbourhoods and cities, which is what searches match; picking one fills in
+  its name.
 -->
 <script lang="ts">
   import InfoNote from '#lib/components/InfoNote.svelte';
@@ -19,7 +24,8 @@
     value = null,
     hint,
     error,
-    optional = false
+    optional = false,
+    filter = false
   }: {
     label: string;
     name: string;
@@ -27,6 +33,8 @@
     hint?: string;
     error?: string | undefined;
     optional?: boolean;
+    /** A search filter: plain text, suggesting only neighbourhoods and cities. */
+    filter?: boolean;
   } = $props();
 
   /** A saved value as the place it stands for (a display-only view can't be re-saved, so it's text). */
@@ -48,7 +56,13 @@
     return { label: v.display, source: 'typed' };
   }
 
-  const initial = fromValue(untrack(() => value));
+  const initial = untrack(() =>
+    filter
+      ? typeof value === 'string' && value
+        ? ({ label: value, source: 'typed' } as Place)
+        : null
+      : fromValue(value)
+  );
   let text = $state(initial?.label ?? '');
   let picked = $state<Place | null>(initial?.source === 'suggestion' ? initial : null);
   let options = $state<Place[]>([]);
@@ -92,7 +106,7 @@
       const result = (await response.json()) as { items: Place[]; unavailable: boolean };
       if (call !== latest) return; // A newer lookup is on its way.
       if (result.unavailable) unavailable = true;
-      options = result.items.slice(0, 8);
+      options = (filter ? areasOf(result.items) : result.items).slice(0, 8);
     } catch {
       options = [];
     }
@@ -102,6 +116,26 @@
       options.length === 0
         ? ''
         : `${options.length} ${options.length === 1 ? 'suggestion' : 'suggestions'}. Use the arrow keys to choose.`;
+  }
+
+  /** The neighbourhoods and cities among the results, each once, for the search filter. */
+  function areasOf(places: Place[]): Place[] {
+    const areas: Place[] = [];
+    const seen: string[] = [];
+    for (const { neighbourhood, city, region, country } of places) {
+      const found = [
+        neighbourhood ? { label: neighbourhood, neighbourhood, city } : null,
+        city ? { label: city, city } : null
+      ];
+      for (const area of found) {
+        if (!area) continue;
+        const key = [area.label, area.city, region, country].join('|');
+        if (seen.includes(key)) continue;
+        seen.push(key);
+        areas.push({ ...area, source: 'suggestion', region, country });
+      }
+    }
+    return areas;
   }
 
   function choose(option: Place & { display?: string }) {
@@ -139,6 +173,13 @@
           : place.city
             ? 'City or town'
             : 'Place';
+  /** What it is and where: the city, region and country its label doesn't already say. */
+  function detailOf(place: Place) {
+    const where = [place.city, place.region, place.country].filter(
+      (part): part is string => Boolean(part) && !place.label.includes(part!)
+    );
+    return where.length ? `${kindOf(place)} · ${where.join(', ')}` : kindOf(place);
+  }
 </script>
 
 <div class="relative grid gap-1.5">
@@ -149,7 +190,7 @@
   {#if error}<p id={errorId} class="text-sm font-medium text-destructive">{error}</p>{/if}
   <input
     id="{name}_text"
-    name="{name}_text"
+    name={filter ? name : `${name}_text`}
     type="text"
     autocomplete="off"
     maxlength={200}
@@ -166,7 +207,7 @@
     onkeydown={onKeydown}
     onblur={() => setTimeout(() => (open = false), 150)}
   />
-  <input type="hidden" {name} value={saved} />
+  {#if !filter}<input type="hidden" {name} value={saved} />{/if}
   {#if unavailable}<InfoNote id={noteId}
       >Suggestions aren't available right now. You can type the place.</InfoNote
     >{/if}
@@ -174,7 +215,7 @@
     id={listId}
     role="listbox"
     aria-label="Suggestions for {label}"
-    class="absolute top-full z-10 mt-1 grid w-full gap-0.5 rounded-md border bg-card p-1 shadow-sm {open
+    class="absolute top-full z-10 mt-1 grid w-full gap-0.5 rounded-md border bg-card p-1 shadow-soft {open
       ? ''
       : 'hidden'}"
   >
@@ -183,7 +224,7 @@
         id="{listId}-{index}"
         role="option"
         aria-selected={index === active}
-        class="min-h-11 cursor-pointer rounded px-3 py-2 {index === active
+        class="min-h-11 cursor-pointer rounded-lg px-3 py-2 hover:bg-accent {index === active
           ? 'bg-accent outline-2 outline-primary'
           : ''}"
         onmousedown={(event) => {
@@ -192,7 +233,7 @@
         }}
       >
         <span class="block">{option.label}</span>
-        <span class="block text-sm text-muted-foreground">{kindOf(option)}</span>
+        <span class="block text-sm text-muted-foreground">{detailOf(option)}</span>
       </li>
     {/each}
   </ul>

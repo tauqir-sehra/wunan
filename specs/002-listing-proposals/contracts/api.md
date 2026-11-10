@@ -86,7 +86,7 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /places` | member | `?q=` (3–100 chars) → `{ items: [place] }`, up to 8 suggestions from the operator's place service (research §1). `503 places_unavailable` when it's off, failing, or slow; clients then keep plain text. 60 per member per minute. |
+| `GET /places` | member | `?q=` (3–100 chars) → `{ items: [place] }`, up to 8 suggestions from the operator's place service (research §1), each with its `region` and `country` when known; a city on its own carries them in its `label` too, and results that would read the same are dropped. `503 places_unavailable` when it's off, failing, or slow; clients then keep plain text. 60 per member per minute. |
 
 ## Proposals
 

@@ -17,6 +17,7 @@ offering meeting places, proposals, and agreements.
 | source | enum | `suggestion` (picked from the place service) or `typed` |
 | name, street, houseNumber, postcode | text ≤100, optional | Only for `suggestion` |
 | neighbourhood, city | text ≤100, optional | Only for `suggestion`; used for display and area checks (research §2) |
+| region, country | text ≤100, optional | Only for `suggestion`; tell places with the same name apart, in suggestions and area checks |
 | lat, lon | number, optional | Only for `suggestion` |
 
 What others see is decided by `viewPlace()` in `apps/api/src/modules/places.ts` (research §2): a

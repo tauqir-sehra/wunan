@@ -29,12 +29,13 @@ describe('place suggestions', () => {
     const result = await lookup(token, 'Riv');
     expect(result.status).toBe(200);
     expect(result.body.items).toEqual([
-      expect.objectContaining({ label: 'Riverside, Springfield', neighbourhood: 'Riverside', city: 'Springfield', source: 'suggestion', display: 'Riverside, Springfield' }),
+      expect.objectContaining({ label: 'Riverside, Springfield', neighbourhood: 'Riverside', city: 'Springfield', country: 'United Kingdom', source: 'suggestion', display: 'Riverside, Springfield' }),
       expect.objectContaining({ label: '1 Mill Street, Riverside, Springfield', houseNumber: '1', street: 'Mill Street', postcode: 'SP1 2AB' }),
       expect.objectContaining({ label: 'Riverside Library, Mill Street, Riverside, Springfield', name: 'Riverside Library' })
     ]);
-    const city = (await lookup(token, 'Springfield')).body.items.find((p: { label: string }) => p.label === 'Springfield');
-    expect(city).toMatchObject({ city: 'Springfield' });
+    // A city on its own also names its country, since many towns share a name; others still see just the city.
+    const city = (await lookup(token, 'Springfield')).body.items.find((p: { label: string }) => p.label === 'Springfield, United Kingdom');
+    expect(city).toMatchObject({ city: 'Springfield', country: 'United Kingdom', display: 'Springfield' });
     expect(city.neighbourhood).toBeUndefined();
   });
 

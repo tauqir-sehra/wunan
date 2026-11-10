@@ -31,5 +31,9 @@ describe('places', () => {
     expect(sameArea(springfield, oldTown)).toBe(true);
     expect(sameArea({ ...riverside, neighbourhood: 'RIVERSIDÉ' }, house)).toBe(true);
     expect(sameArea(riverside, typed)).toBeNull();
+    // The same name in another region or country is another place.
+    expect(sameArea({ ...springfield, region: 'Illinois', country: 'United States' }, { ...oldTown, region: 'England', country: 'United Kingdom' })).toBe(false);
+    expect(sameArea({ ...springfield, region: 'Oregon', country: 'United States' }, { ...oldTown, region: 'Illinois', country: 'United States' })).toBe(false);
+    expect(sameArea({ ...springfield, country: 'United Kingdom' }, oldTown)).toBe(true);
   });
 });

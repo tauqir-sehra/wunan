@@ -40,6 +40,10 @@ export function viewPlace(place: Place | null | undefined, { full }: { full: boo
  */
 export function sameArea(area: Place, place: Place): boolean | null {
   if (area.source !== 'suggestion' || place.source !== 'suggestion') return null;
+  // The same name in another region or country is another place (two towns called Berkeley).
+  for (const part of ['country', 'region'] as const) {
+    if (area[part] && place[part] && normalise(area[part]) !== normalise(place[part])) return false;
+  }
   if (area.neighbourhood) {
     return place.neighbourhood ? normalise(area.neighbourhood) === normalise(place.neighbourhood) : false;
   }
@@ -65,7 +69,12 @@ const text = (value: unknown) => (typeof value === 'string' && value.trim() ? va
 const areaTypes = new Set(['district', 'locality', 'suburb', 'neighbourhood']);
 const cityTypes = new Set(['city', 'town', 'village']);
 
-/** One Photon result as a place: its parts, and a label people recognise. */
+/**
+ * One Photon result as a place: its parts, and a label people recognise. An address or a
+ * neighbourhood is named up to its city ("1 Mill Street, Riverside, Springfield"). A city or
+ * anything larger on its own also names its region and country ("Berkeley, California, United
+ * States"), because many towns share a name.
+ */
 export function toPlace(feature: z.infer<typeof PhotonAnswer>['features'][number]): Place {
   const p = feature.properties;
   const type = text(p.type);
@@ -74,12 +83,15 @@ export function toPlace(feature: z.infer<typeof PhotonAnswer>['features'][number
   const houseNumber = text(p.housenumber);
   const neighbourhood = text(p.district) ?? text(p.locality) ?? (type && areaTypes.has(type) ? name : undefined);
   const city = text(p.city) ?? (type && cityTypes.has(type) ? name : undefined);
+  const region = text(p.state);
+  const country = text(p.country);
   const streetLine = street ? [houseNumber, street].filter(Boolean).join(' ') : undefined;
   const parts = [name !== street && name !== neighbourhood && name !== city ? name : undefined, streetLine, neighbourhood, city];
+  if (!streetLine && !neighbourhood) parts.push(region, country);
   const label = [...new Set(parts.filter((part): part is string => Boolean(part)))].join(', ').slice(0, 200) || 'Unnamed place';
   const [lon, lat] = feature.geometry?.coordinates ?? [];
   return Object.fromEntries(
-    Object.entries({ label, source: 'suggestion', name, street, houseNumber, postcode: text(p.postcode), neighbourhood, city, lat, lon }).filter(([, v]) => v !== undefined)
+    Object.entries({ label, source: 'suggestion', name, street, houseNumber, postcode: text(p.postcode), neighbourhood, city, region, country, lat, lon }).filter(([, v]) => v !== undefined)
   ) as Place;
 }
 
@@ -111,7 +123,15 @@ export async function searchPlaces(q: string): Promise<Place[]> {
     if (!response.ok) throw unavailable();
     const parsed = PhotonAnswer.safeParse(await response.json());
     if (!parsed.success) throw unavailable();
-    places = parsed.data.features.slice(0, 8).map(toPlace);
+    // Two results that would read exactly the same can't be told apart, so only the first is kept.
+    const seen = new Set<string>();
+    places = parsed.data.features
+      .slice(0, 8)
+      .map(toPlace)
+      .filter((place) => {
+        const key = [place.label, place.region, place.country].join('|');
+        return seen.has(key) ? false : Boolean(seen.add(key));
+      });
   } catch {
     throw unavailable();
   }
