@@ -2,7 +2,7 @@
 import { expect, test } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
 import {
-  acceptProposal,
+  acceptArrangement,
   createFounder,
   createInvitedMember,
   createOfferingFor,
@@ -36,7 +36,7 @@ test('the asker proposes from the request, the lister accepts, and the request c
   await page.goto(`/requests/${request.id}`);
   await page
     .getByRole('region', { name: 'Offered for this request' })
-    .getByRole('link', { name: 'Ask to borrow' })
+    .getByRole('link', { name: "I'll take it!" })
     .click();
   await page.waitForLoadState('networkidle');
   await expect(page.getByText("When it's accepted, your request closes.")).toBeVisible();
@@ -45,19 +45,19 @@ test('the asker proposes from the request, the lister accepts, and the request c
   await expectAccessible(page, 'proposal prefilled from a request');
   await page.getByRole('button', { name: 'Send proposal' }).click();
   await expect(page.getByText('For your request: Drill')).toBeVisible();
-  const proposalId = page.url().split('/proposals/')[1]!.split('?')[0]!;
+  const proposalId = page.url().split('/arrangements/')[1]!.split('?')[0]!;
 
   // The handover and time weren't in the request, so Rana fills them in before Sam accepts.
-  await page.goto(`/proposals/${proposalId}/edit`);
+  await page.goto(`/arrangements/${proposalId}/edit`);
   await page.waitForLoadState('networkidle');
   await page.getByRole('radio', { name: 'Online' }).check();
   await page.getByLabel('Time').fill('10:00');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await acceptProposal(sam, proposalId);
+  await acceptArrangement(sam, proposalId);
 
   await page.goto(`/requests/${request.id}`);
   await expect(page.getByText('Closed: settled by an agreement')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'See the agreement' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'See the arrangement' })).toBeVisible();
   await page.goto(`/offerings/${drill.id}`);
   await expect(page.getByRole('heading', { name: 'Cordless drill', level: 1 })).toBeVisible();
 });

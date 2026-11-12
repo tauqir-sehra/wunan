@@ -7,7 +7,7 @@
 ## Summary
 
 Give each exchange one place from the first ask to its end. The "Proposals" and "Agreements" lists
-and pages become one "Arrangements" list (grouped as Needs you / In progress / Finished) and one
+and pages become one "Arrangements" list (grouped as Waiting on you / In progress / Finished) and one
 arrangement page with a stage, a timeline, the details, the actions, and the messages. The rules of
 002 and 003 don't change; two small behaviours are new: asking again after an arrangement ended
 reopens the same one, and an agreed gift, trade or service can be marked as done (and un-marked).
@@ -60,7 +60,7 @@ about 10 browser specs and 6 API test files updated or renamed.
 
 | Principle | Gate | Status |
 |-----------|------|--------|
-| I. People Over Extraction | No engagement mechanics; export stays complete | ✅ Pass. "Needs you" lists only things the member can actually do; "Mark as done" is optional, never reminded, counted or nudged (FR-009a) and sends no notification. No new data is collected beyond `doneAt` / `doneById`. Export gains an `arrangements` section covering everything `proposals` and `agreements` did |
+| I. People Over Extraction | No engagement mechanics; export stays complete | ✅ Pass. "Waiting on you" lists only things the member can actually do; "Mark as done" is optional, never reminded, counted or nudged (FR-009a) and sends no notification. No new data is collected beyond `doneAt` / `doneById`. Export gains an `arrangements` section covering everything `proposals` and `agreements` did |
 | II. Simple, Intuitive Workflows | One primary action per page; core workflows not made harder | ✅ Pass. One list and one page replace two of each; the navigation loses a link. The arrangement page has exactly one filled button per stage and role (pages contract table). Decline and Withdraw keep their confirmation; "Mark as done" needs none because "Not done yet" undoes it. Asking is unchanged |
 | III. Security First | Authorization on every endpoint; validated input; review | ✅ Pass. Access is requester and lister, plus helpers read-only and only once agreed (FR-021, FR-021a); everyone else gets `404`. The timeline never carries note text, so helpers learn nothing from it that they couldn't see before. Details are immutable once agreed (service rule + checks). Inputs reuse the 002 Zod schemas. Security review checkpoints: helper access to `GET /arrangements/{id}` and the shared conversation; reopen (only the same requester, only when ended); `done` / `not-done` authorization; export |
 | IV. Accessible (WCAG 2.2 AA) | New widgets accessible | ✅ Pass. The timeline is an ordered list of text lines (markers decorative); the filter is links with `aria-current`; stage is words plus a text badge; the header count is read as words. axe scans in both themes for the list (each group, empty, filtered) and the page at each stage and role |
@@ -147,7 +147,7 @@ apps/web/src/
     ├── arrangements-us1-list.spec.ts        # NEW
     ├── arrangements-us2-page.spec.ts        # NEW: stages, timeline, done, ask again, helper
     ├── arrangements-us3-links.spec.ts       # NEW
-    ├── proposals-us*.spec.ts, requests-us4-agree, us6-problem, stay-put, accessibility,
+    ├── arrangements-002-us*.spec.ts (renamed from proposals-us*), requests-us4-agree, us6-problem, stay-put, accessibility,
     │   helpers/members.ts                    # updated to the new routes and API
     └── (no spec left pointing at /proposals or /agreements)
 

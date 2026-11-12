@@ -1,5 +1,7 @@
 # Contract: Web App Pages (changes for proposals)
 
+> **Since feature 004** the Proposals and Agreements pages (`/proposals…`, `/agreements…`) are replaced by Arrangements: see [004 contracts/pages.md](../../004-arrangements/contracts/pages.md).
+
 Changes to [001 pages](../../001-community-resource-sharing/contracts/pages.md); routes not listed
 are unchanged. The same rules hold: every page calls only the API, has one primary action, shows the
 API's plain-language errors. Every action works without JavaScript except the offering form

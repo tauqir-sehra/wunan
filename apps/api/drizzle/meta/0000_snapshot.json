@@ -1,5 +1,5 @@
 {
-  "id": "2deb3816-25fb-4171-8016-b2d7441385ff",
+  "id": "227e5b37-8ba9-435e-a983-12967276fede",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1580,8 +1580,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.proposal": {
-      "name": "proposal",
+    "public.arrangement": {
+      "name": "arrangement",
       "schema": "",
       "columns": {
         "id": {
@@ -1611,7 +1611,7 @@
         },
         "status": {
           "name": "status",
-          "type": "proposal_status",
+          "type": "arrangement_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -1619,7 +1619,7 @@
         },
         "closed_reason": {
           "name": "closed_reason",
-          "type": "proposal_closed_reason",
+          "type": "arrangement_closed_reason",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": false
@@ -1727,9 +1727,67 @@
           "notNull": true,
           "default": "now()"
         },
-        "accepted_at": {
-          "name": "accepted_at",
+        "agreed_at": {
+          "name": "agreed_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agreed_place": {
+          "name": "agreed_place",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agreed_offer": {
+          "name": "agreed_offer",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loan_starts_at": {
+          "name": "loan_starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loan_ends_at": {
+          "name": "loan_ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loan_period": {
+          "name": "loan_period",
+          "type": "tstzrange",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "case when \"loan_starts_at\" is null then null else tstzrange(\"loan_starts_at\", \"loan_ends_at\") end",
+            "type": "stored"
+          }
+        },
+        "returned_at": {
+          "name": "returned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reminder_sent_at": {
+          "name": "reminder_sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "done_at": {
+          "name": "done_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "done_by_id": {
+          "name": "done_by_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -1749,8 +1807,8 @@
         }
       },
       "indexes": {
-        "proposal_one_open_per_requester": {
-          "name": "proposal_one_open_per_requester",
+        "arrangement_one_not_agreed_per_requester": {
+          "name": "arrangement_one_not_agreed_per_requester",
           "columns": [
             {
               "expression": "offering_id",
@@ -1766,13 +1824,13 @@
             }
           ],
           "isUnique": true,
-          "where": "\"proposal\".\"status\" = 'open'",
+          "where": "\"arrangement\".\"status\" <> 'agreed'",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "proposal_requester_status_idx": {
-          "name": "proposal_requester_status_idx",
+        "arrangement_requester_status_idx": {
+          "name": "arrangement_requester_status_idx",
           "columns": [
             {
               "expression": "requester_id",
@@ -1792,8 +1850,8 @@
           "method": "btree",
           "with": {}
         },
-        "proposal_offering_status_idx": {
-          "name": "proposal_offering_status_idx",
+        "arrangement_offering_status_idx": {
+          "name": "arrangement_offering_status_idx",
           "columns": [
             {
               "expression": "offering_id",
@@ -1813,8 +1871,8 @@
           "method": "btree",
           "with": {}
         },
-        "proposal_quiet_idx": {
-          "name": "proposal_quiet_idx",
+        "arrangement_quiet_idx": {
+          "name": "arrangement_quiet_idx",
           "columns": [
             {
               "expression": "status",
@@ -1836,9 +1894,9 @@
         }
       },
       "foreignKeys": {
-        "proposal_offering_id_offering_id_fk": {
-          "name": "proposal_offering_id_offering_id_fk",
-          "tableFrom": "proposal",
+        "arrangement_offering_id_offering_id_fk": {
+          "name": "arrangement_offering_id_offering_id_fk",
+          "tableFrom": "arrangement",
           "tableTo": "offering",
           "columnsFrom": [
             "offering_id"
@@ -1849,9 +1907,9 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
-        "proposal_requester_id_member_id_fk": {
-          "name": "proposal_requester_id_member_id_fk",
-          "tableFrom": "proposal",
+        "arrangement_requester_id_member_id_fk": {
+          "name": "arrangement_requester_id_member_id_fk",
+          "tableFrom": "arrangement",
           "tableTo": "member",
           "columnsFrom": [
             "requester_id"
@@ -1862,9 +1920,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "proposal_request_id_request_id_fk": {
-          "name": "proposal_request_id_request_id_fk",
-          "tableFrom": "proposal",
+        "arrangement_request_id_request_id_fk": {
+          "name": "arrangement_request_id_request_id_fk",
+          "tableFrom": "arrangement",
           "tableTo": "request",
           "columnsFrom": [
             "request_id"
@@ -1874,33 +1932,70 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "arrangement_done_by_id_member_id_fk": {
+          "name": "arrangement_done_by_id_member_id_fk",
+          "tableFrom": "arrangement",
+          "tableTo": "member",
+          "columnsFrom": [
+            "done_by_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "proposal_closed_has_reason": {
-          "name": "proposal_closed_has_reason",
-          "value": "(\"proposal\".\"status\" = 'closed') = (\"proposal\".\"closed_reason\" is not null)"
+        "arrangement_closed_has_reason": {
+          "name": "arrangement_closed_has_reason",
+          "value": "(\"arrangement\".\"status\" = 'closed') = (\"arrangement\".\"closed_reason\" is not null)"
         },
-        "proposal_positive_numbers": {
-          "name": "proposal_positive_numbers",
-          "value": "\n      (\"proposal\".\"loan_length\" is null or \"proposal\".\"loan_length\" > 0) and (\"proposal\".\"amount\" is null or \"proposal\".\"amount\" > 0)\n      and (\"proposal\".\"own_offer_amount\" is null or \"proposal\".\"own_offer_amount\" > 0)\n      and (\"proposal\".\"session_length\" is null or \"proposal\".\"session_length\" > 0) and (\"proposal\".\"sessions\" is null or \"proposal\".\"sessions\" >= 1)"
+        "arrangement_positive_numbers": {
+          "name": "arrangement_positive_numbers",
+          "value": "\n      (\"arrangement\".\"loan_length\" is null or \"arrangement\".\"loan_length\" > 0) and (\"arrangement\".\"amount\" is null or \"arrangement\".\"amount\" > 0)\n      and (\"arrangement\".\"own_offer_amount\" is null or \"arrangement\".\"own_offer_amount\" > 0)\n      and (\"arrangement\".\"session_length\" is null or \"arrangement\".\"session_length\" > 0) and (\"arrangement\".\"sessions\" is null or \"arrangement\".\"sessions\" >= 1)"
         },
-        "proposal_units_with_numbers": {
-          "name": "proposal_units_with_numbers",
-          "value": "\n      (\"proposal\".\"loan_length\" is null) = (\"proposal\".\"loan_length_unit\" is null)\n      and (\"proposal\".\"session_length\" is null) = (\"proposal\".\"session_length_unit\" is null)\n      and (\"proposal\".\"own_offer_amount\" is null) = (\"proposal\".\"own_offer_unit\" is null)"
+        "arrangement_units_with_numbers": {
+          "name": "arrangement_units_with_numbers",
+          "value": "\n      (\"arrangement\".\"loan_length\" is null) = (\"arrangement\".\"loan_length_unit\" is null)\n      and (\"arrangement\".\"session_length\" is null) = (\"arrangement\".\"session_length_unit\" is null)\n      and (\"arrangement\".\"own_offer_amount\" is null) = (\"arrangement\".\"own_offer_unit\" is null)"
         },
-        "proposal_text_lengths": {
-          "name": "proposal_text_lengths",
-          "value": "\n      (\"proposal\".\"own_offer\" is null or char_length(\"proposal\".\"own_offer\") <= 300)\n      and (\"proposal\".\"decision_note\" is null or char_length(\"proposal\".\"decision_note\") <= 500)"
+        "arrangement_text_lengths": {
+          "name": "arrangement_text_lengths",
+          "value": "\n      (\"arrangement\".\"own_offer\" is null or char_length(\"arrangement\".\"own_offer\") <= 300)\n      and (\"arrangement\".\"decision_note\" is null or char_length(\"arrangement\".\"decision_note\") <= 500)"
+        },
+        "arrangement_agreed_has_time": {
+          "name": "arrangement_agreed_has_time",
+          "value": "(\"arrangement\".\"status\" = 'agreed') = (\"arrangement\".\"agreed_at\" is not null)"
+        },
+        "arrangement_record_only_when_agreed": {
+          "name": "arrangement_record_only_when_agreed",
+          "value": "\n      \"arrangement\".\"status\" = 'agreed' or (\"arrangement\".\"agreed_place\" is null and \"arrangement\".\"agreed_offer\" is null and \"arrangement\".\"loan_starts_at\" is null\n      and \"arrangement\".\"loan_ends_at\" is null and \"arrangement\".\"returned_at\" is null and \"arrangement\".\"reminder_sent_at\" is null and \"arrangement\".\"done_at\" is null)"
+        },
+        "arrangement_loan_period": {
+          "name": "arrangement_loan_period",
+          "value": "\n      (\"arrangement\".\"loan_starts_at\" is null) = (\"arrangement\".\"loan_ends_at\" is null) and (\"arrangement\".\"loan_starts_at\" is null or \"arrangement\".\"loan_starts_at\" < \"arrangement\".\"loan_ends_at\")"
+        },
+        "arrangement_returned_is_a_loan": {
+          "name": "arrangement_returned_is_a_loan",
+          "value": "\"arrangement\".\"returned_at\" is null or \"arrangement\".\"loan_starts_at\" is not null"
+        },
+        "arrangement_done_is_not_a_loan": {
+          "name": "arrangement_done_is_not_a_loan",
+          "value": "\"arrangement\".\"done_at\" is null or \"arrangement\".\"loan_starts_at\" is null"
+        },
+        "arrangement_done_has_who": {
+          "name": "arrangement_done_has_who",
+          "value": "(\"arrangement\".\"done_at\" is null) = (\"arrangement\".\"done_by_id\" is null)"
         }
       },
       "isRLSEnabled": false
     },
-    "public.proposal_offer": {
-      "name": "proposal_offer",
+    "public.arrangement_offer": {
+      "name": "arrangement_offer",
       "schema": "",
       "columns": {
         "id": {
@@ -1910,8 +2005,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "proposal_id": {
-          "name": "proposal_id",
+        "arrangement_id": {
+          "name": "arrangement_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1937,11 +2032,11 @@
         }
       },
       "indexes": {
-        "proposal_offer_once": {
-          "name": "proposal_offer_once",
+        "arrangement_offer_once": {
+          "name": "arrangement_offer_once",
           "columns": [
             {
-              "expression": "proposal_id",
+              "expression": "arrangement_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1960,12 +2055,12 @@
         }
       },
       "foreignKeys": {
-        "proposal_offer_proposal_id_proposal_id_fk": {
-          "name": "proposal_offer_proposal_id_proposal_id_fk",
-          "tableFrom": "proposal_offer",
-          "tableTo": "proposal",
+        "arrangement_offer_arrangement_id_arrangement_id_fk": {
+          "name": "arrangement_offer_arrangement_id_arrangement_id_fk",
+          "tableFrom": "arrangement_offer",
+          "tableTo": "arrangement",
           "columnsFrom": [
-            "proposal_id"
+            "arrangement_id"
           ],
           "columnsTo": [
             "id"
@@ -1973,9 +2068,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "proposal_offer_trade_accept_id_trade_accept_id_fk": {
-          "name": "proposal_offer_trade_accept_id_trade_accept_id_fk",
-          "tableFrom": "proposal_offer",
+        "arrangement_offer_trade_accept_id_trade_accept_id_fk": {
+          "name": "arrangement_offer_trade_accept_id_trade_accept_id_fk",
+          "tableFrom": "arrangement_offer",
           "tableTo": "trade_accept",
           "columnsFrom": [
             "trade_accept_id"
@@ -1991,9 +2086,9 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "proposal_offer_amount": {
-          "name": "proposal_offer_amount",
-          "value": "\"proposal_offer\".\"amount\" is null or \"proposal_offer\".\"amount\" > 0"
+        "arrangement_offer_amount": {
+          "name": "arrangement_offer_amount",
+          "value": "\"arrangement_offer\".\"amount\" is null or \"arrangement_offer\".\"amount\" > 0"
         }
       },
       "isRLSEnabled": false
@@ -2009,8 +2104,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "proposal_id": {
-          "name": "proposal_id",
+        "arrangement_id": {
+          "name": "arrangement_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -2038,12 +2133,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "conversation_proposal_id_proposal_id_fk": {
-          "name": "conversation_proposal_id_proposal_id_fk",
+        "conversation_arrangement_id_arrangement_id_fk": {
+          "name": "conversation_arrangement_id_arrangement_id_fk",
           "tableFrom": "conversation",
-          "tableTo": "proposal",
+          "tableTo": "arrangement",
           "columnsFrom": [
-            "proposal_id"
+            "arrangement_id"
           ],
           "columnsTo": [
             "id"
@@ -2067,11 +2162,11 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "conversation_proposalId_unique": {
-          "name": "conversation_proposalId_unique",
+        "conversation_arrangementId_unique": {
+          "name": "conversation_arrangementId_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "proposal_id"
+            "arrangement_id"
           ]
         }
       },
@@ -2079,7 +2174,7 @@
       "checkConstraints": {
         "conversation_has_one_owner": {
           "name": "conversation_has_one_owner",
-          "value": "(\"conversation\".\"proposal_id\" is null) <> (\"conversation\".\"problem_report_id\" is null)"
+          "value": "(\"conversation\".\"arrangement_id\" is null) <> (\"conversation\".\"problem_report_id\" is null)"
         }
       },
       "isRLSEnabled": false
@@ -2300,279 +2395,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.agreement": {
-      "name": "agreement",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "proposal_id": {
-          "name": "proposal_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "offering_id": {
-          "name": "offering_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "other_member_id": {
-          "name": "other_member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "agreement_outcome",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "starts_at": {
-          "name": "starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "has_time": {
-          "name": "has_time",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "handover": {
-          "name": "handover",
-          "type": "handover",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "place": {
-          "name": "place",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "amount": {
-          "name": "amount",
-          "type": "numeric(12, 3)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sessions": {
-          "name": "sessions",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "session_length": {
-          "name": "session_length",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "session_length_unit": {
-          "name": "session_length_unit",
-          "type": "session_length_unit",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "offer": {
-          "name": "offer",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "loan_starts_at": {
-          "name": "loan_starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "loan_ends_at": {
-          "name": "loan_ends_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "loan_period": {
-          "name": "loan_period",
-          "type": "tstzrange",
-          "primaryKey": false,
-          "notNull": false,
-          "generated": {
-            "as": "case when \"loan_starts_at\" is null then null else tstzrange(\"loan_starts_at\", \"loan_ends_at\") end",
-            "type": "stored"
-          }
-        },
-        "returned_at": {
-          "name": "returned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reminder_sent_at": {
-          "name": "reminder_sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "agreement_owner_idx": {
-          "name": "agreement_owner_idx",
-          "columns": [
-            {
-              "expression": "owner_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "agreement_other_idx": {
-          "name": "agreement_other_idx",
-          "columns": [
-            {
-              "expression": "other_member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "agreement_offering_idx": {
-          "name": "agreement_offering_idx",
-          "columns": [
-            {
-              "expression": "offering_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "agreement_proposal_id_proposal_id_fk": {
-          "name": "agreement_proposal_id_proposal_id_fk",
-          "tableFrom": "agreement",
-          "tableTo": "proposal",
-          "columnsFrom": [
-            "proposal_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "agreement_offering_id_offering_id_fk": {
-          "name": "agreement_offering_id_offering_id_fk",
-          "tableFrom": "agreement",
-          "tableTo": "offering",
-          "columnsFrom": [
-            "offering_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "agreement_owner_id_member_id_fk": {
-          "name": "agreement_owner_id_member_id_fk",
-          "tableFrom": "agreement",
-          "tableTo": "member",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "agreement_other_member_id_member_id_fk": {
-          "name": "agreement_other_member_id_member_id_fk",
-          "tableFrom": "agreement",
-          "tableTo": "member",
-          "columnsFrom": [
-            "other_member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "agreement_proposalId_unique": {
-          "name": "agreement_proposalId_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "proposal_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "agreement_not_with_self": {
-          "name": "agreement_not_with_self",
-          "value": "\"agreement\".\"owner_id\" <> \"agreement\".\"other_member_id\""
-        },
-        "agreement_amount_positive": {
-          "name": "agreement_amount_positive",
-          "value": "\"agreement\".\"amount\" is null or \"agreement\".\"amount\" > 0"
-        },
-        "agreement_sessions_positive": {
-          "name": "agreement_sessions_positive",
-          "value": "\"agreement\".\"sessions\" is null or \"agreement\".\"sessions\" >= 1"
-        },
-        "agreement_loan_has_period": {
-          "name": "agreement_loan_has_period",
-          "value": "(\"agreement\".\"outcome\" = 'lent') = (\"agreement\".\"loan_starts_at\" is not null and \"agreement\".\"loan_ends_at\" is not null and \"agreement\".\"loan_starts_at\" < \"agreement\".\"loan_ends_at\")"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.problem_report": {
       "name": "problem_report",
       "schema": "",
@@ -2584,8 +2406,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "agreement_id": {
-          "name": "agreement_id",
+        "arrangement_id": {
+          "name": "arrangement_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -2636,14 +2458,20 @@
           "primaryKey": false,
           "notNull": false
         },
-        "proposal_messages_shared_at": {
-          "name": "proposal_messages_shared_at",
+        "resolved_at": {
+          "name": "resolved_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "proposal_messages_shared_by_id": {
-          "name": "proposal_messages_shared_by_id",
+        "messages_shared_at": {
+          "name": "messages_shared_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "messages_shared_by_id": {
+          "name": "messages_shared_by_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -2657,11 +2485,11 @@
         }
       },
       "indexes": {
-        "problem_report_agreement_idx": {
-          "name": "problem_report_agreement_idx",
+        "problem_report_arrangement_idx": {
+          "name": "problem_report_arrangement_idx",
           "columns": [
             {
-              "expression": "agreement_id",
+              "expression": "arrangement_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2674,12 +2502,12 @@
         }
       },
       "foreignKeys": {
-        "problem_report_agreement_id_agreement_id_fk": {
-          "name": "problem_report_agreement_id_agreement_id_fk",
+        "problem_report_arrangement_id_arrangement_id_fk": {
+          "name": "problem_report_arrangement_id_arrangement_id_fk",
           "tableFrom": "problem_report",
-          "tableTo": "agreement",
+          "tableTo": "arrangement",
           "columnsFrom": [
-            "agreement_id"
+            "arrangement_id"
           ],
           "columnsTo": [
             "id"
@@ -2726,12 +2554,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "problem_report_proposal_messages_shared_by_id_member_id_fk": {
-          "name": "problem_report_proposal_messages_shared_by_id_member_id_fk",
+        "problem_report_messages_shared_by_id_member_id_fk": {
+          "name": "problem_report_messages_shared_by_id_member_id_fk",
           "tableFrom": "problem_report",
           "tableTo": "member",
           "columnsFrom": [
-            "proposal_messages_shared_by_id"
+            "messages_shared_by_id"
           ],
           "columnsTo": [
             "id"
@@ -2901,8 +2729,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "closed_by_agreement_id": {
-          "name": "closed_by_agreement_id",
+        "closed_by_arrangement_id": {
+          "name": "closed_by_arrangement_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -3040,12 +2868,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "request_closed_by_agreement_id_agreement_id_fk": {
-          "name": "request_closed_by_agreement_id_agreement_id_fk",
+        "request_closed_by_arrangement_id_arrangement_id_fk": {
+          "name": "request_closed_by_arrangement_id_arrangement_id_fk",
           "tableFrom": "request",
-          "tableTo": "agreement",
+          "tableTo": "arrangement",
           "columnsFrom": [
-            "closed_by_agreement_id"
+            "closed_by_arrangement_id"
           ],
           "columnsTo": [
             "id"
@@ -3086,9 +2914,9 @@
           "name": "request_closed_has_reason",
           "value": "(\"request\".\"status\" = 'closed') = (\"request\".\"closed_reason\" is not null)"
         },
-        "request_agreement_only_when_agreed": {
-          "name": "request_agreement_only_when_agreed",
-          "value": "\"request\".\"closed_by_agreement_id\" is null or \"request\".\"closed_reason\" = 'agreed'"
+        "request_arrangement_only_when_agreed": {
+          "name": "request_arrangement_only_when_agreed",
+          "value": "\"request\".\"closed_by_arrangement_id\" is null or \"request\".\"closed_reason\" = 'agreed'"
         }
       },
       "isRLSEnabled": false
@@ -3821,8 +3649,8 @@
         "other"
       ]
     },
-    "public.proposal_closed_reason": {
-      "name": "proposal_closed_reason",
+    "public.arrangement_closed_reason": {
+      "name": "arrangement_closed_reason",
       "schema": "public",
       "values": [
         "nothing_left",
@@ -3830,12 +3658,12 @@
         "member_left"
       ]
     },
-    "public.proposal_status": {
-      "name": "proposal_status",
+    "public.arrangement_status": {
+      "name": "arrangement_status",
       "schema": "public",
       "values": [
         "open",
-        "accepted",
+        "agreed",
         "declined",
         "withdrawn",
         "closed"
@@ -3848,22 +3676,16 @@
         "text",
         "call_accepted",
         "system",
+        "asked",
         "detail_changed",
         "accepted",
         "declined",
         "withdrawn",
         "closed",
+        "returned",
+        "done",
+        "not_done",
         "messages_shared"
-      ]
-    },
-    "public.agreement_outcome": {
-      "name": "agreement_outcome",
-      "schema": "public",
-      "values": [
-        "lent",
-        "gifted",
-        "traded",
-        "provided"
       ]
     },
     "public.escalation_level": {

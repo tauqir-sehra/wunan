@@ -10,10 +10,9 @@ CREATE TYPE "public"."offering_status" AS ENUM('available', 'paused', 'closed');
 CREATE TYPE "public"."offering_type" AS ENUM('lend', 'gift', 'trade', 'service');--> statement-breakpoint
 CREATE TYPE "public"."session_length_unit" AS ENUM('minutes', 'hours', 'days', 'weeks');--> statement-breakpoint
 CREATE TYPE "public"."unit" AS ENUM('item', 'kg', 'g', 'lb', 'oz', 'litre', 'hour', 'portion', 'bag', 'box', 'other');--> statement-breakpoint
-CREATE TYPE "public"."proposal_closed_reason" AS ENUM('nothing_left', 'quiet', 'member_left');--> statement-breakpoint
-CREATE TYPE "public"."proposal_status" AS ENUM('open', 'accepted', 'declined', 'withdrawn', 'closed');--> statement-breakpoint
-CREATE TYPE "public"."message_kind" AS ENUM('text', 'call_accepted', 'system', 'detail_changed', 'accepted', 'declined', 'withdrawn', 'closed', 'messages_shared');--> statement-breakpoint
-CREATE TYPE "public"."agreement_outcome" AS ENUM('lent', 'gifted', 'traded', 'provided');--> statement-breakpoint
+CREATE TYPE "public"."arrangement_closed_reason" AS ENUM('nothing_left', 'quiet', 'member_left');--> statement-breakpoint
+CREATE TYPE "public"."arrangement_status" AS ENUM('open', 'agreed', 'declined', 'withdrawn', 'closed');--> statement-breakpoint
+CREATE TYPE "public"."message_kind" AS ENUM('text', 'call_accepted', 'system', 'asked', 'detail_changed', 'accepted', 'declined', 'withdrawn', 'closed', 'returned', 'done', 'not_done', 'messages_shared');--> statement-breakpoint
 CREATE TYPE "public"."escalation_level" AS ENUM('inviter', 'inviters_inviter', 'founders');--> statement-breakpoint
 CREATE TYPE "public"."report_status" AS ENUM('open', 'resolved');--> statement-breakpoint
 CREATE TYPE "public"."request_closed_reason" AS ENUM('by_asker', 'agreed', 'account_deleted');--> statement-breakpoint
@@ -217,13 +216,13 @@ CREATE TABLE "trade_accept" (
 	CONSTRAINT "trade_accept_amount" CHECK (("trade_accept"."amount" is null or "trade_accept"."amount" > 0) and ("trade_accept"."amount" is null) = ("trade_accept"."unit" is null))
 );
 --> statement-breakpoint
-CREATE TABLE "proposal" (
+CREATE TABLE "arrangement" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"offering_id" uuid NOT NULL,
 	"requester_id" uuid NOT NULL,
 	"request_id" uuid,
-	"status" "proposal_status" DEFAULT 'open' NOT NULL,
-	"closed_reason" "proposal_closed_reason",
+	"status" "arrangement_status" DEFAULT 'open' NOT NULL,
+	"closed_reason" "arrangement_closed_reason",
 	"version" integer DEFAULT 1 NOT NULL,
 	"starts_at" timestamp with time zone,
 	"has_time" boolean DEFAULT false NOT NULL,
@@ -240,40 +239,58 @@ CREATE TABLE "proposal" (
 	"sessions" integer,
 	"decision_note" text,
 	"last_activity_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"accepted_at" timestamp with time zone,
+	"agreed_at" timestamp with time zone,
+	"agreed_place" jsonb,
+	"agreed_offer" jsonb,
+	"loan_starts_at" timestamp with time zone,
+	"loan_ends_at" timestamp with time zone,
+	"loan_period" "tstzrange" GENERATED ALWAYS AS (case when "loan_starts_at" is null then null else tstzrange("loan_starts_at", "loan_ends_at") end) STORED,
+	"returned_at" timestamp with time zone,
+	"reminder_sent_at" timestamp with time zone,
+	"done_at" timestamp with time zone,
+	"done_by_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "proposal_closed_has_reason" CHECK (("proposal"."status" = 'closed') = ("proposal"."closed_reason" is not null)),
-	CONSTRAINT "proposal_positive_numbers" CHECK (
-      ("proposal"."loan_length" is null or "proposal"."loan_length" > 0) and ("proposal"."amount" is null or "proposal"."amount" > 0)
-      and ("proposal"."own_offer_amount" is null or "proposal"."own_offer_amount" > 0)
-      and ("proposal"."session_length" is null or "proposal"."session_length" > 0) and ("proposal"."sessions" is null or "proposal"."sessions" >= 1)),
-	CONSTRAINT "proposal_units_with_numbers" CHECK (
-      ("proposal"."loan_length" is null) = ("proposal"."loan_length_unit" is null)
-      and ("proposal"."session_length" is null) = ("proposal"."session_length_unit" is null)
-      and ("proposal"."own_offer_amount" is null) = ("proposal"."own_offer_unit" is null)),
-	CONSTRAINT "proposal_text_lengths" CHECK (
-      ("proposal"."own_offer" is null or char_length("proposal"."own_offer") <= 300)
-      and ("proposal"."decision_note" is null or char_length("proposal"."decision_note") <= 500))
+	CONSTRAINT "arrangement_closed_has_reason" CHECK (("arrangement"."status" = 'closed') = ("arrangement"."closed_reason" is not null)),
+	CONSTRAINT "arrangement_positive_numbers" CHECK (
+      ("arrangement"."loan_length" is null or "arrangement"."loan_length" > 0) and ("arrangement"."amount" is null or "arrangement"."amount" > 0)
+      and ("arrangement"."own_offer_amount" is null or "arrangement"."own_offer_amount" > 0)
+      and ("arrangement"."session_length" is null or "arrangement"."session_length" > 0) and ("arrangement"."sessions" is null or "arrangement"."sessions" >= 1)),
+	CONSTRAINT "arrangement_units_with_numbers" CHECK (
+      ("arrangement"."loan_length" is null) = ("arrangement"."loan_length_unit" is null)
+      and ("arrangement"."session_length" is null) = ("arrangement"."session_length_unit" is null)
+      and ("arrangement"."own_offer_amount" is null) = ("arrangement"."own_offer_unit" is null)),
+	CONSTRAINT "arrangement_text_lengths" CHECK (
+      ("arrangement"."own_offer" is null or char_length("arrangement"."own_offer") <= 300)
+      and ("arrangement"."decision_note" is null or char_length("arrangement"."decision_note") <= 500)),
+	CONSTRAINT "arrangement_agreed_has_time" CHECK (("arrangement"."status" = 'agreed') = ("arrangement"."agreed_at" is not null)),
+	CONSTRAINT "arrangement_record_only_when_agreed" CHECK (
+      "arrangement"."status" = 'agreed' or ("arrangement"."agreed_place" is null and "arrangement"."agreed_offer" is null and "arrangement"."loan_starts_at" is null
+      and "arrangement"."loan_ends_at" is null and "arrangement"."returned_at" is null and "arrangement"."reminder_sent_at" is null and "arrangement"."done_at" is null)),
+	CONSTRAINT "arrangement_loan_period" CHECK (
+      ("arrangement"."loan_starts_at" is null) = ("arrangement"."loan_ends_at" is null) and ("arrangement"."loan_starts_at" is null or "arrangement"."loan_starts_at" < "arrangement"."loan_ends_at")),
+	CONSTRAINT "arrangement_returned_is_a_loan" CHECK ("arrangement"."returned_at" is null or "arrangement"."loan_starts_at" is not null),
+	CONSTRAINT "arrangement_done_is_not_a_loan" CHECK ("arrangement"."done_at" is null or "arrangement"."loan_starts_at" is null),
+	CONSTRAINT "arrangement_done_has_who" CHECK (("arrangement"."done_at" is null) = ("arrangement"."done_by_id" is null))
 );
 --> statement-breakpoint
-CREATE TABLE "proposal_offer" (
+CREATE TABLE "arrangement_offer" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"proposal_id" uuid NOT NULL,
+	"arrangement_id" uuid NOT NULL,
 	"trade_accept_id" uuid NOT NULL,
 	"amount" numeric(12, 3),
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "proposal_offer_amount" CHECK ("proposal_offer"."amount" is null or "proposal_offer"."amount" > 0)
+	CONSTRAINT "arrangement_offer_amount" CHECK ("arrangement_offer"."amount" is null or "arrangement_offer"."amount" > 0)
 );
 --> statement-breakpoint
 CREATE TABLE "conversation" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"proposal_id" uuid,
+	"arrangement_id" uuid,
 	"problem_report_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"last_message_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "conversation_proposalId_unique" UNIQUE("proposal_id"),
-	CONSTRAINT "conversation_has_one_owner" CHECK (("conversation"."proposal_id" is null) <> ("conversation"."problem_report_id" is null))
+	CONSTRAINT "conversation_arrangementId_unique" UNIQUE("arrangement_id"),
+	CONSTRAINT "conversation_has_one_owner" CHECK (("conversation"."arrangement_id" is null) <> ("conversation"."problem_report_id" is null))
 );
 --> statement-breakpoint
 CREATE TABLE "conversation_participant" (
@@ -297,38 +314,9 @@ CREATE TABLE "message" (
 	CONSTRAINT "message_body_length" CHECK (char_length("message"."body") <= 4000)
 );
 --> statement-breakpoint
-CREATE TABLE "agreement" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"proposal_id" uuid NOT NULL,
-	"offering_id" uuid NOT NULL,
-	"owner_id" uuid NOT NULL,
-	"other_member_id" uuid NOT NULL,
-	"outcome" "agreement_outcome" NOT NULL,
-	"starts_at" timestamp with time zone,
-	"has_time" boolean DEFAULT false NOT NULL,
-	"handover" "handover",
-	"place" jsonb,
-	"amount" numeric(12, 3),
-	"sessions" integer,
-	"session_length" integer,
-	"session_length_unit" "session_length_unit",
-	"offer" jsonb,
-	"loan_starts_at" timestamp with time zone,
-	"loan_ends_at" timestamp with time zone,
-	"loan_period" "tstzrange" GENERATED ALWAYS AS (case when "loan_starts_at" is null then null else tstzrange("loan_starts_at", "loan_ends_at") end) STORED,
-	"returned_at" timestamp with time zone,
-	"reminder_sent_at" timestamp with time zone,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "agreement_proposalId_unique" UNIQUE("proposal_id"),
-	CONSTRAINT "agreement_not_with_self" CHECK ("agreement"."owner_id" <> "agreement"."other_member_id"),
-	CONSTRAINT "agreement_amount_positive" CHECK ("agreement"."amount" is null or "agreement"."amount" > 0),
-	CONSTRAINT "agreement_sessions_positive" CHECK ("agreement"."sessions" is null or "agreement"."sessions" >= 1),
-	CONSTRAINT "agreement_loan_has_period" CHECK (("agreement"."outcome" = 'lent') = ("agreement"."loan_starts_at" is not null and "agreement"."loan_ends_at" is not null and "agreement"."loan_starts_at" < "agreement"."loan_ends_at"))
-);
---> statement-breakpoint
 CREATE TABLE "problem_report" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"agreement_id" uuid NOT NULL,
+	"arrangement_id" uuid NOT NULL,
 	"reporter_id" uuid NOT NULL,
 	"reported_member_id" uuid NOT NULL,
 	"description" text NOT NULL,
@@ -336,8 +324,9 @@ CREATE TABLE "problem_report" (
 	"status" "report_status" DEFAULT 'open' NOT NULL,
 	"outcome_note" text,
 	"resolved_by_id" uuid,
-	"proposal_messages_shared_at" timestamp with time zone,
-	"proposal_messages_shared_by_id" uuid,
+	"resolved_at" timestamp with time zone,
+	"messages_shared_at" timestamp with time zone,
+	"messages_shared_by_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "problem_report_description_length" CHECK (char_length("problem_report"."description") between 1 and 2000),
 	CONSTRAINT "problem_report_outcome_length" CHECK ("problem_report"."outcome_note" is null or char_length("problem_report"."outcome_note") <= 1000),
@@ -365,7 +354,7 @@ CREATE TABLE "request" (
 	"sessions" integer,
 	"status" "request_status" DEFAULT 'open' NOT NULL,
 	"closed_reason" "request_closed_reason",
-	"closed_by_agreement_id" uuid,
+	"closed_by_arrangement_id" uuid,
 	"search_vector" "tsvector",
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -384,7 +373,7 @@ CREATE TABLE "request" (
       and ("request"."kind" in ('receive', 'trade') or "request"."amount" is null)
       and ("request"."kind" = 'service' or ("request"."session_length" is null and "request"."sessions" is null))),
 	CONSTRAINT "request_closed_has_reason" CHECK (("request"."status" = 'closed') = ("request"."closed_reason" is not null)),
-	CONSTRAINT "request_agreement_only_when_agreed" CHECK ("request"."closed_by_agreement_id" is null or "request"."closed_reason" = 'agreed')
+	CONSTRAINT "request_arrangement_only_when_agreed" CHECK ("request"."closed_by_arrangement_id" is null or "request"."closed_reason" = 'agreed')
 );
 --> statement-breakpoint
 CREATE TABLE "request_availability" (
@@ -455,28 +444,25 @@ ALTER TABLE "offering" ADD CONSTRAINT "offering_owner_id_member_id_fk" FOREIGN K
 ALTER TABLE "offering_photo" ADD CONSTRAINT "offering_photo_offering_id_offering_id_fk" FOREIGN KEY ("offering_id") REFERENCES "public"."offering"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "service_availability" ADD CONSTRAINT "service_availability_offering_id_offering_id_fk" FOREIGN KEY ("offering_id") REFERENCES "public"."offering"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "trade_accept" ADD CONSTRAINT "trade_accept_offering_id_offering_id_fk" FOREIGN KEY ("offering_id") REFERENCES "public"."offering"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "proposal" ADD CONSTRAINT "proposal_offering_id_offering_id_fk" FOREIGN KEY ("offering_id") REFERENCES "public"."offering"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "proposal" ADD CONSTRAINT "proposal_requester_id_member_id_fk" FOREIGN KEY ("requester_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "proposal" ADD CONSTRAINT "proposal_request_id_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."request"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "proposal_offer" ADD CONSTRAINT "proposal_offer_proposal_id_proposal_id_fk" FOREIGN KEY ("proposal_id") REFERENCES "public"."proposal"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "proposal_offer" ADD CONSTRAINT "proposal_offer_trade_accept_id_trade_accept_id_fk" FOREIGN KEY ("trade_accept_id") REFERENCES "public"."trade_accept"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "conversation" ADD CONSTRAINT "conversation_proposal_id_proposal_id_fk" FOREIGN KEY ("proposal_id") REFERENCES "public"."proposal"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "arrangement" ADD CONSTRAINT "arrangement_offering_id_offering_id_fk" FOREIGN KEY ("offering_id") REFERENCES "public"."offering"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "arrangement" ADD CONSTRAINT "arrangement_requester_id_member_id_fk" FOREIGN KEY ("requester_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "arrangement" ADD CONSTRAINT "arrangement_request_id_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."request"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "arrangement" ADD CONSTRAINT "arrangement_done_by_id_member_id_fk" FOREIGN KEY ("done_by_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "arrangement_offer" ADD CONSTRAINT "arrangement_offer_arrangement_id_arrangement_id_fk" FOREIGN KEY ("arrangement_id") REFERENCES "public"."arrangement"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "arrangement_offer" ADD CONSTRAINT "arrangement_offer_trade_accept_id_trade_accept_id_fk" FOREIGN KEY ("trade_accept_id") REFERENCES "public"."trade_accept"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "conversation" ADD CONSTRAINT "conversation_arrangement_id_arrangement_id_fk" FOREIGN KEY ("arrangement_id") REFERENCES "public"."arrangement"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "conversation" ADD CONSTRAINT "conversation_problem_report_id_problem_report_id_fk" FOREIGN KEY ("problem_report_id") REFERENCES "public"."problem_report"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "conversation_participant" ADD CONSTRAINT "conversation_participant_conversation_id_conversation_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversation"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "conversation_participant" ADD CONSTRAINT "conversation_participant_member_id_member_id_fk" FOREIGN KEY ("member_id") REFERENCES "public"."member"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "message" ADD CONSTRAINT "message_conversation_id_conversation_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."conversation"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "message" ADD CONSTRAINT "message_author_id_member_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."member"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agreement" ADD CONSTRAINT "agreement_proposal_id_proposal_id_fk" FOREIGN KEY ("proposal_id") REFERENCES "public"."proposal"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agreement" ADD CONSTRAINT "agreement_offering_id_offering_id_fk" FOREIGN KEY ("offering_id") REFERENCES "public"."offering"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agreement" ADD CONSTRAINT "agreement_owner_id_member_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "agreement" ADD CONSTRAINT "agreement_other_member_id_member_id_fk" FOREIGN KEY ("other_member_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_agreement_id_agreement_id_fk" FOREIGN KEY ("agreement_id") REFERENCES "public"."agreement"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_arrangement_id_arrangement_id_fk" FOREIGN KEY ("arrangement_id") REFERENCES "public"."arrangement"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_reporter_id_member_id_fk" FOREIGN KEY ("reporter_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_reported_member_id_member_id_fk" FOREIGN KEY ("reported_member_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_resolved_by_id_member_id_fk" FOREIGN KEY ("resolved_by_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_proposal_messages_shared_by_id_member_id_fk" FOREIGN KEY ("proposal_messages_shared_by_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "problem_report" ADD CONSTRAINT "problem_report_messages_shared_by_id_member_id_fk" FOREIGN KEY ("messages_shared_by_id") REFERENCES "public"."member"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request" ADD CONSTRAINT "request_asker_id_member_id_fk" FOREIGN KEY ("asker_id") REFERENCES "public"."member"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "request" ADD CONSTRAINT "request_closed_by_agreement_id_agreement_id_fk" FOREIGN KEY ("closed_by_agreement_id") REFERENCES "public"."agreement"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "request" ADD CONSTRAINT "request_closed_by_arrangement_id_arrangement_id_fk" FOREIGN KEY ("closed_by_arrangement_id") REFERENCES "public"."arrangement"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request_availability" ADD CONSTRAINT "request_availability_request_id_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."request"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request_give_back" ADD CONSTRAINT "request_give_back_request_id_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."request"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request_link" ADD CONSTRAINT "request_link_request_id_request_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."request"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -507,17 +493,14 @@ CREATE INDEX "offering_area_city_idx" ON "offering" USING btree ("area_city");--
 CREATE INDEX "offering_photo_offering_idx" ON "offering_photo" USING btree ("offering_id");--> statement-breakpoint
 CREATE INDEX "service_availability_offering_idx" ON "service_availability" USING btree ("offering_id");--> statement-breakpoint
 CREATE INDEX "trade_accept_offering_idx" ON "trade_accept" USING btree ("offering_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "proposal_one_open_per_requester" ON "proposal" USING btree ("offering_id","requester_id") WHERE "proposal"."status" = 'open';--> statement-breakpoint
-CREATE INDEX "proposal_requester_status_idx" ON "proposal" USING btree ("requester_id","status");--> statement-breakpoint
-CREATE INDEX "proposal_offering_status_idx" ON "proposal" USING btree ("offering_id","status");--> statement-breakpoint
-CREATE INDEX "proposal_quiet_idx" ON "proposal" USING btree ("status","last_activity_at");--> statement-breakpoint
-CREATE UNIQUE INDEX "proposal_offer_once" ON "proposal_offer" USING btree ("proposal_id","trade_accept_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "arrangement_one_not_agreed_per_requester" ON "arrangement" USING btree ("offering_id","requester_id") WHERE "arrangement"."status" <> 'agreed';--> statement-breakpoint
+CREATE INDEX "arrangement_requester_status_idx" ON "arrangement" USING btree ("requester_id","status");--> statement-breakpoint
+CREATE INDEX "arrangement_offering_status_idx" ON "arrangement" USING btree ("offering_id","status");--> statement-breakpoint
+CREATE INDEX "arrangement_quiet_idx" ON "arrangement" USING btree ("status","last_activity_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "arrangement_offer_once" ON "arrangement_offer" USING btree ("arrangement_id","trade_accept_id");--> statement-breakpoint
 CREATE INDEX "conversation_participant_member_idx" ON "conversation_participant" USING btree ("member_id");--> statement-breakpoint
 CREATE INDEX "message_conversation_created_idx" ON "message" USING btree ("conversation_id","created_at");--> statement-breakpoint
-CREATE INDEX "agreement_owner_idx" ON "agreement" USING btree ("owner_id");--> statement-breakpoint
-CREATE INDEX "agreement_other_idx" ON "agreement" USING btree ("other_member_id");--> statement-breakpoint
-CREATE INDEX "agreement_offering_idx" ON "agreement" USING btree ("offering_id");--> statement-breakpoint
-CREATE INDEX "problem_report_agreement_idx" ON "problem_report" USING btree ("agreement_id");--> statement-breakpoint
+CREATE INDEX "problem_report_arrangement_idx" ON "problem_report" USING btree ("arrangement_id");--> statement-breakpoint
 CREATE INDEX "request_search_idx" ON "request" USING gin ("search_vector");--> statement-breakpoint
 CREATE INDEX "request_status_created_idx" ON "request" USING btree ("status","created_at");--> statement-breakpoint
 CREATE INDEX "request_kind_idx" ON "request" USING btree ("kind");--> statement-breakpoint
@@ -535,4 +518,4 @@ CREATE INDEX "flag_request_idx" ON "flag" USING btree ("request_id");--> stateme
 CREATE INDEX "flag_public_message_idx" ON "flag" USING btree ("public_message_id");--> statement-breakpoint
 -- Written by hand: drizzle-kit can't express exclusion constraints. Two loans of the same offering that
 -- haven't been marked returned may never overlap (002 FR-011a, research §4).
-ALTER TABLE "agreement" ADD CONSTRAINT "agreement_loans_dont_overlap" EXCLUDE USING gist ("offering_id" WITH =, "loan_period" WITH &&) WHERE ("returned_at" IS NULL);
+ALTER TABLE "arrangement" ADD CONSTRAINT "arrangement_loans_dont_overlap" EXCLUDE USING gist ("offering_id" WITH =, "loan_period" WITH &&) WHERE ("returned_at" IS NULL);

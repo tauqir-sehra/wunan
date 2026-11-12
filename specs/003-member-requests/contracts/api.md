@@ -30,9 +30,7 @@ additive, so it stays in v1. `src/openapi.test.ts` checks the endpoints in both 
 
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `POST /offerings/{id}/proposals` | non-owner | Adds optional `requestId`. When the offering is linked to one of the caller's open requests, the proposal is tied to it. When linked to several and `requestId` is missing → `409 choose_request` with `{ requests: [{ id, title }] }`. A `requestId` that isn't the caller's open request linked to this offering → `400`. |
-| `GET /proposals/{id}` | parties | Adds `request: { id, title, status } | null`. |
-| `POST /proposals/{id}/accept` | lister | Unchanged, plus: if tied to an open request, the request closes as `agreed` in the same transaction; its other linkers are notified (`request` type). |
+| (proposal endpoints) | | Replaced by arrangements in feature 004, which keep these additions (`requestId` when asking, `request` on the arrangement, closing the tied request on accepting): see [004 contracts/api.md](../../004-arrangements/contracts/api.md). |
 
 ## Public threads
 

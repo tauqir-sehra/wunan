@@ -17,7 +17,7 @@
     {
       type: 'agreement',
       label: 'Agreements',
-      hint: 'When someone records or cancels an agreement with you, or asks for a correction.'
+      hint: 'When someone accepts what you asked for.'
     },
     {
       type: 'reminder',
@@ -27,7 +27,7 @@
     {
       type: 'report',
       label: 'Requests for help',
-      hint: "When someone asks for help with an agreement you're part of or helping with."
+      hint: "When someone asks for help with an arrangement you're part of or helping with."
     },
     {
       type: 'flag',

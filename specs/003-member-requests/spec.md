@@ -405,7 +405,7 @@ an account and check its open requests are closed.
   requests?" (each such request, or "No, it's not for a request"). Saying yes links the offering to
   that request and ties the proposal to it, so accepting it closes the request. A helper can withdraw
   their offer from a request ("Withdraw this offer"); the asker can take a link off their request
-  ("Not for my request"). Neither changes the offering.
+  ("I'll decline"). Neither changes the offering.
 - **FR-018**: Proposals by other members on a linked offering MUST NOT close the request.
 - **FR-019**: Closing a request MUST NOT change any linked offering.
 

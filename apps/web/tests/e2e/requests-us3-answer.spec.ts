@@ -80,7 +80,7 @@ test('asking for an offering found on its own asks whether it is for an open req
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText('This is for your request: Ladder.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Send proposal' }).click();
-  await expect(page.getByText('Your proposal was sent to Sam.')).toBeVisible();
+  await expect(page.getByText("Sent to Sam. You'll see their answer here.")).toBeVisible();
   await page.goto(`/requests/${request.id}`);
   await expect(
     page
@@ -103,7 +103,7 @@ test('the asker can take an offer off their request, and the offering stays up',
   await offered
     .getByRole('listitem')
     .filter({ hasText: 'Short ladder' })
-    .getByRole('button', { name: 'Not for my request' })
+    .getByRole('button', { name: "I'll decline" })
     .click();
   await expect(page.getByText('It no longer shows on this request.')).toBeVisible();
   await expect(offered.getByRole('link', { name: 'Short ladder' })).toHaveCount(0);

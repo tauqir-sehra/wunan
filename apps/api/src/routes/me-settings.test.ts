@@ -192,9 +192,12 @@ describe('data export', () => {
     expect(data.format_version).toBe(1);
     expect(data.profile).toMatchObject({ display_name: 'Sam', email: sam.email, is_founder: true, invited_by: null });
     expect(data.offerings[0]).toMatchObject({ title: 'Rice', amount: '5', remaining: '3', photos: [`photos/${rice.id}-1.webp`] });
-    expect(data.agreements[0]).toMatchObject({ offering_title: 'Rice', role: 'owner', other_member: 'Alex', outcome: 'gifted', amount: '2' });
-    expect(data.proposals[0]).toMatchObject({ with: 'Alex', offering_title: 'Rice', role: 'lister', status: 'accepted', amount: '2' });
-    expect(data.proposals[0].messages[0]).toMatchObject({ from: 'Alex', body: 'Could I have 2 kg?' });
+    // One section for the whole exchange: what was asked, and the agreed record (004 FR-025).
+    expect(data.proposals).toBeUndefined();
+    expect(data.agreements).toBeUndefined();
+    expect(data.arrangements[0]).toMatchObject({ with: 'Alex', offering_title: 'Rice', role: 'lister', status: 'agreed', amount: '2', returned_at: null, done_at: null });
+    expect(data.arrangements[0].agreed).toEqual(expect.any(String));
+    expect(data.arrangements[0].messages.find((m: { kind: string }) => m.kind === 'text')).toMatchObject({ from: 'Alex', body: 'Could I have 2 kg?' });
     expect(data.conversations).toEqual([]);
     expect(data.notification_preferences).toHaveLength(7);
     // Nothing private about Alex.
@@ -255,7 +258,7 @@ describe('leaving wunan', () => {
     const started = { id: deal.conversationId };
     await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: samToken, body: { contact: { phone: true } } });
     await api('POST', `/api/v1/conversations/${started.id}/messages`, { token: samToken, body: { body: 'See you Saturday' } });
-    const loan = { id: deal.agreementId };
+    const loan = { id: deal.arrangementId };
     // An open proposal on another of Sam's offerings closes when Sam leaves.
     const { body: ladder } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'lend', title: 'Ladder' } });
     const open = await propose(alexToken, ladder.id);
@@ -287,9 +290,9 @@ describe('leaving wunan', () => {
     expect((await api('GET', '/api/v1/offerings', { token: alexToken })).body.items).toEqual([]);
 
     // Alex still sees the agreement and the conversation, without Sam's phone number.
-    const agreement = await api('GET', `/api/v1/agreements/${loan.id}`, { token: alexToken });
+    const agreement = await api('GET', `/api/v1/arrangements/${loan.id}`, { token: alexToken });
     expect(agreement.status).toBe(200);
-    expect(agreement.body.owner.displayName).toBe('Sam (no longer a member)');
+    expect(agreement.body.lister.displayName).toBe('Sam (no longer a member)');
     const messages = await api('GET', `/api/v1/conversations/${started.id}/messages`, { token: alexToken });
     const bodies = messages.body.items.map((m: { body: string }) => m.body);
     expect(bodies).toContain('See you Saturday');
@@ -300,7 +303,7 @@ describe('leaving wunan', () => {
     expect((await db.select().from(invitation).where(eq(invitation.inviterId, sam.id))).map((i) => i.status)).toEqual(['cancelled']);
 
     // The open proposal closed, and its offering stays (title only) so Alex's proposal still makes sense.
-    expect((await api('GET', `/api/v1/proposals/${open.id}`, { token: alexToken })).body).toMatchObject({ status: 'closed', closedReason: 'member_left' });
+    expect((await api('GET', `/api/v1/arrangements/${open.id}`, { token: alexToken })).body).toMatchObject({ status: 'closed', closedReason: 'member_left' });
     expect((await api('GET', `/api/v1/offerings/${ladder.id}`, { token: alexToken })).body).toMatchObject({ title: 'Ladder', status: 'closed' });
     // No more notifications.
     await notify(sam.id, 'message', { title: 'x', body: 'y', url: '/' });

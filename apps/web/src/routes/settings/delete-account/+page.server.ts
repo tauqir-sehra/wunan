@@ -5,13 +5,14 @@ import { apiFor } from '#lib/api.ts';
 import { formAction } from '#lib/form-action.ts';
 import { memberLoad } from '#lib/load.ts';
 import { clearSessionCookie } from '#lib/session.ts';
-import type { Agreement } from '@wunan/shared';
+import type { ArrangementList } from '@wunan/shared';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = memberLoad(async (event) => {
-  const { items } = await apiFor(event).get<{ items: Agreement[] }>('/api/v1/me/agreements');
-  const openLoans = items.filter(
-    (a) => a.outcome === 'lent' && !a.returnedAt && a.myRole !== 'mediator'
+  const list = await apiFor(event).get<ArrangementList>('/api/v1/arrangements');
+  // Loans out or due back: agreed, not returned, so never under "Finished".
+  const openLoans = [...list.needsYou, ...list.inProgress].filter(
+    (a) => a.offering.type === 'lend' && (a.stage === 'agreed' || a.stage === 'on_loan')
   );
   return { openLoans };
 });

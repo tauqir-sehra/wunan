@@ -1,11 +1,11 @@
 // Requests (003): a member asks for something; others answer by linking an offering (made for it, or
-// one they have); the asker's accepted proposal on a linked offering closes it (research §1–§6).
+// one they have); the asker's arrangement on a linked offering closes it once agreed (research §1–§6).
 // Only the asker changes a request. Links never change an offering, and closing a request never
 // changes its linked offerings. Areas go out through viewPlace(), in full only for the asker.
 import { CreateRequest, offeringTypeFor, type RequestKind, type RequestSearchQuery } from '@wunan/shared';
 import { and, asc, count, desc, eq, inArray, isNull, ne, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { flag, offering, member, proposal, request, requestAvailability, requestGiveBack, requestLink } from '../db/schema/index.ts';
+import { arrangement, flag, offering, member, request, requestAvailability, requestGiveBack, requestLink } from '../db/schema/index.ts';
 import { ApiError, errors, validationError } from '../lib/errors.ts';
 import { checkRateLimit } from '../lib/rate-limit.ts';
 import { instantToLocal } from '../lib/time.ts';
@@ -180,7 +180,7 @@ export async function reopenRequest(requestId: string, askerId: string) {
   if (current.status !== 'closed') throw notNow('This request is already open.');
   await db
     .update(request)
-    .set({ status: 'open', closedReason: null, closedByAgreementId: null, updatedAt: new Date() })
+    .set({ status: 'open', closedReason: null, closedByArrangementId: null, updatedAt: new Date() })
     .where(eq(request.id, requestId));
   await notifyHelpers(current, askerId, {
     title: `${await nameOf(askerId)}'s request “${current.title}” is open again`,
@@ -190,14 +190,14 @@ export async function reopenRequest(requestId: string, askerId: string) {
 }
 
 /**
- * Closes the request because the asker's proposal on a linked offering was accepted (research §3).
+ * Closes the request because the asker's arrangement on a linked offering was agreed (research §3).
  * Runs inside the accept transaction; returns the request when it closed, so the caller can tell
  * the other helpers once the transaction is done.
  */
-export async function closeForAgreement(tx: Transaction, requestId: string, agreementId: string) {
+export async function closeForArrangement(tx: Transaction, requestId: string, arrangementId: string) {
   const [closed] = await tx
     .update(request)
-    .set({ status: 'closed', closedReason: 'agreed', closedByAgreementId: agreementId, updatedAt: new Date() })
+    .set({ status: 'closed', closedReason: 'agreed', closedByArrangementId: arrangementId, updatedAt: new Date() })
     .where(and(eq(request.id, requestId), eq(request.status, 'open')))
     .returning();
   return closed ?? null;
@@ -262,7 +262,7 @@ async function summarise(rows: RequestRow[], viewerId: string, withUnseenFlags =
   }));
 }
 
-/** The full request. The asker also gets flags (marked seen) and, once settled, their other open proposals. */
+/** The full request. The asker also gets flags (marked seen) and, once settled, their other open arrangements. */
 export async function getRequest(requestId: string, viewerId: string) {
   const row = await loadRequest(requestId);
   const isAsker = row.askerId === viewerId;
@@ -291,13 +291,13 @@ export async function getRequest(requestId: string, viewerId: string) {
     sessions: row.sessions,
     availability: times.map((t) => ({ weekday: t.weekday, startTime: t.startTime.slice(0, 5), endTime: t.endTime.slice(0, 5) })),
     datePassed: isAsker && row.status === 'open' && datePassed(row),
-    closedByAgreementId: isAsker ? row.closedByAgreementId : null,
+    closedByArrangementId: isAsker ? row.closedByArrangementId : null,
     links,
     canAnswer: row.status === 'open' && !isAsker,
     canEdit: row.status === 'open' && isAsker
   };
   if (!isAsker) return result;
-  return { ...result, flags: await flagsFor(requestId), myOtherOpenProposals: await otherOpenProposals(row) };
+  return { ...result, flags: await flagsFor(requestId), myOtherOpenArrangements: await otherOpenArrangements(row) };
 }
 
 /** The offerings linked to a request, with whether they're still available and who may remove each
@@ -340,15 +340,15 @@ async function flagsFor(requestId: string) {
   }));
 }
 
-/** After an agreement closed the request: the asker's proposals still open on its other linked offerings. */
-async function otherOpenProposals(row: RequestRow) {
+/** After an agreement closed the request: the asker's arrangements still open on its other linked offerings. */
+async function otherOpenArrangements(row: RequestRow) {
   if (row.closedReason !== 'agreed') return [];
   return db
-    .select({ id: proposal.id, offeringTitle: offering.title })
-    .from(proposal)
-    .innerJoin(offering, eq(offering.id, proposal.offeringId))
-    .innerJoin(requestLink, and(eq(requestLink.offeringId, proposal.offeringId), eq(requestLink.requestId, row.id)))
-    .where(and(eq(proposal.requesterId, row.askerId), eq(proposal.status, 'open')));
+    .select({ id: arrangement.id, offeringTitle: offering.title })
+    .from(arrangement)
+    .innerJoin(offering, eq(offering.id, arrangement.offeringId))
+    .innerJoin(requestLink, and(eq(requestLink.offeringId, arrangement.offeringId), eq(requestLink.requestId, row.id)))
+    .where(and(eq(arrangement.requesterId, row.askerId), eq(arrangement.status, 'open')));
 }
 
 /** Escapes % and _ so an area like "100%" is matched literally. */

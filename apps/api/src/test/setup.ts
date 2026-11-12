@@ -91,18 +91,18 @@ export function completeDetails(type: 'lend' | 'gift' | 'trade' | 'service', ext
   return { ...base, ...byType[type], ...extra };
 }
 
-/** Makes a proposal as `requesterToken` and returns its id and thread. */
+/** Asks for an offering as `requesterToken` and returns the arrangement's id and thread. */
 export async function propose(requesterToken: string, offeringId: string, body: Record<string, unknown> = {}) {
-  const result = await api('POST', `/api/v1/offerings/${offeringId}/proposals`, { token: requesterToken, body });
-  if (result.status !== 201) throw new Error(`Proposal failed: ${result.status} ${JSON.stringify(result.body)}`);
+  const result = await api('POST', `/api/v1/offerings/${offeringId}/arrangements`, { token: requesterToken, body });
+  if (result.status !== 201 && result.status !== 200) throw new Error(`Proposal failed: ${result.status} ${JSON.stringify(result.body)}`);
   return result.body as { id: string; conversationId: string };
 }
 
-/** Makes a complete proposal and accepts it: the quickest way to an agreement in tests. */
+/** Asks with every detail and accepts it: the quickest way to an agreed arrangement in tests. */
 export async function agree(listerToken: string, requesterToken: string, offeringId: string, details: Record<string, unknown>) {
   const made = await propose(requesterToken, offeringId, details);
-  const shown = await api('GET', `/api/v1/proposals/${made.id}`, { token: listerToken });
-  const accepted = await api('POST', `/api/v1/proposals/${made.id}/accept`, { token: listerToken, body: { version: shown.body.version } });
+  const shown = await api('GET', `/api/v1/arrangements/${made.id}`, { token: listerToken });
+  const accepted = await api('POST', `/api/v1/arrangements/${made.id}/accept`, { token: listerToken, body: { version: shown.body.version } });
   if (accepted.status !== 200) throw new Error(`Accept failed: ${accepted.status} ${JSON.stringify(accepted.body)}`);
-  return { proposalId: made.id, conversationId: made.conversationId, agreementId: accepted.body.agreementId as string };
+  return { arrangementId: made.id, conversationId: made.conversationId };
 }

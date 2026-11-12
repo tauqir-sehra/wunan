@@ -1,0 +1,51 @@
+<script lang="ts">
+  import HelpLink from '#lib/components/HelpLink.svelte';
+  import { Button } from '#lib/components/ui/button/index.ts';
+  import FormField from '#lib/components/FormField.svelte';
+  import Notice from '#lib/components/Notice.svelte';
+  import { agreedSentence } from '#lib/format.ts';
+
+  let { data, form } = $props();
+  const a = $derived(data.arrangement);
+  const other = $derived(a.myRole === 'lister' ? a.requester : a.lister);
+  const draft = $derived(form?.review ?? form?.values?.description ?? '');
+</script>
+
+<svelte:head><title>Ask for help · wunan</title></svelte:head>
+
+<section class="grid max-w-2xl gap-5">
+  <div class="flex items-start justify-between gap-3">
+    <h1 class="text-2xl font-semibold sm:text-3xl">Ask for help</h1>
+    <HelpLink topic="asking-for-help" label="How asking for help works" />
+  </div>
+  <p>{agreedSentence(a)}</p>
+  <p class="text-muted-foreground">
+    If something went wrong, the person who invited {other.displayName} will be asked to help. You'll
+    all talk in one shared conversation. Nobody is removed or penalised, and there is no rush.
+  </p>
+  {#if form?.error}<Notice kind="error"><p>{form.error}</p></Notice>{/if}
+
+  {#if form?.review !== undefined && form.review !== ''}
+    <p>This is what you'll share with {other.displayName} and the person helping:</p>
+    <p class="surface p-4 whitespace-pre-line">{form.review}</p>
+    <form method="POST" action="?/send" class="flex flex-wrap items-center gap-3">
+      <input type="hidden" name="description" value={form.review} />
+      <Button type="submit">Ask for help</Button>
+      <a href="/arrangements/{a.id}/report">Change what I wrote</a>
+    </form>
+  {:else}
+    <form method="POST" action="?/review" class="grid gap-4">
+      <FormField
+        label="What happened?"
+        name="description"
+        multiline
+        required
+        maxlength={2000}
+        hint="In your own words. For example: “The drill was due back last week and I haven't heard back.”"
+        value={draft}
+        error={form?.fields?.description}
+      />
+      <div><Button type="submit">Review</Button></div>
+    </form>
+  {/if}
+</section>

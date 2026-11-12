@@ -180,12 +180,12 @@ export async function proposeOn(
     authorization: `Bearer ${token}`,
     ...origin
   };
-  const response = await fetch(`${API_URL}/api/v1/offerings/${offeringId}/proposals`, {
+  const response = await fetch(`${API_URL}/api/v1/offerings/${offeringId}/arrangements`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ message: 'Is this still available?', ...details })
   });
-  if (response.status !== 201)
+  if (response.status !== 201 && response.status !== 200)
     throw new Error(`Could not propose: ${response.status} ${await response.text()}`);
   return (await response.json()) as { id: string; conversationId: string };
 }
@@ -210,8 +210,24 @@ export function completeDetails(
   return { date: daysAhead(3), time: '10:00', handover: 'online', ...byType[type], ...extra };
 }
 
-/** `owner` accepts a proposal on their offering; returns the agreement id. */
-export async function acceptProposal(owner: TestMember, proposalId: string) {
+/** The requester changes what they asked for (only while it's open). */
+export async function changeArrangement(
+  member: TestMember,
+  id: string,
+  details: Record<string, unknown>
+) {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/arrangements/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin },
+    body: JSON.stringify(details)
+  });
+  if (response.status !== 200)
+    throw new Error(`Could not change: ${response.status} ${await response.text()}`);
+}
+
+/** `owner` accepts an arrangement on their offering; returns its id (the same arrangement, now agreed). */
+export async function acceptArrangement(owner: TestMember, proposalId: string) {
   const token = await signIn(owner);
   const headers = {
     'content-type': 'application/json',
@@ -219,16 +235,16 @@ export async function acceptProposal(owner: TestMember, proposalId: string) {
     ...origin
   };
   const shown = (await (
-    await fetch(`${API_URL}/api/v1/proposals/${proposalId}`, { headers })
+    await fetch(`${API_URL}/api/v1/arrangements/${proposalId}`, { headers })
   ).json()) as { version: number };
-  const response = await fetch(`${API_URL}/api/v1/proposals/${proposalId}/accept`, {
+  const response = await fetch(`${API_URL}/api/v1/arrangements/${proposalId}/accept`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ version: shown.version })
   });
   if (response.status !== 200)
     throw new Error(`Could not accept: ${response.status} ${await response.text()}`);
-  return ((await response.json()) as { agreementId: string }).agreementId;
+  return ((await response.json()) as { id: string }).id;
 }
 
 /** Posts a request through the API (003), for tests that only need it to exist. */

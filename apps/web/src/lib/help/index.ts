@@ -1,12 +1,11 @@
 // Member help, in plain language (constitution VI). One short page per topic.
 import type { Component } from 'svelte';
 import AskingForHelp from './AskingForHelp.svelte';
-import Agreements from './Agreements.svelte';
 import Finding from './Finding.svelte';
 import Joining from './Joining.svelte';
 import Offering from './Offering.svelte';
 import Notifications from './Notifications.svelte';
-import Proposals from './Proposals.svelte';
+import Arrangements from './Arrangements.svelte';
 import Requests from './Requests.svelte';
 import YourData from './YourData.svelte';
 
@@ -38,21 +37,15 @@ export const helpTopics: HelpTopic[] = [
     content: Requests
   },
   {
-    slug: 'proposals',
-    title: 'Proposals and messages',
-    summary: 'Asking for something, talking it over, and agreeing.',
-    content: Proposals
-  },
-  {
-    slug: 'agreements',
-    title: 'Agreements and returns',
-    summary: 'What was agreed, and getting lent things back.',
-    content: Agreements
+    slug: 'arrangements',
+    title: 'Arranging and agreeing',
+    summary: 'Asking for something, talking it over, agreeing, and getting lent things back.',
+    content: Arrangements
   },
   {
     slug: 'asking-for-help',
     title: 'Asking for help',
-    summary: 'What to do when an agreement doesn’t work out.',
+    summary: 'What to do when something you agreed doesn’t work out.',
     content: AskingForHelp
   },
   {

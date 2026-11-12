@@ -17,8 +17,7 @@ import { and, count, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import { offering, flag } from '../db/schema/index.ts';
 import { countUnseenRequestFlags } from '../modules/requests.ts';
-import { countNeedingAttention } from '../modules/agreements.ts';
-import { countThreadsWithNews } from '../modules/messaging.ts';
+import { countNeedingMe } from '../modules/arrangements.ts';
 import { createRouter } from '../app-router.ts';
 import { requireMember } from '../lib/require-member.ts';
 import { buildExport } from '../modules/export.ts';
@@ -95,7 +94,7 @@ meRoutes.openapi(
   createRoute({
     method: 'get',
     path: '/me/summary',
-    summary: 'Quiet counts for the home page: unread conversations, agreements, new requests',
+    summary: 'Quiet counts for the header: arrangements waiting on you, new requests about your offerings and requests',
     security,
     responses: ok(Summary, 'Counts')
   }),
@@ -108,8 +107,7 @@ meRoutes.openapi(
       .where(and(eq(offering.ownerId, memberId), isNull(flag.seenAt)));
     return c.json(
       {
-        proposalsWithNews: await countThreadsWithNews(memberId),
-        agreementsNeedingAttention: await countNeedingAttention(memberId),
+        arrangementsNeedingYou: await countNeedingMe(memberId),
         unseenFlags: flags?.unseen ?? 0,
         unseenRequestFlags: await countUnseenRequestFlags(memberId)
       },

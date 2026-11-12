@@ -58,15 +58,15 @@
   </section>
 
   <section class="grid gap-2" aria-labelledby="share-heading">
-    <h2 id="share-heading" class="text-lg font-semibold">Messages about the agreement</h2>
-    {#if r.proposalMessagesShared}
+    <h2 id="share-heading" class="text-lg font-semibold">Messages about the arrangement</h2>
+    {#if r.messagesShared}
       <p>The messages you two wrote about this agreement are shared with the helpers.</p>
-      {#if r.proposalConversationId && r.reporter.id !== data.member?.id && r.reportedMember.id !== data.member?.id}
+      {#if r.arrangementConversationId && r.reporter.id !== data.member?.id && r.reportedMember.id !== data.member?.id}
         <p>
-          <a href="/threads/{r.proposalConversationId}">Read the messages about the agreement</a>
+          <a href="/arrangements/{r.arrangementId}#messages">Read the messages about the arrangement</a>
         </p>
       {/if}
-    {:else if r.canShareProposalMessages}
+    {:else if r.canShareMessages}
       {#if (form as { confirmShare?: boolean } | null)?.confirmShare}
         <form method="POST" action="?/share" class="grid gap-3 surface p-4">
           <input type="hidden" name="confirmed" value="yes" />
@@ -140,5 +140,5 @@
     {/if}
   {/if}
 
-  <p><a href="/agreements/{r.agreementId}">Back to the agreement</a></p>
+  <p><a href="/arrangements/{r.arrangementId}">See the arrangement</a></p>
 </section>

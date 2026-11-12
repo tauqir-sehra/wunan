@@ -1,5 +1,5 @@
 // Requests (003): a member asks for something. Other members answer with an offering linked to it;
-// the asker's accepted proposal on a linked offering closes it. Only `kind` and `title` are
+// the asker's arrangement on a linked offering closes it once agreed. Only `kind` and `title` are
 // required. Each kind accepts only its own details; anything else is refused with a plain message.
 import { z } from 'zod';
 import { memberRef, optionalText } from './common.ts';
@@ -156,12 +156,12 @@ export const Request = RequestSummary.extend({
   availability: z.array(z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string() })),
   /** True when "Needed by" is before today, in the community's time zone. */
   datePassed: z.boolean(),
-  closedByAgreementId: z.string().nullable(),
+  closedByArrangementId: z.string().nullable(),
   links: z.array(RequestLink),
   canAnswer: z.boolean(),
   canEdit: z.boolean(),
-  /** For the asker of a request closed by an agreement: their other open proposals on its linked offerings. */
-  myOtherOpenProposals: z.array(z.object({ id: z.string(), offeringTitle: z.string() })).optional(),
+  /** For the asker of a request closed by an agreement: their other open arrangements on its linked offerings. */
+  myOtherOpenArrangements: z.array(z.object({ id: z.string(), offeringTitle: z.string() })).optional(),
   /** Only for the asker. */
   flags: z.array(RequestFlag).optional()
 });

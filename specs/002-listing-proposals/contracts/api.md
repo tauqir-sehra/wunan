@@ -64,7 +64,7 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 | `DELETE /me/push-subscriptions/{id}` | member | Removes a device. |
 | `GET /me/export` | member | ZIP per [export-format.md](export-format.md). 10 per member per hour (`429 slow_down`). |
 | `DELETE /me` | member | `{ password }` → `204 No Content`. Effects per research §16. Password checks (here and `POST /me/password`) are limited to 10 per member per hour. |
-| `GET /me/summary` | member | Quiet home counts: `{ proposalsWithNews, agreementsNeedingAttention, unseenFlags }`. |
+| `GET /me/summary` | member | Quiet counts for the header. Since feature 004: `{ arrangementsNeedingYou, unseenFlags, unseenRequestFlags }`. |
 
 ## Offerings
 
@@ -90,15 +90,7 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 
 ## Proposals
 
-| Endpoint | Access | Behaviour |
-|----------|--------|-----------|
-| `POST /offerings/{id}/proposals` | non-owner | Body: discriminated union on the offering's type, every detail optional: `date` (YYYY-MM-DD) and `time` (HH:MM) in the community time zone, `handover`, `place`, `loanLength`+`loanLengthUnit` (Lend), `amount` (Gift/Trade; defaults to `remaining`), `offers: [{ acceptId, amount? }]` or `ownOffer`+`ownOfferAmount?`+`ownOfferUnit?` (Trade), `sessionLength`+`sessionLengthUnit`, `sessions` (Service), plus optional first `message`. Values that don't fit the offering (e.g., a loan longer than the maximum, a time outside the service's hours, a place outside the area, more than remains) are saved and reported in the proposal's `issues`, which block acceptance until settled (research §3). Only malformed input is refused with `400` and `fields`: details that don't apply to the type, half-given pairs (a length without its unit), and `offers` whose `acceptId` isn't one of the offering's accepted things. Offering must be available (Lend: may be lent out). `409 proposal_exists` with `{ proposalId }` if the caller already has an open one. → `201 { id, conversationId }`. Notifies the lister (`message` type). |
-| `GET /proposals` | member | `?role=requester\|lister`, `?status=open\|ended`, paginated. Items: `{ id, offering: { id, title, type }, otherMember, status, issuesCount, unread, lastActivityAt, lastMessagePreview }`. |
-| `GET /proposals/{id}` | requester, lister; mediators only via report sharing | `{ id, status, closedReason, version, offering (summary, places per Conventions), requester, lister, details (with `place` resolved: offering area for `at_lister`), offers, issues: [{ field, message }], areaUnchecked, earlierLoanNotBack (Lend: `{ endsAt }` when an earlier loan is past its end and not marked returned, else null), canAccept, canEdit, conversationId, agreementId, decisionNote }`. |
-| `PATCH /proposals/{id}` | requester, while open | Same fields and the same rules as create (null clears a detail; misfit values become `issues`, not `400`). Bumps `version`; posts a `detail_changed` message offering each change; notifies the lister. Unchanged values are ignored. |
-| `POST /proposals/{id}/accept` | lister | `{ version }`. `409 proposal_changed` if the version differs (response includes the current proposal). `409 proposal_not_ready` with `issues` if any remain. Creates the agreement atomically (offering row locked; loans checked for overlap, database exclusion as backstop → `409 dates_taken`). Updates the offering; if nothing is left, closes other open proposals (`nothing_left`) and notifies their requesters; for other proposals now over the remaining amount or overlapping, notifies their requesters. → `{ agreementId }`. Notifies the requester (`agreement` type). |
-| `POST /proposals/{id}/decline` | lister, while open | `{ note? }` → `declined`; thread read-only; notifies the requester. |
-| `POST /proposals/{id}/withdraw` | requester, while open | `{ note? }` → `withdrawn`; thread read-only; notifies the lister. |
+Replaced by arrangements in feature 004: see [004 contracts/api.md](../../004-arrangements/contracts/api.md). The proposal endpoints that were listed here no longer exist.
 
 ## Threads (proposal and report messages)
 
@@ -115,14 +107,11 @@ There is no inbox and no way to start a thread directly.
 
 ## Agreements and problem reports
 
+The agreement endpoints (`/me/agreements`, `/agreements/{id}`, `/agreements/{id}/returned`, `/agreements/{id}/reports`) and `/reports/{id}/share-proposal-messages` were replaced in feature 004: see [004 contracts/api.md](../../004-arrangements/contracts/api.md).
+
 | Endpoint | Access | Behaviour |
 |----------|--------|-----------|
-| `GET /me/agreements` | member | Given, received, lent, borrowed, provided. |
-| `GET /agreements/{id}` | party, mediator | Details (when, handover, full place, loan period, amount, sessions, offer), `proposalId`, reports. |
-| `POST /agreements/{id}/returned` | owner | Loans only; frees the loan's remaining period. |
-| `POST /agreements/{id}/reports` | party | `{ description }` → report + mediation thread with the reported member's inviter. |
 | `GET /reports/{id}` | reporter, reported, mediators | Report, escalation level, `conversationId`, `proposalMessagesShared` (bool), and `proposalConversationId` when shared. |
-| `POST /reports/{id}/share-proposal-messages` | reporter, reported member | Lets the report's mediators read the agreement's proposal thread; posts `messages_shared` in the report thread. Can't be undone; `409 already_shared` the second time. |
 | `POST /reports/{id}/escalate` | reporter, current mediator | Next step; `409 already_at_founders` once founders are involved. |
 | `POST /reports/{id}/resolve` | reporter, mediator | `{ outcomeNote }`. |
 

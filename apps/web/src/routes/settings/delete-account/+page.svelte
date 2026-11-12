@@ -22,7 +22,7 @@
       <li>Your offerings and their photos are deleted.</li>
       <li>
         Your name stays, shown as "(no longer a member)", so the people you invited, and the
-        agreements and conversations other members had with you, still make sense.
+        arrangements and conversations other members had with you, still make sense.
       </li>
       <li>Contact details you shared in conversations are removed.</li>
       <li>Invitation links you made and nobody used yet stop working.</li>
@@ -38,16 +38,16 @@
       <h2 id="loans-heading" class="text-xl font-semibold">Things still lent out</h2>
       <p>
         These loans haven't been marked as returned. You may want to sort them out with the other
-        person first. The agreements stay visible to them after you leave.
+        person first. The arrangements stay visible to them after you leave.
       </p>
       <ul class="grid gap-2">
         {#each data.openLoans as loan (loan.id)}
           <li class="surface p-4">
-            <a href="/agreements/{loan.id}" class="font-medium">{loan.offering.title}</a>
+            <a href="/arrangements/{loan.id}" class="font-medium">{loan.offering.title}</a>
             <span class="block text-sm text-muted-foreground">
-              {loan.myRole === 'owner'
+              {loan.myRole === 'lister'
                 ? `Lent to ${loan.otherMember.displayName}`
-                : `Borrowed from ${loan.owner.displayName}`}{loan.loanEndsAt
+                : `Borrowed from ${loan.otherMember.displayName}`}{loan.loanEndsAt
                 ? `, due back ${when(loan.loanEndsAt)}`
                 : ''}
             </span>

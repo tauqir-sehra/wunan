@@ -36,10 +36,10 @@ Expected: all pass. The OpenAPI test finds every endpoint in the 002, 003 and 00
 ## Scenarios
 
 1. **One list (Story 1)**: As Sam, ask to borrow Fay's drill with nothing filled in; ask for Fay's
-   rice with everything filled in. Open "Arrangements": the drill is under **Needs you** ("Needs
+   rice with everything filled in. Open "Arrangements": the drill is under **Waiting on you** ("Needs
    details: when, how"), the rice under **In progress** ("Waiting for Fay"). The header shows
    "Arrangements" with the count 1 and no "Proposals" or "Agreements". As Fay: the rice is under
-   Needs you ("Ready for you to accept"), the drill under In progress. Choose "I asked" as Fay: the
+   Waiting on you ("Ready for you to accept"), the drill under In progress. Choose "I asked" as Fay: the
    list is empty and says so calmly; "All" brings both back. Nothing changes weight or size when
    choosing.
 2. **One page, same address (Story 2)**: As Fay, open the rice arrangement and note the address.
@@ -48,14 +48,14 @@ Expected: all pass. The OpenAPI test finds every endpoint in the 002, 003 and 00
    "Change details", and the messages are still there. As Sam, the same page shows the same.
 3. **Loan to returned**: As Sam fill in the drill's details; as Fay accept. Stage "Agreed for …";
    timeline shows "Due back …" and "Returned · not yet". Move the loan's dates in the database
-   (`update arrangement set loan_starts_at = …, loan_ends_at = …`) so it has started: "On loan". Past the end: for Fay it is under Needs you with "It was
+   (`update arrangement set loan_starts_at = …, loan_ends_at = …`) so it has started: "On loan". Past the end: for Fay it is under Waiting on you with "It was
    due back …" and no alarm words; for Sam it is under In progress. Fay presses "Mark returned":
    stays put, "Returned", moves to Finished for both.
 4. **Mark as done**: On the agreed rice, either member presses "Mark as done": stays put, "Done on
    …" with who marked it, moves to Finished for both, and the other member gets **no**
    notification (check Mailpit). "Not done yet" puts it back to "Agreed" and In progress. Leave
    another agreed gift unmarked and set its `agreed_at` a month back in the database: it stays quietly In progress, never under
-   Needs you, with no reminder.
+   Waiting on you, with no reminder.
 5. **Ask again**: As Fay decline Sam's new ask for seeds, with a note. As Sam the arrangement is in
    Finished ("Declined"), read-only, with the note and "Ask again". Press it, send new details:
    the same address, the earlier messages still there, timeline "Asked · Declined · Asked",

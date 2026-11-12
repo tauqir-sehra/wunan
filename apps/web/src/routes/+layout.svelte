@@ -38,16 +38,10 @@
       countText: 'new requests about your requests'
     },
     {
-      href: '/proposals',
-      label: 'Proposals',
-      count: data.summary?.proposalsWithNews,
-      countText: 'with something new'
-    },
-    {
-      href: '/agreements',
-      label: 'Agreements',
-      count: data.summary?.agreementsNeedingAttention,
-      countText: 'need a look'
+      href: '/arrangements',
+      label: 'Arrangements',
+      count: data.summary?.arrangementsNeedingYou,
+      countText: 'waiting on you'
     }
   ]);
   const account = $derived<NavLink[]>([

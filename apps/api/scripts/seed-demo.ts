@@ -138,16 +138,86 @@ await sql`update offering l set search_vector =
     coalesce((select string_agg(description, ' ') from trade_accept t where t.offering_id = l.id), '')), 'B')`;
 await sql`analyze`;
 
-// A few proposals for the demo member, so the Proposals page has something to show.
-const { createProposal } = await import('../src/modules/proposals.ts');
+// Arrangements at every stage for the two named members (004), so the Arrangements page and each
+// stage of an arrangement can be tried. Made through the module, as members would.
+const arrangements = await import('../src/modules/arrangements.ts');
+const { arrangement: arrangementTable } = await import('../src/db/schema/index.ts');
 const demoMember = members[1]!;
+const founder = members[0]!;
+const inDays = (days: number) => {
+  const d = new Date(Date.now() + days * 86_400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const full = { lend: { loanLength: 2, loanLengthUnit: 'days' as const }, gift: {}, trade: { ownOffer: 'A jar of jam' }, service: { sessionLength: 1, sessionLengthUnit: 'hours' as const, sessions: 1 } };
+/** A new offering by `ownerId`, so each stage has its own and amounts never run out. */
+async function offeringBy(ownerId: string, type: 'lend' | 'gift' | 'trade' | 'service', title: string) {
+  const [row] = await db
+    .insert(offering)
+    .values({ ownerId, type, title, area: areaPlace(pick(areas)), ...(type === 'service' ? { sessionLength: 1, sessionLengthUnit: 'hours' as const } : {}) })
+    .returning({ id: offering.id });
+  await sql`update offering set search_vector = setweight(to_tsvector('english', title), 'A') where id = ${row!.id}`;
+  return row!.id;
+}
+async function arrange(ownerId: string, requesterId: string, type: 'lend' | 'gift' | 'trade' | 'service', title: string, details: 'none' | 'full', then: (id: string) => Promise<unknown> = async () => {}) {
+  const offeringId = await offeringBy(ownerId, type, title);
+  const asked = await arrangements.createArrangement(offeringId, requesterId, {
+    message: 'Hello! Would this work for you?',
+    ...(details === 'full' ? { date: inDays(3), time: '10:00', handover: 'online' as const, ...full[type] } : {})
+  });
+  await then(asked.id);
+  return asked.id;
+}
+const accept = async (id: string) => {
+  const { version } = await arrangements.getArrangement(id, founder.id);
+  return arrangements.acceptArrangement(id, founder.id, version);
+};
+const daysBack = (days: number) => new Date(Date.now() - days * 86_400_000);
+
+// The demo member asks the founder: one at each stage.
+await arrange(founder.id, demoMember.id, 'lend', 'Ladder', 'none');
+await arrange(founder.id, demoMember.id, 'gift', 'Lemons', 'full');
+await arrange(founder.id, demoMember.id, 'service', 'Bike tune-up', 'full', accept);
+await arrange(founder.id, demoMember.id, 'lend', 'Pressure washer', 'full', async (id) => {
+  await accept(id);
+  // Out now, due back in two days.
+  await db.update(arrangementTable).set({ loanStartsAt: daysBack(1), loanEndsAt: new Date(Date.now() + 2 * 86_400_000) }).where(eq(arrangementTable.id, id));
+});
+await arrange(founder.id, demoMember.id, 'lend', 'Tent', 'full', async (id) => {
+  await accept(id);
+  // It was due back two days ago: under "Needs you" for the founder.
+  await db.update(arrangementTable).set({ loanStartsAt: daysBack(5), loanEndsAt: daysBack(2) }).where(eq(arrangementTable.id, id));
+});
+await arrange(founder.id, demoMember.id, 'lend', 'Camping stove', 'full', async (id) => {
+  await accept(id);
+  await arrangements.markReturned(id, founder.id);
+});
+await arrange(founder.id, demoMember.id, 'gift', 'Plant cuttings', 'full', async (id) => {
+  await accept(id);
+  await arrangements.markDone(id, demoMember.id);
+});
+await arrange(founder.id, demoMember.id, 'gift', 'Seeds', 'none', (id) => arrangements.declineArrangement(id, founder.id, 'None left this year, sorry.'));
+await arrange(founder.id, demoMember.id, 'trade', 'Sourdough starter', 'none', (id) => arrangements.withdrawArrangement(id, demoMember.id, null));
+// Others ask the founder, and a long finished history, so "Show more" can be tried.
+const askers = members.slice(2, 8);
+for (const [index, asker] of askers.entries()) await arrange(founder.id, asker.id, 'gift', `Apples ${index + 1}`, index % 2 ? 'full' : 'none');
+for (let i = 0; i < 24; i += 1) {
+  await arrange(founder.id, pick(members.slice(2)).id, 'gift', `Jam jar ${i + 1}`, 'full', async (id) => {
+    await accept(id);
+    await arrangements.markDone(id, founder.id);
+  });
+}
+// The two named members have read everything so far, so the list shows each group as it would
+// be in use rather than every arrangement as new.
+await sql`update conversation_participant set last_read_at = now() where member_id in (${founder.id}, ${demoMember.id})`;
+// A few the demo member asks of other members too.
 const open = await db.select({ id: offering.id, ownerId: offering.ownerId }).from(offering).where(eq(offering.status, 'available')).limit(40);
 let proposed = 0;
 for (const item of open) {
-  if (proposed >= 5 || item.ownerId === demoMember.id) continue;
-  await createProposal(item.id, demoMember.id, { message: 'Hello! Would this work for you?' });
+  if (proposed >= 3 || item.ownerId === demoMember.id || item.ownerId === founder.id) continue;
+  await arrangements.createArrangement(item.id, demoMember.id, { message: 'Hello! Would this work for you?' });
   proposed += 1;
 }
+
 // Requests (003): what members ask for, a few with things they could give back.
 const asked = {
   borrow: ['Drill for shelves', 'Ladder for the gutters', 'Tent for a weekend', 'Sewing machine', 'Pressure washer'],
@@ -185,7 +255,7 @@ await sql`update request r set search_vector =
 
 // The demo member asks for a drill; someone answers with an offering and a public message.
 if (REQUESTS > 0) {
-  const helper = members[0]!;
+  const helper = founder;
   const [drillRequest] = await db
     .insert(request)
     .values({ askerId: demoMember.id, kind: 'borrow', title: 'Drill for putting up shelves', area: areaPlace('Riverside'), loanLength: 1, loanLengthUnit: 'days' })

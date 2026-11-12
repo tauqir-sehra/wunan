@@ -15,7 +15,7 @@
 <h2>When you find something</h2>
 <p>
   Open the offering and press "Ask to borrow", "Ask for this", "Offer a trade" or "Ask for this
-  service". See <a href="/help/proposals">Proposals and messages</a>.
+  service". See <a href="/help/arrangements">Arranging and agreeing</a>.
 </p>
 
 <h2>When nobody has it</h2>

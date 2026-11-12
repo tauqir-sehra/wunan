@@ -212,7 +212,7 @@ export const Offering = z.object({
   sessionsRemaining: z.number().nullable(),
   availability: z.array(z.object({ weekday: z.number(), startTime: z.string(), endTime: z.string() })),
   handovers: z.array(Handover),
-  /** In full for the owner and members with an accepted proposal on it; otherwise `{ display }`. */
+  /** In full for the owner and members with an agreed arrangement on it; otherwise `{ display }`. */
   area: PlaceView.nullable(),
   meetingPlace: PlaceView.nullable(),
   status: OfferingStatus,
@@ -220,20 +220,20 @@ export const Offering = z.object({
   lentOut: z.boolean(),
   /** Lend: loans already accepted that haven't ended, so requesters can pick free dates. */
   takenPeriods: z.array(z.object({ startsAt: z.string(), endsAt: z.string(), overdue: z.boolean() })),
-  /** The caller's own open proposal on this offering, if any. */
-  myOpenProposalId: z.string().nullable(),
+  /** The caller's own arrangement on this offering that isn't agreed (open, or ended), if any. */
+  myArrangement: z.object({ id: z.string(), status: z.enum(['open', 'declined', 'withdrawn', 'closed']) }).nullable(),
   closedReason: z.enum(['removed', 'used_up']).nullable(),
   createdAt: z.string(),
   owner: memberRef.extend({ invitedBy: memberRef.nullable() }),
   photos: z.array(OfferingPhoto),
   /** Present only for the owner. */
   flags: z.array(OfferingFlag).optional(),
-  openProposalCount: z.number().optional(),
+  openArrangementCount: z.number().optional(),
   /** The first open request this offering is linked to, for "Fulfills <asker>'s request" (003 FR-014). */
   answersRequest: z.object({ requestId: z.string(), title: z.string(), asker: memberRef }).nullable(),
   /** Single offering only: every open request it's linked to. */
   answers: z.array(z.object({ requestId: z.string(), title: z.string(), asker: memberRef })).optional(),
-  /** Single offering only: the caller's own open requests it's linked to (for the proposal prefill). */
+  /** Single offering only: the caller's own open requests it's linked to (for the ask form's prefill). */
   myOpenRequestsLinked: z.array(z.object({ id: z.string(), title: z.string() })).optional(),
   /** Single offering only: the caller's open requests of the matching kind it could be linked to ("Link to my request"). */
   myLinkableRequests: z.array(z.object({ id: z.string(), title: z.string() })).optional(),

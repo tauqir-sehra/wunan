@@ -1,5 +1,16 @@
-// Plain-language text for offerings, used everywhere an offering is shown (constitution II).
-import type { Handover, Offering, OfferingType, PlaceView, RequestKind, Unit } from '@wunan/shared';
+// Plain-language text for offerings, requests and arrangements, used everywhere they are shown
+// (constitution II).
+import type {
+  Arrangement,
+  ArrangementStage,
+  Handover,
+  Offering,
+  OfferingType,
+  PlaceView,
+  RequestKind,
+  TimelineStep,
+  Unit
+} from '@wunan/shared';
 
 export const typeLabels: Record<OfferingType, string> = {
   lend: 'Lend',
@@ -238,32 +249,141 @@ export const kindHints: Record<RequestKind, string> = {
   service: 'You want someone to do something for you.'
 };
 
-type AgreementLike = {
-  outcome: 'lent' | 'gifted' | 'traded' | 'provided';
-  amount: string | null;
-  sessions: number | null;
-  loanEndsAt: string | null;
-  offering: { title: string; unit: Unit | null };
-  owner: { displayName: string };
-  otherMember: { displayName: string };
-  myRole: 'owner' | 'other' | 'mediator';
+// ── Arrangements (004): one exchange, said in plain words ──────────────────────────────────────
+
+const askedFor: Record<OfferingType, string> = {
+  lend: 'to borrow',
+  gift: 'for',
+  trade: 'to trade for',
+  service: 'for'
 };
 
-/** One plain sentence from the reader's side: "You gave Alex 2 kg of Rice." */
-export function agreementSentence(a: AgreementLike): string {
-  const owner = a.myRole === 'owner' ? 'You' : a.owner.displayName;
-  const other = a.myRole === 'other' ? 'you' : a.otherMember.displayName;
-  const what = a.amount
-    ? `${quantity(a.amount, a.offering.unit)} of ${a.offering.title}`
-    : a.offering.title;
-  switch (a.outcome) {
-    case 'lent':
-      return `${owner} lent ${other} ${a.offering.title}${a.loanEndsAt ? `, back by ${when(a.loanEndsAt)}` : ''}.`;
-    case 'gifted':
+/** Whose ask it is, from the reader's side: "You asked to borrow" / "Rosa asked for". */
+export function sideWords(
+  type: OfferingType,
+  myRole: 'requester' | 'lister' | 'helper',
+  requesterName: string
+): string {
+  return `${myRole === 'requester' ? 'You' : requesterName} asked ${askedFor[type]}`;
+}
+
+/** The list's headings, in order. */
+export const groupHeadings = [
+  { key: 'needsYou', heading: 'Waiting on you' },
+  { key: 'inProgress', heading: 'In progress' },
+  { key: 'finished', heading: 'Finished' }
+] as const;
+
+/** The short label shown as a badge beside the stage's sentence. */
+export const stageLabels: Record<ArrangementStage, string> = {
+  arranging: 'Being arranged',
+  agreed: 'Agreed',
+  on_loan: 'On loan',
+  returned: 'Returned',
+  done: 'Done',
+  ended: 'Ended'
+};
+
+const detailWords: Record<string, string> = {
+  date: 'when',
+  handover: 'how',
+  place: 'where',
+  loanLength: 'how long',
+  amount: 'how much',
+  offers: 'what in return',
+  ownOffer: 'what in return',
+  sessionLength: 'how long',
+  sessions: 'how many times'
+};
+
+/** What `stageWords` needs; both the list's summaries and the full arrangement can give it. */
+export type StageInfo = {
+  stage: ArrangementStage;
+  status: 'open' | 'agreed' | 'declined' | 'withdrawn' | 'closed';
+  closedReason: 'nothing_left' | 'quiet' | 'member_left' | null;
+  issues: { field: string }[];
+  myRole: 'requester' | 'lister' | 'helper';
+  /** The lister's name, for "Waiting for …" when I'm the requester. */
+  listerName: string;
+  startsAt: string | null;
+  hasTime: boolean;
+  loanEndsAt: string | null;
+  overdue: boolean;
+  returnedAt: string | null;
+  doneAt: string | null;
+};
+
+/**
+ * Where an arrangement stands, as one calm line: "Needs details: when, how", "Waiting for Fay",
+ * "Agreed for Sat 14 Nov, 10 am", "Due back Sat 14 Nov", "It was due back …" (never "late" or
+ * "overdue"), "Returned on …", "Done on …", or how it ended.
+ */
+export function stageWords(a: StageInfo): string {
+  switch (a.stage) {
+    case 'arranging': {
+      if (a.issues.length === 0)
+        return a.myRole === 'lister' ? 'Ready for you to accept' : `Waiting for ${a.listerName}`;
+      const missing = [
+        ...new Set(a.issues.map((issue) => detailWords[issue.field]).filter(Boolean))
+      ];
+      return missing.length ? `Needs details: ${missing.join(', ')}` : 'Needs a change';
+    }
+    case 'agreed':
+      return a.startsAt
+        ? `Agreed for ${a.hasTime ? when(a.startsAt) : shortDay(a.startsAt)}`
+        : 'Agreed';
+    case 'on_loan':
+      if (!a.loanEndsAt) return 'On loan';
+      return a.overdue ? `It was due back ${when(a.loanEndsAt)}` : `Due back ${when(a.loanEndsAt)}`;
+    case 'returned':
+      return a.returnedAt ? `Returned on ${shortDay(a.returnedAt)}` : 'Returned';
+    case 'done':
+      return a.doneAt ? `Done on ${shortDay(a.doneAt)}` : 'Done';
+    case 'ended':
+      if (a.status === 'declined') return 'Declined';
+      if (a.status === 'withdrawn') return 'Withdrawn';
+      return a.closedReason === 'nothing_left'
+        ? 'Closed: nothing left'
+        : a.closedReason === 'member_left'
+          ? 'Closed: one of you left wunan'
+          : 'Closed after a quiet month';
+  }
+}
+
+/** A timeline step in a word or two. */
+export const stepWords: Record<TimelineStep['step'], string> = {
+  asked: 'Asked',
+  details_changed: 'Details changed',
+  agreed: 'Agreed',
+  declined: 'Declined',
+  withdrawn: 'Withdrawn',
+  closed: 'Closed',
+  lent: 'Lent from',
+  due_back: 'Due back',
+  returned: 'Returned',
+  done: 'Done',
+  help_asked: 'Help asked for',
+  help_outcome: 'Help settled'
+};
+
+/** One plain sentence about what was agreed, from the reader's side: "You gave Alex 2 kg of Rice." */
+export function agreedSentence(
+  a: Pick<Arrangement, 'offering' | 'lister' | 'requester' | 'details' | 'agreed' | 'myRole'>
+): string {
+  const owner = a.myRole === 'lister' ? 'You' : a.lister.displayName;
+  const other = a.myRole === 'requester' ? 'you' : a.requester.displayName;
+  const { title, unit, type } = a.offering;
+  const what = a.details.amount ? `${quantity(a.details.amount, unit)} of ${title}` : title;
+  switch (type) {
+    case 'lend':
+      return `${owner} lent ${other} ${title}${a.agreed?.loanEndsAt ? `, back by ${when(a.agreed.loanEndsAt)}` : ''}.`;
+    case 'gift':
       return `${owner} gave ${other} ${what}.`;
-    case 'traded':
+    case 'trade':
       return `${owner} traded ${what} with ${other}.`;
-    case 'provided':
-      return `${owner} provided ${a.sessions ?? 1} ${a.sessions === 1 || !a.sessions ? 'session' : 'sessions'} of ${a.offering.title} for ${other}.`;
+    case 'service': {
+      const times = a.details.sessions ?? 1;
+      return `${owner} provided ${times} ${times === 1 ? 'session' : 'sessions'} of ${title} for ${other}.`;
+    }
   }
 }

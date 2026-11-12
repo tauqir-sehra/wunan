@@ -1,5 +1,5 @@
 // Messages, contact sharing, and call times (001 FR-018 to FR-020). Every thread belongs to a
-// proposal or a problem report (002 FR-022); there is no inbox and no starting a thread directly.
+// arrangement or a problem report (002 FR-022; 004); there is no inbox and no starting a thread directly.
 import { z } from 'zod';
 import { memberRef } from './common.ts';
 
@@ -30,12 +30,17 @@ export const MessageKind = z.enum([
   'text',
   'call_accepted',
   'system',
-  // Written by the API when a proposal changes (002 FR-016, FR-020, FR-022a).
+  // Notes the API writes when an arrangement changes (002 FR-016, FR-020, FR-022a; 004). The
+  // arrangement's timeline is built from them.
+  'asked',
   'detail_changed',
   'accepted',
   'declined',
   'withdrawn',
   'closed',
+  'returned',
+  'done',
+  'not_done',
   'messages_shared'
 ]);
 
@@ -60,8 +65,8 @@ export const ConversationSummary = z.object({
   participants: z.array(memberRef),
   offering: z.object({ id: z.string(), title: z.string() }).nullable(),
   isMediation: z.boolean(),
-  proposalId: z.string().nullable(),
-  /** False once its proposal is declined, withdrawn, or closed, or for mediators reading shared messages. */
+  arrangementId: z.string().nullable(),
+  /** False once its arrangement is declined, withdrawn, or closed, or for helpers reading shared messages. */
   canWrite: z.boolean(),
   lastMessage: z.object({ preview: z.string(), createdAt: z.string(), author: memberRef.nullable() }).nullable(),
   unread: z.boolean()
@@ -76,8 +81,8 @@ export const MessagesPage = z.object({
 export type MessagesPage = z.infer<typeof MessagesPage>;
 
 export const Summary = z.object({
-  proposalsWithNews: z.number(),
-  agreementsNeedingAttention: z.number(),
+  /** Arrangements under "Needs you" (004 FR-019). */
+  arrangementsNeedingYou: z.number(),
   unseenFlags: z.number(),
   /** Issues raised about my requests that I haven't seen (003 FR-022). */
   unseenRequestFlags: z.number()

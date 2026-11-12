@@ -1,7 +1,7 @@
 // Places (002 FR-027 to FR-030): areas, meeting places, and where a handover happens. A place is
 // either picked from a suggestion (with its parts, used for "neighbourhood, city" and area checks)
 // or typed as plain text. Other members see an offering's place only as `{ display }` until a
-// proposal on it is accepted; the API decides that (apps/api/src/modules/places.ts).
+// arrangement on it is agreed; the API decides that (apps/api/src/modules/places.ts).
 import { z } from 'zod';
 
 const part = z.string().trim().max(100).optional();

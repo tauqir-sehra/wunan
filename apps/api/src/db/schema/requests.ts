@@ -5,13 +5,13 @@
 import { sql } from 'drizzle-orm';
 import { type AnyPgColumn, check, customType, date, index, integer, jsonb, numeric, pgEnum, pgTable, smallint, text, time, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 import type { Place } from '@wunan/shared';
-import { agreement } from './agreements.ts';
+import { arrangement } from './arrangements.ts';
 import { handover, offering, loanLengthUnit, sessionLengthUnit, unit } from './offerings.ts';
 import { member } from './members.ts';
 
 export const requestKind = pgEnum('request_kind', ['borrow', 'receive', 'trade', 'service']);
 export const requestStatus = pgEnum('request_status', ['open', 'closed']);
-/** Closed by the asker (can reopen), by an accepted proposal (can reopen), or because they left. */
+/** Closed by the asker (can reopen), by an agreed arrangement (can reopen), or because they left. */
 export const requestClosedReason = pgEnum('request_closed_reason', ['by_asker', 'agreed', 'account_deleted']);
 
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
@@ -43,7 +43,7 @@ export const request = pgTable(
     sessions: integer(),
     status: requestStatus().notNull().default('open'),
     closedReason: requestClosedReason(),
-    closedByAgreementId: uuid().references((): AnyPgColumn => agreement.id, { onDelete: 'set null' }),
+    closedByArrangementId: uuid().references((): AnyPgColumn => arrangement.id, { onDelete: 'set null' }),
     /** Title (weight A), description and give-back items (weight B); set by modules/requests.ts on every save. */
     searchVector: tsvector(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
@@ -65,7 +65,7 @@ export const request = pgTable(
       and (${t.kind} in ('receive', 'trade') or ${t.amount} is null)
       and (${t.kind} = 'service' or (${t.sessionLength} is null and ${t.sessions} is null))`),
     check('request_closed_has_reason', sql`(${t.status} = 'closed') = (${t.closedReason} is not null)`),
-    check('request_agreement_only_when_agreed', sql`${t.closedByAgreementId} is null or ${t.closedReason} = 'agreed'`),
+    check('request_arrangement_only_when_agreed', sql`${t.closedByArrangementId} is null or ${t.closedReason} = 'agreed'`),
     index('request_search_idx').using('gin', t.searchVector),
     index('request_status_created_idx').on(t.status, t.createdAt),
     index('request_kind_idx').on(t.kind),

@@ -53,9 +53,9 @@ progress is shown.
   "Being arranged", keeps its messages, and the timeline shows the decline or withdrawal and the
   new ask.
 - Q: Does a note that wunan writes (such as "marked as done" or "returned") put the arrangement
-  under "Needs you" for the other member? → A: No. Only a message written by the other member
+  under "Waiting on you" for the other member? → A: No. Only a message written by the other member
   counts as something new.
-- Q: When is a loan under "Needs you" for its owner? → A: Only once it is past its due date.
+- Q: When is a loan under "Waiting on you" for its owner? → A: Only once it is past its due date.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -79,11 +79,11 @@ heading.
    (for example "Needs details: when, how", "Waiting for Fay", "Agreed for Saturday 14 November",
    "Due back tomorrow", "Returned").
 2. **Given** some arrangements need the member to do something (accept, fill in details, mark a loan
-   returned, read a new message), **When** they open the list, **Then** those are under "Needs you"
+   returned, read a new message), **When** they open the list, **Then** those are under "Waiting on you"
    at the top, the ones still going are under "In progress", and finished or ended ones are under
    "Finished".
 3. **Given** the navigation, **When** a member looks at it, **Then** there is one "Arrangements" link
-   with one count (the number under "Needs you") where "Proposals" and "Agreements" used to be.
+   with one count (the number under "Waiting on you") where "Proposals" and "Agreements" used to be.
 4. **Given** a member with no arrangements, **When** they open the list, **Then** it says so calmly
    and points to finding an offering or making a request.
 5. **Given** a long list, **When** the member chooses "I asked" or "On my offerings", **Then** only
@@ -197,7 +197,7 @@ exists.
 - **The other member left wunan**: the arrangement stays in the list, in "Finished" if it was still
   open, saying it closed because one of you left.
 - **A loan is overdue**: the stage says "It was due back" with the date, in the same calm words as
-  today, and the arrangement stays under "Needs you" for the owner only until it is marked returned.
+  today, and the arrangement stays under "Waiting on you" for the owner only until it is marked returned.
 - **Old addresses**: links to proposal and agreement pages from before this change (bookmarks,
   emails already sent) are not kept. They show the usual "couldn't find that page".
 - **Someone who isn't part of an arrangement** opens its address: they see the same "couldn't find
@@ -218,7 +218,7 @@ exists.
 - **FR-002**: Each arrangement in the list MUST show the offering's title, the other member's name,
   the member's side of it in words (for example "You asked to borrow" or "Rosa asked for"), its
   stage in words, and, when there is one, the latest message's first line.
-- **FR-003**: The list MUST be grouped under three headings, in this order: **"Needs you"**
+- **FR-003**: The list MUST be grouped under three headings, in this order: **"Waiting on you"**
   (the member can or must do something: details to fill in, a proposal ready to accept, a loan
   past its due date for its owner, or a message from the other member they haven't read; notes
   that wunan writes, such as "marked as done" or "returned", don't count), **"In progress"**
@@ -250,7 +250,7 @@ exists.
   Either member MUST be able to take it back with "Not done yet". Marking as done changes nothing
   else (amounts left, the offering, and the request are as they were on agreeing) and is never
   required: wunan MUST NOT remind, count, or nudge members about arrangements not marked as done,
-  and they MUST NOT appear under "Needs you" for that reason.
+  and they MUST NOT appear under "Waiting on you" for that reason.
 
 **The arrangement page**
 
@@ -291,7 +291,7 @@ exists.
 **Finding it from elsewhere**
 
 - **FR-019**: The navigation MUST show one "Arrangements" link in place of "Proposals" and
-  "Agreements", with one count: the number of arrangements under "Needs you". The count's meaning
+  "Agreements", with one count: the number of arrangements under "Waiting on you". The count's meaning
   MUST be available to screen readers in words.
 - **FR-020**: Every link inside wunan, and every link in an email or device notification sent after
   this change, that points to an exchange MUST lead to its arrangement page or to "Arrangements".
@@ -360,7 +360,7 @@ exists.
 - **SC-005**: Everything a member could do on the proposal and agreement pages before the change
   can still be done, under the same rules, with no extra steps.
 - **SC-006**: The navigation has one fewer main link, and its one count for arrangements equals the
-  number shown under "Needs you".
+  number shown under "Waiting on you".
 - **SC-007**: The "Arrangements" list shows within 2 seconds for a member with 200 arrangements.
 - **SC-008**: Nobody can open an arrangement, see its full place, or read its messages unless they
   could have for the same exchange before the change.

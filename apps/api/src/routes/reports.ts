@@ -1,4 +1,4 @@
-// Asking for help (contracts/api.md, "Agreements and problem reports").
+// Asking for help with an agreed arrangement (002 and 004 contracts/api.md).
 import { createRoute, z } from '@hono/zod-openapi';
 import { CreateReport, ProblemReport, ResolveReport } from '@wunan/shared';
 import { createRouter } from '../app-router.ts';
@@ -7,7 +7,7 @@ import * as reports from '../modules/reports.ts';
 
 export const reportRoutes = createRouter();
 reportRoutes.use('/reports/*', requireMember);
-reportRoutes.use('/agreements/:id/reports', requireMember);
+reportRoutes.use('/arrangements/:id/reports', requireMember);
 
 const security = [{ bearer: [] }];
 const Id = z.object({ id: z.uuid({ message: 'That request for help could not be found.' }) });
@@ -16,7 +16,7 @@ const reply = { content: { 'application/json': { schema: ProblemReport } } };
 reportRoutes.openapi(
   createRoute({
     method: 'post',
-    path: '/agreements/{id}/reports',
+    path: '/arrangements/{id}/reports',
     summary: "Ask for help with an agreement; opens a conversation with the other member's inviter",
     security,
     request: { params: z.object({ id: z.uuid() }), body: { content: { 'application/json': { schema: CreateReport } } } },
@@ -50,11 +50,11 @@ reportRoutes.openapi(
 reportRoutes.openapi(
   createRoute({
     method: 'post',
-    path: '/reports/{id}/share-proposal-messages',
-    summary: "Let the helpers read the agreement's proposal messages (reporter or reported member); can't be undone",
+    path: '/reports/{id}/share-messages',
+    summary: "Let the helpers read the arrangement's messages (reporter or reported member); can't be undone",
     security,
     request: { params: Id },
     responses: { 200: { description: 'The request for help', ...reply } }
   }),
-  async (c) => c.json(await reports.shareProposalMessages(c.req.valid('param').id, c.get('member').id), 200)
+  async (c) => c.json(await reports.shareMessages(c.req.valid('param').id, c.get('member').id), 200)
 );

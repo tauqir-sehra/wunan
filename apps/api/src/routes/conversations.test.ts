@@ -12,7 +12,7 @@ async function pair() {
   const alexToken = await signIn(alex);
   const { body: drill } = await api('POST', '/api/v1/offerings', { token: samToken, body: { type: 'lend', title: 'Drill' } });
   const started = await propose(alexToken, drill.id);
-  return { sam, alex, samToken, alexToken, drill, proposalId: started.id, conversationId: started.conversationId };
+  return { sam, alex, samToken, alexToken, drill, arrangementId: started.id, conversationId: started.conversationId };
 }
 
 const send = (token: string, id: string, body: string) => api('POST', `/api/v1/conversations/${id}/messages`, { token, body: { body } });
@@ -37,20 +37,23 @@ describe('conversations', () => {
     expect((await send(alexToken, conversationId, '   ')).body.error.fields.body).toBe('Please write a message.');
   });
 
-  it('shows unread proposals until they are read', async () => {
+  it('puts an arrangement under "Waiting on you" until the message is read', async () => {
     const { samToken, alexToken, conversationId } = await pair();
     await send(alexToken, conversationId, 'Is Saturday okay?');
-    const list = await api('GET', '/api/v1/proposals', { token: samToken });
-    expect(list.body.items[0]).toMatchObject({ unread: true, offering: { title: 'Drill' }, lastMessagePreview: 'Is Saturday okay?' });
-    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.proposalsWithNews).toBe(1);
+    const list = await api('GET', '/api/v1/arrangements', { token: samToken });
+    expect(list.body.needsYou[0]).toMatchObject({ unread: true, needsMe: true, offering: { title: 'Drill' }, lastMessagePreview: 'Is Saturday okay?' });
+    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.arrangementsNeedingYou).toBe(1);
     const page = await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: samToken });
     expect(page.body.conversation).toMatchObject({ offering: { title: 'Drill' }, canWrite: true });
 
     await api('POST', `/api/v1/conversations/${conversationId}/read`, { token: samToken });
-    expect((await api('GET', '/api/v1/proposals', { token: samToken })).body.items[0].unread).toBe(false);
-    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.proposalsWithNews).toBe(0);
-    // My own messages never count as unread for me.
-    expect((await api('GET', '/api/v1/me/summary', { token: alexToken })).body.proposalsWithNews).toBe(0);
+    // Read: nothing is new. Details are still missing, which is Alex's to fill in, not Sam's.
+    const read = (await api('GET', '/api/v1/arrangements', { token: samToken })).body;
+    expect(read.needsYou).toEqual([]);
+    expect(read.inProgress[0]).toMatchObject({ unread: false, needsMe: false });
+    expect((await api('GET', '/api/v1/me/summary', { token: samToken })).body.arrangementsNeedingYou).toBe(0);
+    // My own messages never count as unread for me; Alex is listed only because details are missing.
+    expect((await api('GET', '/api/v1/arrangements', { token: alexToken })).body.needsYou[0]).toMatchObject({ unread: false, needsMe: true });
   });
 
   it('lists messages newest first', async () => {
@@ -58,7 +61,8 @@ describe('conversations', () => {
     await send(alexToken, conversationId, 'First');
     await send(samToken, conversationId, 'Second');
     const { body } = await api('GET', `/api/v1/conversations/${conversationId}/messages`, { token: samToken });
-    expect(body.items.map((m: { body: string }) => m.body)).toEqual(['Second', 'First']);
+    // The oldest is the note wunan wrote when Alex asked.
+    expect(body.items.map((m: { kind: string; body: string }) => (m.kind === 'text' ? m.body : m.kind))).toEqual(['Second', 'First', 'asked']);
     expect(body.items[0].author.displayName).toBe('Sam');
   });
 
@@ -91,7 +95,7 @@ describe('contact sharing', () => {
     const only = await api('POST', url, { token: alexToken, body: { contact: { email: true } } });
     expect(only.body).toMatchObject({ body: '', contact: { phone: null, email: 'alex.home@example.org' } });
     const seen = await api('GET', url, { token: samToken });
-    expect(seen.body.items).toHaveLength(2);
+    expect(seen.body.items.filter((m: { kind: string }) => m.kind === 'text')).toHaveLength(2);
   });
 
   it('needs something in the message, and the details saved', async () => {

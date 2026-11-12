@@ -4,7 +4,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
 import {
-  acceptProposal,
+  acceptArrangement,
   completeDetails,
   createFounder,
   createInvitation,
@@ -34,7 +34,7 @@ async function pagesOfACommunity() {
   });
   const samId = await memberIdOf(sam);
   const deal = await proposeOn(alex, drill.id, completeDetails('lend'));
-  const agreement = { id: await acceptProposal(sam, deal.id) };
+  const agreement = { id: await acceptArrangement(sam, deal.id) };
   const rice = await createOfferingFor(sam, {
     type: 'gift',
     title: 'Rice',
@@ -70,13 +70,11 @@ async function pagesOfACommunity() {
       `/offerings/${drill.id}/edit`,
       `/offerings/${jam.id}/propose`,
       '/offerings?mine=true',
-      '/proposals',
-      `/proposals/${open.id}`,
-      `/proposals/${deal.id}`,
+      '/arrangements',
+      `/arrangements/${open.id}`,
+      `/arrangements/${deal.id}`,
       `/offerings/${jam.id}/issue`,
-      '/agreements',
-      `/agreements/${agreement.id}`,
-      `/agreements/${agreement.id}/report`,
+      `/arrangements/${agreement.id}/report`,
       '/invitations',
       `/members/${samId}`,
       `/members/${samId}/chain`,
@@ -170,8 +168,7 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
   for (const label of [
     'Offerings',
     'Requests',
-    'Proposals',
-    'Agreements',
+    'Arrangements',
     'Request\u00a0something',
     'Offer\u00a0something',
     'Sam'

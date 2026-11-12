@@ -216,3 +216,23 @@ T065).
   request per hour, and links can be removed by the offering's owner.
 - Same 4 moderate `npm audit` advisories as before (esbuild inside drizzle-kit, development server
   only).
+
+## 004 Arrangements (2026-11-11)
+
+Covers merging proposals and agreements into one arrangement, asking again, marking as done, the
+grouped list, helpers' read-only view, and the export (004 tasks T031, T054).
+
+| Area | Review |
+|------|--------|
+| Access | `GET /arrangements/{id}` answers the requester and the offering's owner. Anyone else gets `404`, as before, unless they take part in the conversation of a request for help about that arrangement (a helper); then only once it is agreed, read-only (`myRole: helper`, no `canAccept`, `canEdit`, `canAskAgain`). Every action endpoint (`PATCH`, accept, decline, withdraw, returned, done, not-done) checks for one of the two members and answers helpers `404`. |
+| Helpers and messages | A helper's response has `conversationId: null` until one of the two members shared their messages with the helpers, exactly as the old "share proposal messages" rule; the conversation endpoints still refuse helpers until then and never let them write. The timeline carries only the step, its time and who did it, built from note kinds; no note or message text is read into it, so it shows a helper nothing beyond what the old agreement page did. |
+| Fixed once agreed | Details can only be changed while `status = 'open'` (`409 arrangement_ended` otherwise). Database checks keep the agreed record (agreed place and offer, loan dates, returned and done dates) empty unless `status = 'agreed'`, keep `agreedAt` set exactly when agreed, and refuse `doneAt` on a loan and `returnedAt` on anything else. Overlapping unreturned loans are still refused by the exclusion constraint, now on `arrangement`. |
+| Asking again | Only the same requester can reopen, only their own arrangement on that offering, and only when it is declined, withdrawn or closed (the update's `where` checks the status, so a race can't reopen an open or agreed one). A partial unique index allows at most one arrangement per requester and offering that isn't agreed. Reopening clears the earlier note and closed reason and bumps `version`, so a lister can't accept details they haven't seen. |
+| Marking as done | Either member, only on an agreed gift, trade or service. It changes no amounts, offering or request, sends no notification, and can be taken back. |
+| List and counts | `GET /arrangements` and the header count only ever include arrangements where the caller is the requester or the offering's owner. "Unread" counts only messages written by the other member, so notes wunan writes can't be used to make an arrangement look urgent. |
+| Data export | One `arrangements` section replaces `proposals` and `agreements`, with the same details plus the agreed record, returned and done dates, and messages. Other members appear by display name only. |
+
+**Accepted for now**
+
+- Same 4 moderate `npm audit` advisories as before (esbuild inside drizzle-kit, development server
+  only).

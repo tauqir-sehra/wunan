@@ -1,7 +1,7 @@
 <h2>When something goes wrong</h2>
 <p>
   If an agreement doesn't work out, for example something lent hasn't come back, you can ask for
-  help. Open the agreement in <a href="/agreements">Agreements</a> and press "Ask for help". Describe
+  help. Open it in <a href="/arrangements">Arrangements</a> and press "Ask for help". Describe
   what happened. You'll see what you wrote before you send it.
 </p>
 

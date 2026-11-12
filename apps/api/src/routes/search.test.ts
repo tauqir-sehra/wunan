@@ -2,7 +2,7 @@
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
-import { agreement } from '../db/schema/index.ts';
+import { arrangement } from '../db/schema/index.ts';
 import { agree, api, completeDetails, createFounder, createInvitedMember, signIn } from '../test/setup.ts';
 
 async function setup() {
@@ -53,8 +53,8 @@ describe('search', () => {
     await api('POST', `/api/v1/offerings/${closed.id}/remove`, { token });
     // A loan that started yesterday and isn't back yet.
     const borrower = await createInvitedMember(founder, 'Alex');
-    const { agreementId } = await agree(token, await signIn(borrower), lent.id, completeDetails('lend'));
-    await db.update(agreement).set({ loanStartsAt: new Date(Date.now() - 86_400_000), loanEndsAt: new Date(Date.now() + 86_400_000) }).where(eq(agreement.id, agreementId));
+    const { arrangementId } = await agree(token, await signIn(borrower), lent.id, completeDetails('lend'));
+    await db.update(arrangement).set({ loanStartsAt: new Date(Date.now() - 86_400_000), loanEndsAt: new Date(Date.now() + 86_400_000) }).where(eq(arrangement.id, arrangementId));
     expect(titles(await search(token, ''))).toEqual([available.title]);
     expect(titles(await search(token, 'includeLent=true')).sort()).toEqual(['Available rice', 'Lent drill']);
   });

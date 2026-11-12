@@ -18,7 +18,7 @@ export const actions: Actions = {
   // Sharing can't be undone, so it asks first; the second press (with `confirmed`) shares.
   share: formAction(async ({ event, form, api }) => {
     if (form.get('confirmed') !== 'yes') return { confirmShare: true };
-    await api.post(`/api/v1/reports/${encodeURIComponent(event.params.id ?? '')}/share-proposal-messages`);
+    await api.post(`/api/v1/reports/${encodeURIComponent(event.params.id ?? '')}/share-messages`);
     return { done: 'share' };
   }),
   resolve: formAction(async ({ event, form, api }) => {

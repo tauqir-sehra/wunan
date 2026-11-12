@@ -2,6 +2,8 @@
 // pop-ups close once sent, and the result shows next to the buttons (constitution V).
 import { expect, test, type Page } from '@playwright/test';
 import {
+  acceptArrangement,
+  completeDetails,
   createFounder,
   createInvitedMember,
   createOfferingFor,
@@ -90,7 +92,7 @@ test('withdrawing a proposal for a request keeps the page where it was', async (
   const proposal = await proposeOn(rana, ladder.id, { requestId: request.id });
 
   await signInAs(page, rana);
-  await page.goto(`/proposals/${proposal.id}`);
+  await page.goto(`/arrangements/${proposal.id}`);
   await page.waitForLoadState('networkidle');
   await page.setViewportSize({ width: 1024, height: 500 });
   const withdraw = page.getByRole('button', { name: 'Withdraw' });
@@ -106,7 +108,7 @@ test('withdrawing a proposal for a request keeps the page where it was', async (
   expect(await scrollY(page)).toBeGreaterThanOrEqual(before - 80);
   await withdraw.click();
   await page.getByRole('button', { name: 'Yes, withdraw it' }).click();
-  await expect(page.getByText('You withdrew your proposal.')).toBeInViewport();
+  await expect(page.getByText('You withdrew this.')).toBeInViewport();
   expect(await scrollY(page)).toBeGreaterThan(0);
 });
 
@@ -117,7 +119,7 @@ test('adding a call time with "+" keeps the "+" and its panel where they are', a
   const proposal = await proposeOn(rana, ladder.id);
 
   await signInAs(page, rana);
-  await page.goto(`/proposals/${proposal.id}`);
+  await page.goto(`/arrangements/${proposal.id}`);
   await page.waitForLoadState('networkidle');
   await scrollToBottom(page);
   const plus = page.getByLabel('Add your contact details or a time to call');
@@ -130,4 +132,45 @@ test('adding a call time with "+" keeps the "+" and its panel where they are', a
   await expect(page.getByRole('list', { name: 'Added to your message' })).toBeVisible();
   expect(Math.abs((await plus.boundingBox())!.y - before)).toBeLessThan(2);
   await expect(page.locator('#call-time')).toBeInViewport();
+});
+
+test('accepting, marking done and not done, and marking returned keep the page where it was', async ({
+  page
+}) => {
+  test.slow();
+  const sam = createFounder('Sam');
+  const rana = await createInvitedMember(sam, 'Rana');
+  // Long enough to scroll: the description and a few messages.
+  const rice = await createOfferingFor(sam, {
+    type: 'gift',
+    title: 'Rice',
+    description: 'Brown rice.'
+  });
+  const drill = await createOfferingFor(sam, { type: 'lend', title: 'Drill' });
+  const gift = await proposeOn(rana, rice.id, completeDetails('gift'));
+  const loan = await proposeOn(rana, drill.id, completeDetails('lend'));
+  await acceptArrangement(sam, loan.id);
+
+  /** Presses `name` with the button already on screen and the page scrolled, then checks it stayed. */
+  async function pressInPlace(name: string, result: string) {
+    await page.waitForLoadState('networkidle');
+    await page.setViewportSize({ width: 1024, height: 500 });
+    const button = page.getByRole('button', { name, exact: true });
+    await button.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, 60));
+    await button.scrollIntoViewIfNeeded();
+    const before = await scrollY(page);
+    expect(before).toBeGreaterThan(0);
+    await button.click();
+    await expect(page.getByText(result)).toBeInViewport();
+    expect(await scrollY(page)).toBeGreaterThanOrEqual(before - 80);
+  }
+
+  await signInAs(page, sam);
+  await page.goto(`/arrangements/${gift.id}`);
+  await pressInPlace('Accept', "Accepted. You've agreed on these details.");
+  await pressInPlace('Mark as done', 'Marked as done. You can take this back.');
+  await pressInPlace('Not done yet', 'Marked as not done yet.');
+  await page.goto(`/arrangements/${loan.id}`);
+  await pressInPlace('Mark returned', 'Marked as returned. Those dates are free again.');
 });

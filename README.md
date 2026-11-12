@@ -15,9 +15,10 @@ are easily overwhelmed by busy, attention-grabbing apps.
   evenings).
 - **Ask for things.** Post a request ("I need a ladder"). Others answer it with an offering, and
   wunan suggests offerings that already match while you write.
-- **Propose and agree.** Make a proposal on an offering. The two of you talk privately on the
-  proposal, add a phone number or a time to call if you both want to, and once it's accepted it
-  becomes an agreement that records what was agreed, including loan returns.
+- **Arrange and agree.** Ask for something on an offering. Each exchange is one arrangement with
+  one page, from asking to the end: the two of you talk privately there, add a phone number or a
+  time to call if you both want to, and once it's accepted the details are fixed as what you
+  agreed. Loans are marked returned; gifts, trades and services can be marked as done.
 - **Talk in public.** Every offering and request has a short public thread for questions.
 - **Ask for help, not punishment.** If something goes wrong, you ask your invite chain to help
   sort it out. There is no removing, banning or blocking.

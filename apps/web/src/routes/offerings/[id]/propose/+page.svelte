@@ -3,7 +3,7 @@
   import InfoNote from '#lib/components/InfoNote.svelte';
   import FieldProblems from '#lib/components/FieldProblems.svelte';
   import Notice from '#lib/components/Notice.svelte';
-  import ProposalFields from '#lib/components/ProposalFields.svelte';
+  import ArrangementFields from '#lib/components/ArrangementFields.svelte';
   import { Button } from '#lib/components/ui/button/index.ts';
   import { amountLine } from '#lib/format.ts';
 
@@ -39,8 +39,10 @@
 <section class="grid max-w-2xl gap-6">
   <div class="grid gap-1">
     <div class="flex items-start justify-between gap-3">
-      <h1 class="text-2xl font-semibold sm:text-3xl">{titles[offering.type]}</h1>
-      <HelpLink topic="proposals" label="Help with proposals" />
+      <h1 class="text-2xl font-semibold sm:text-3xl">
+        {data.askingAgain ? 'Ask again' : titles[offering.type]}
+      </h1>
+      <HelpLink topic="arrangements" label="Help with arranging and agreeing" />
     </div>
     <p class="text-muted-foreground">
       <a href="/offerings/{offering.id}">{offering.title}</a> from {offering.owner
@@ -98,6 +100,9 @@
       <div><Button type="submit">Continue</Button></div>
     </form>
   {:else}
+    {#if data.askingAgain}<p>
+        This continues your earlier arrangement, with its messages. Change anything you like.
+      </p>{/if}
     {#if data.request}
       <InfoNote
         >This is for your request: <a href="/requests/{data.request.id}">{data.request.title}</a>.
@@ -107,7 +112,7 @@
     <form method="POST" class="grid gap-6">
       {#if data.request}<input type="hidden" name="requestId" value={data.request.id} />{/if}
       {#if data.linkFirst}<input type="hidden" name="linkFirst" value="yes" />{/if}
-      <ProposalFields
+      <ArrangementFields
         {offering}
         values={form?.values ?? data.prefill}
         fields={form?.fields ?? {}}

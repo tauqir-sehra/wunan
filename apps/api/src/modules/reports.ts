@@ -1,4 +1,4 @@
-// Asking for help with an agreement (FR-027 to FR-029b; data-model.md "problem_report").
+// Asking for help with an agreed arrangement (FR-027 to FR-029b; data-model.md "problem_report").
 //
 // Help comes from the invite chain, in a shared conversation:
 // 1. Reporting adds the reported member's nearest active inviter as a mediator.
@@ -7,12 +7,12 @@
 // 3. The next escalation adds all active founders. That is the last step.
 // People already in the conversation are skipped, so no one mediates their own report.
 // A report may stay open indefinitely. Nothing here changes anyone's membership or access.
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { agreement, conversation, conversationParticipant, offering, member, problemReport } from '../db/schema/index.ts';
+import { arrangement, conversation, conversationParticipant, offering, member, problemReport } from '../db/schema/index.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { notify } from '../notify/index.ts';
-import { setMediatorCheck, setReportsLookup } from './agreements.ts';
+import { setHelperCheck, setReportsLookup } from './arrangements.ts';
 import { createThread, postEvent, postSystemMessage, sendMessage } from './messaging.ts';
 import { shownName } from './members.ts';
 
@@ -38,14 +38,20 @@ async function activeFounders() {
   return db.select().from(member).where(and(eq(member.isFounder, true), isNull(member.deletedAt)));
 }
 
-export async function createReport(agreementId: string, reporterId: string, description: string) {
-  const [deal] = await db.select().from(agreement).where(eq(agreement.id, agreementId));
-  if (!deal || (deal.ownerId !== reporterId && deal.otherMemberId !== reporterId)) throw errors.notFound('That agreement');
-  const reportedId = deal.ownerId === reporterId ? deal.otherMemberId : deal.ownerId;
+export async function createReport(arrangementId: string, reporterId: string, description: string) {
+  const [deal] = await db
+    .select({ offeringId: arrangement.offeringId, status: arrangement.status, requesterId: arrangement.requesterId, ownerId: offering.ownerId })
+    .from(arrangement)
+    .innerJoin(offering, eq(offering.id, arrangement.offeringId))
+    .where(eq(arrangement.id, arrangementId));
+  if (!deal || (deal.ownerId !== reporterId && deal.requesterId !== reporterId)) throw errors.notFound('That arrangement');
+  // Help is for what was agreed; before that the two members can simply decline or withdraw.
+  if (deal.status !== 'agreed') throw new ApiError(409, 'not_agreed', 'You can ask for help once this is agreed.');
+  const reportedId = deal.ownerId === reporterId ? deal.requesterId : deal.ownerId;
   const [open] = await db
     .select({ id: problemReport.id })
     .from(problemReport)
-    .where(and(eq(problemReport.agreementId, agreementId), eq(problemReport.status, 'open')));
+    .where(and(eq(problemReport.arrangementId, arrangementId), eq(problemReport.status, 'open')));
   if (open) throw new ApiError(409, 'already_open', 'Someone has already asked for help with this agreement. You can join that conversation.');
 
   const parties = new Set([reporterId, reportedId]);
@@ -55,7 +61,7 @@ export async function createReport(agreementId: string, reporterId: string, desc
   const level = inviter ? 'inviter' : 'founders';
 
   const { report, conversationId } = await db.transaction(async (tx) => {
-    const [report] = await tx.insert(problemReport).values({ agreementId, reporterId, reportedMemberId: reportedId, description, escalationLevel: level }).returning();
+    const [report] = await tx.insert(problemReport).values({ arrangementId, reporterId, reportedMemberId: reportedId, description, escalationLevel: level }).returning();
     const room = await createThread(tx, { problemReportId: report!.id }, [reporterId, reportedId, ...mediators.map((m) => m.id)]);
     return { report: report!, conversationId: room.id };
   });
@@ -120,7 +126,7 @@ export async function resolve(reportId: string, memberId: string, outcomeNote: s
     throw new ApiError(403, 'not_allowed', 'Only the person who asked for help, or someone helping, can mark it settled.');
   }
   if (report.status === 'resolved') throw new ApiError(409, 'resolved', 'This request for help is already settled.');
-  await db.update(problemReport).set({ status: 'resolved', outcomeNote, resolvedById: memberId }).where(eq(problemReport.id, reportId));
+  await db.update(problemReport).set({ status: 'resolved', outcomeNote, resolvedById: memberId, resolvedAt: new Date() }).where(eq(problemReport.id, reportId));
   const [by] = await db.select().from(member).where(eq(member.id, memberId));
   await postSystemMessage(await conversationOf(reportId), `${by?.displayName} marked this as settled: ${outcomeNote}`);
   return getReport(reportId, memberId);
@@ -136,12 +142,12 @@ export async function getReport(reportId: string, memberId: string) {
     const person = people.find((p) => p.id === id)!;
     return { id: person.id, displayName: shownName(person) };
   };
-  const [deal] = await db.select().from(agreement).where(eq(agreement.id, report.agreementId));
+  const [deal] = await db.select({ offeringId: arrangement.offeringId }).from(arrangement).where(eq(arrangement.id, report.arrangementId));
   const [item] = await db.select({ title: offering.title }).from(offering).where(eq(offering.id, deal!.offeringId));
   const mayAct = memberId === report.reporterId || mediatorIds.includes(memberId);
   return {
     id: report.id,
-    agreementId: report.agreementId,
+    arrangementId: report.arrangementId,
     offeringTitle: item?.title ?? '',
     description: report.description,
     status: report.status,
@@ -151,10 +157,9 @@ export async function getReport(reportId: string, memberId: string) {
     reportedMember: ref(report.reportedMemberId),
     mediators: mediatorIds.map(ref),
     conversationId: await conversationOf(report.id),
-    proposalMessagesShared: report.proposalMessagesSharedAt !== null,
-    proposalConversationId: report.proposalMessagesSharedAt ? await proposalConversationOf(report.agreementId) : null,
-    canShareProposalMessages:
-      report.proposalMessagesSharedAt === null && (memberId === report.reporterId || memberId === report.reportedMemberId),
+    messagesShared: report.messagesSharedAt !== null,
+    arrangementConversationId: report.messagesSharedAt ? await arrangementConversationOf(report.arrangementId) : null,
+    canShareMessages: report.messagesSharedAt === null && (memberId === report.reporterId || memberId === report.reportedMemberId),
     canEscalate: mayAct && report.status === 'open' && report.escalationLevel !== 'founders',
     canResolve: mayAct && report.status === 'open',
     createdAt: report.createdAt.toISOString()
@@ -162,10 +167,10 @@ export async function getReport(reportId: string, memberId: string) {
 }
 
 /**
- * The reporter or reported member lets the helpers read the proposal's messages (002 FR-022a).
+ * The reporter or reported member lets the helpers read the arrangement's messages (002 FR-022a).
  * Once only, and it can't be undone; a note in the report's thread says it happened.
  */
-export async function shareProposalMessages(reportId: string, memberId: string) {
+export async function shareMessages(reportId: string, memberId: string) {
   const report = await loadReport(reportId);
   if (memberId !== report.reporterId && memberId !== report.reportedMemberId) {
     await getReport(reportId, memberId); // "not found" for anyone who can't see the report at all.
@@ -173,8 +178,8 @@ export async function shareProposalMessages(reportId: string, memberId: string) 
   }
   const [updated] = await db
     .update(problemReport)
-    .set({ proposalMessagesSharedAt: new Date(), proposalMessagesSharedById: memberId })
-    .where(and(eq(problemReport.id, reportId), isNull(problemReport.proposalMessagesSharedAt)))
+    .set({ messagesSharedAt: new Date(), messagesSharedById: memberId })
+    .where(and(eq(problemReport.id, reportId), isNull(problemReport.messagesSharedAt)))
     .returning();
   if (!updated) throw new ApiError(409, 'already_shared', 'The messages are already shared with the helpers.');
   const [who] = await db.select().from(member).where(eq(member.id, memberId));
@@ -185,24 +190,42 @@ export async function shareProposalMessages(reportId: string, memberId: string) 
   return getReport(reportId, memberId);
 }
 
-/** Reports on an agreement, for the agreement page (outcome notes are kept with it, FR-029). */
-export async function reportsFor(agreementId: string) {
-  const rows = await db.select().from(problemReport).where(eq(problemReport.agreementId, agreementId));
-  return rows.map((r) => ({ id: r.id, status: r.status, outcomeNote: r.outcomeNote }));
+/**
+ * Requests for help about an arrangement, for its page and its timeline (outcome notes are kept
+ * with it, FR-029).
+ */
+export async function reportsFor(arrangementId: string) {
+  const rows = await db.select().from(problemReport).where(eq(problemReport.arrangementId, arrangementId)).orderBy(asc(problemReport.createdAt));
+  const ids = [...new Set(rows.flatMap((r) => [r.reporterId, r.resolvedById]).filter((id): id is string => Boolean(id)))];
+  const people = ids.length ? await db.select().from(member).where(inArray(member.id, ids)) : [];
+  const ref = (id: string | null) => {
+    const person = people.find((p) => p.id === id);
+    return person ? { id: person.id, displayName: shownName(person) } : null;
+  };
+  return rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    outcomeNote: r.outcomeNote,
+    askedAt: r.createdAt,
+    askedBy: ref(r.reporterId),
+    resolvedAt: r.resolvedAt,
+    resolvedBy: ref(r.resolvedById)
+  }));
 }
 
 setReportsLookup(reportsFor);
 
-// Mediators may read the agreement they're helping with (FR-028).
-setMediatorCheck(async (agreementId, memberId) => {
+// Helpers may read the arrangement they're helping with (001 FR-028), and its messages once the
+// two members shared them (002 FR-022a).
+setHelperCheck(async (arrangementId, memberId) => {
   const rows = await db
-    .select({ id: conversationParticipant.id })
+    .select({ sharedAt: problemReport.messagesSharedAt })
     .from(problemReport)
     .innerJoin(conversation, eq(conversation.problemReportId, problemReport.id))
     .innerJoin(conversationParticipant, eq(conversationParticipant.conversationId, conversation.id))
-    .where(and(eq(problemReport.agreementId, agreementId), eq(conversationParticipant.memberId, memberId)))
-    .limit(1);
-  return rows.length > 0;
+    .where(and(eq(problemReport.arrangementId, arrangementId), eq(conversationParticipant.memberId, memberId)));
+  if (rows.length === 0) return 'none';
+  return rows.some((r) => r.sharedAt !== null) ? 'reads_messages' : 'helper';
 });
 
 async function loadReport(reportId: string) {
@@ -211,13 +234,9 @@ async function loadReport(reportId: string) {
   return report;
 }
 
-/** The thread of the proposal that became this agreement. */
-async function proposalConversationOf(agreementId: string) {
-  const [row] = await db
-    .select({ id: conversation.id })
-    .from(agreement)
-    .innerJoin(conversation, eq(conversation.proposalId, agreement.proposalId))
-    .where(eq(agreement.id, agreementId));
+/** The arrangement's own thread. */
+async function arrangementConversationOf(arrangementId: string) {
+  const [row] = await db.select({ id: conversation.id }).from(conversation).where(eq(conversation.arrangementId, arrangementId));
   return row?.id ?? null;
 }
 

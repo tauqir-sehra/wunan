@@ -4,7 +4,7 @@
 import { expect, test } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
 import {
-  acceptProposal,
+  acceptArrangement,
   completeDetails,
   createFounder,
   createInvitedMember,
@@ -15,7 +15,10 @@ import {
 import { signInAs } from './helpers/ui.ts';
 
 async function lend(owner: TestMember, borrower: TestMember, offeringId: string) {
-  return acceptProposal(owner, (await proposeOn(borrower, offeringId, completeDetails('lend'))).id);
+  return acceptArrangement(
+    owner,
+    (await proposeOn(borrower, offeringId, completeDetails('lend'))).id
+  );
 }
 
 test('notification settings save per kind, and device notifications wait for a click', async ({
@@ -133,7 +136,7 @@ test('a member downloads their data, then leaves; their name stays for the peopl
   const samContext = await browser.newContext();
   const samPage = await samContext.newPage();
   await signInAs(samPage, sam);
-  await samPage.goto(`/agreements/${agreementId}`);
+  await samPage.goto(`/arrangements/${agreementId}`);
   await expect(samPage.getByText('Alex (no longer a member)').first()).toBeVisible();
   await samPage.goto('/offerings?q=jam');
   await expect(samPage.getByText('Spare jam jars')).toHaveCount(0);

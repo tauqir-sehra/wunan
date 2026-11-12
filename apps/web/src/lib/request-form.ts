@@ -99,7 +99,7 @@ export function offeringPrefillFromRequest(request: Request): Record<string, str
  * matching amounts and lengths. Give-back items that match an accepted thing become offers; the rest
  * are written as the asker's own offer. Every value stays changeable.
  */
-export function proposalPrefillFromRequest(request: Request, offering: Offering): Record<string, string> {
+export function askPrefillFromRequest(request: Request, offering: Offering): Record<string, string> {
   const values: Record<string, string> = {};
   if (request.neededAfter) values.date = request.neededAfter;
   const handover = request.handovers.find((h) => offering.handovers.includes(h));

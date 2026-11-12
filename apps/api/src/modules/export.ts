@@ -5,10 +5,9 @@ import { strToU8, zipSync, type Zippable } from 'fflate';
 import { asc, eq, inArray, or } from 'drizzle-orm';
 import { db } from '../db/index.ts';
 import {
-  agreement,
   conversation,
   conversationParticipant,
-  proposal,
+  arrangement,
   offering,
   flag,
   offeringPhoto,
@@ -46,10 +45,11 @@ my-wunan-data.json
   invitations               Invitation links you made and who used them.
   offerings                  Everything you listed: amounts, loan lengths, how the handover happens,
                             what a trade accepts, and when a service is offered.
-  proposals                 Proposals you made or received, their details, and every message.
+  arrangements              Everything you asked for or were asked for: its details, how it
+                            stands, what was agreed and when, whether a loan was returned or it
+                            was marked as done, and every message.
   requests                  What you asked for, its details, and the offerings linked to it.
   public_messages           The public messages you wrote on requests and offerings.
-  agreements                Agreements made when a proposal was accepted.
   problem_reports           Requests for help you made, were part of, or helped with.
   conversations             The conversations of those requests for help, and every message.
   flags_sent                Requests you sent about other members' offerings, requests, or messages.
@@ -87,20 +87,13 @@ export async function buildExport(memberId: string) {
     ? await db.select().from(offeringPhoto).where(inArray(offeringPhoto.offeringId, offeringIds)).orderBy(asc(offeringPhoto.position), asc(offeringPhoto.createdAt))
     : [];
 
-  const agreements = await db
-    .select({ agreement, offeringTitle: offering.title })
-    .from(agreement)
-    .innerJoin(offering, eq(offering.id, agreement.offeringId))
-    .where(or(eq(agreement.ownerId, memberId), eq(agreement.otherMemberId, memberId)))
-    .orderBy(asc(agreement.createdAt));
-
   // Conversations I take part in, including ones where I help as a mediator.
   const myConversations = await db
     .select({ conversation, offeringTitle: offering.title })
     .from(conversationParticipant)
     .innerJoin(conversation, eq(conversation.id, conversationParticipant.conversationId))
-    .leftJoin(proposal, eq(proposal.id, conversation.proposalId))
-    .leftJoin(offering, eq(offering.id, proposal.offeringId))
+    .leftJoin(arrangement, eq(arrangement.id, conversation.arrangementId))
+    .leftJoin(offering, eq(offering.id, arrangement.offeringId))
     .where(eq(conversationParticipant.memberId, memberId))
     .orderBy(asc(conversation.createdAt));
   const conversationIds = myConversations.map((c) => c.conversation.id);
@@ -111,23 +104,23 @@ export async function buildExport(memberId: string) {
     ? await db.select().from(message).where(inArray(message.conversationId, conversationIds)).orderBy(asc(message.createdAt))
     : [];
 
-  // Proposals I made or received (002 FR-033).
-  const myProposals = await db
-    .select({ proposal, offeringTitle: offering.title, offeringType: offering.type, ownerId: offering.ownerId })
-    .from(proposal)
-    .innerJoin(offering, eq(offering.id, proposal.offeringId))
-    .where(or(eq(proposal.requesterId, memberId), eq(offering.ownerId, memberId)))
-    .orderBy(asc(proposal.createdAt));
-  const threadOfProposal = new Map(myConversations.filter((c) => c.conversation.proposalId).map((c) => [c.conversation.proposalId!, c.conversation.id]));
+  // Arrangements I asked for or was asked for (002 FR-033; 004 FR-025).
+  const myArrangements = await db
+    .select({ arrangement, offeringTitle: offering.title, offeringType: offering.type, ownerId: offering.ownerId })
+    .from(arrangement)
+    .innerJoin(offering, eq(offering.id, arrangement.offeringId))
+    .where(or(eq(arrangement.requesterId, memberId), eq(offering.ownerId, memberId)))
+    .orderBy(asc(arrangement.createdAt));
+  const threadOfArrangement = new Map(myConversations.filter((c) => c.conversation.arrangementId).map((c) => [c.conversation.arrangementId!, c.conversation.id]));
 
   const mediatedReportIds = myConversations
     .map((c) => c.conversation.problemReportId)
     .filter((id): id is string => id !== null);
   const reports = await db
-    .select({ report: problemReport, offeringTitle: offering.title, agreementCreatedAt: agreement.createdAt })
+    .select({ report: problemReport, offeringTitle: offering.title, agreedAt: arrangement.agreedAt })
     .from(problemReport)
-    .innerJoin(agreement, eq(agreement.id, problemReport.agreementId))
-    .innerJoin(offering, eq(offering.id, agreement.offeringId))
+    .innerJoin(arrangement, eq(arrangement.id, problemReport.arrangementId))
+    .innerJoin(offering, eq(offering.id, arrangement.offeringId))
     .where(
       or(
         eq(problemReport.reporterId, memberId),
@@ -183,7 +176,7 @@ export async function buildExport(memberId: string) {
 
   const names = await namesFor([
     me.invitedById,
-    ...agreements.flatMap((a) => [a.agreement.ownerId, a.agreement.otherMemberId]),
+    ...myArrangements.flatMap((a) => [a.arrangement.requesterId, a.ownerId, a.arrangement.doneById]),
     ...participants.map((p) => p.memberId),
     ...messages.map((m) => m.authorId),
     ...flagsReceived.map((f) => f.flag.flaggedById)
@@ -248,34 +241,15 @@ export async function buildExport(memberId: string) {
       created: l.createdAt.toISOString(),
       photos: photoPaths.get(l.id) ?? []
     })),
-    agreements: agreements.map(({ agreement: a, offeringTitle }) => {
-      const role = a.ownerId === memberId ? 'owner' : 'other';
-      return {
-        offering_title: offeringTitle,
-        role,
-        other_member: name(role === 'owner' ? a.otherMemberId : a.ownerId),
-        outcome: a.outcome,
-        amount: trimDecimal(a.amount),
-        sessions: a.sessions,
-        when: iso(a.startsAt),
-        handover: a.handover,
-        place: a.place?.label ?? '',
-        offer: a.offer,
-        loan_starts_at: iso(a.loanStartsAt),
-        loan_ends_at: iso(a.loanEndsAt),
-        returned_at: iso(a.returnedAt),
-        recorded: a.createdAt.toISOString()
-      };
-    }),
-    problem_reports: reports.map(({ report: r, offeringTitle, agreementCreatedAt }) => ({
-      agreement: `${offeringTitle} (recorded ${agreementCreatedAt.toISOString().slice(0, 10)})`,
+    problem_reports: reports.map(({ report: r, offeringTitle, agreedAt }) => ({
+      arrangement: `${offeringTitle} (agreed ${agreedAt?.toISOString().slice(0, 10) ?? ''})`,
       role: r.reporterId === memberId ? 'reporter' : r.reportedMemberId === memberId ? 'reported' : 'mediator',
       status: r.status,
       description: r.description,
       outcome_note: r.outcomeNote ?? '',
       created: r.createdAt.toISOString()
     })),
-    proposals: myProposals.map(({ proposal: p, offeringTitle, ownerId }) => ({
+    arrangements: myArrangements.map(({ arrangement: p, offeringTitle, ownerId }) => ({
       offering_title: offeringTitle,
       role: p.requesterId === memberId ? 'requester' : 'lister',
       with: name(p.requesterId === memberId ? ownerId : p.requesterId),
@@ -294,8 +268,17 @@ export async function buildExport(memberId: string) {
       sessions: p.sessions,
       decision_note: p.decisionNote,
       created: p.createdAt.toISOString(),
+      // The agreed record: empty unless it was accepted.
+      agreed: iso(p.agreedAt),
+      agreed_place: p.agreedPlace?.label ?? '',
+      agreed_offer: p.agreedOffer,
+      loan_starts_at: iso(p.loanStartsAt),
+      loan_ends_at: iso(p.loanEndsAt),
+      returned_at: iso(p.returnedAt),
+      done_at: iso(p.doneAt),
+      done_by: p.doneById ? (p.doneById === memberId ? 'me' : name(p.doneById)) : null,
       messages: messages
-        .filter((m) => m.conversationId === threadOfProposal.get(p.id))
+        .filter((m) => m.conversationId === threadOfArrangement.get(p.id))
         .map((m) => ({ from: m.authorId === memberId ? 'me' : name(m.authorId), sent: m.createdAt.toISOString(), kind: m.kind, body: m.body }))
     })),
     conversations: myConversations.filter(({ conversation: c }) => c.problemReportId !== null).map(({ conversation: c, offeringTitle }) => ({

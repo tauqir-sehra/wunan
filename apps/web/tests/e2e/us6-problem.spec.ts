@@ -2,7 +2,7 @@
 import { expect, test } from '@playwright/test';
 import { expectAccessible } from './helpers/axe.ts';
 import {
-  acceptProposal,
+  acceptArrangement,
   completeDetails,
   createFounder,
   createInvitedMember,
@@ -20,12 +20,12 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
   const alex = await createInvitedMember(robin, 'Alex'); // Robin invited Alex.
   const drill = await createOfferingFor(sam, { type: 'lend', title: 'Drill' });
   // Sam lends the drill to Alex.
-  const agreementId = await acceptProposal(
+  const agreementId = await acceptArrangement(
     sam,
     (await proposeOn(alex, drill.id, completeDetails('lend'))).id
   );
   await signInAs(page, sam);
-  await page.goto(`/agreements/${agreementId}`);
+  await page.goto(`/arrangements/${agreementId}`);
 
   // Sam asks for help.
   await page.getByRole('link', { name: 'Ask for help' }).click();
@@ -69,11 +69,18 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
     page.getByText('The helpers can now read your messages about this agreement.')
   ).toBeVisible();
   await robinPage.reload();
-  await robinPage.getByRole('link', { name: 'Read the messages about the agreement' }).click();
+  await robinPage.getByRole('link', { name: 'Read the messages about the arrangement' }).click();
+  // The helper reads the arrangement itself, read-only, with the shared messages (004 FR-021a).
+  await expect(robinPage.getByText("You're seeing this to help.", { exact: false })).toBeVisible();
+  await expect(robinPage.getByRole('heading', { name: 'What has happened' })).toBeVisible();
   await expect(robinPage.getByText('Is this still available?')).toBeVisible();
   await expect(
-    robinPage.getByText('Only the two people in the agreement can write here.')
+    robinPage.getByText('You can read these messages because they were shared with you to help.')
   ).toBeVisible();
+  await expect(
+    robinPage.getByRole('button', { name: /Mark returned|Mark as done|Withdraw|Decline/ })
+  ).toHaveCount(0);
+  await expectAccessible(robinPage, 'arrangement as a helper');
   await robinContext.close();
 
   // Asking for more help goes to the founders (Robin's inviter is Sam, already in it): the last step.
@@ -98,6 +105,6 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
   await page.getByLabel('How was it settled?').fill('Alex brought it back on Sunday.');
   await page.getByRole('button', { name: 'Mark as settled' }).click();
   await expect(page.getByText('Marked as settled.')).toBeVisible();
-  await page.getByRole('link', { name: 'Back to the agreement' }).click();
+  await page.getByRole('link', { name: 'See the arrangement' }).click();
   await expect(page.getByText('Alex brought it back on Sunday.')).toBeVisible();
 });

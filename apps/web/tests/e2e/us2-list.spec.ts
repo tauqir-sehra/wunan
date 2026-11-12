@@ -205,7 +205,9 @@ test("another member's request reaches the owner and leaves the offering as it i
   await alexContext.close();
 
   await page.goto('/offerings?mine=true');
-  await expect(page.getByRole('link', { name: '1 new request from members', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: '1 new request from members', exact: true })
+  ).toBeVisible();
   await page.getByRole('link', { name: '1 new request from members', exact: true }).click();
   await expect(page.getByText('Is this still available?')).toBeVisible();
   await expect(page.getByText('Available', { exact: true })).toBeVisible();

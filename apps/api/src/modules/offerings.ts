@@ -5,7 +5,7 @@
 import { CreateOffering } from '@wunan/shared';
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, lt, lte, ne, sql } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { agreement, flag, offering, offeringPhoto, member, proposal, request, requestLink, serviceAvailability, tradeAccept } from '../db/schema/index.ts';
+import { arrangement, flag, offering, offeringPhoto, member, request, requestLink, serviceAvailability, tradeAccept } from '../db/schema/index.ts';
 import { requestKindFor } from '@wunan/shared';
 import { ApiError, errors, validationError } from '../lib/errors.ts';
 import { checkRateLimit } from '../lib/rate-limit.ts';
@@ -104,8 +104,8 @@ export async function getOffering(offeringId: string, viewerId: string) {
   if (row.ownerId !== viewerId) return result;
   const [open] = await db
     .select({ n: count() })
-    .from(proposal)
-    .where(and(eq(proposal.offeringId, offeringId), eq(proposal.status, 'open')));
+    .from(arrangement)
+    .where(and(eq(arrangement.offeringId, offeringId), eq(arrangement.status, 'open')));
 
   const flags = await db
     .select({ flag: flag, from: { id: member.id, displayName: member.displayName, deletedAt: member.deletedAt } })
@@ -119,7 +119,7 @@ export async function getOffering(offeringId: string, viewerId: string) {
     .where(and(eq(flag.offeringId, offeringId), isNull(flag.seenAt)));
   return {
     ...result,
-    openProposalCount: open?.n ?? 0,
+    openArrangementCount: open?.n ?? 0,
     flags: flags.map(({ flag, from }) => ({
       id: flag.id,
       request: flag.request,
@@ -232,42 +232,42 @@ export async function ownedOffering(offeringId: string, ownerId: string): Promis
 export async function unreturnedLoans(offeringIds: string[]) {
   if (offeringIds.length === 0) return [];
   return db
-    .select({ id: agreement.id, offeringId: agreement.offeringId, startsAt: agreement.loanStartsAt, endsAt: agreement.loanEndsAt })
-    .from(agreement)
-    .where(and(inArray(agreement.offeringId, offeringIds), isNotNull(agreement.loanStartsAt), isNull(agreement.returnedAt)))
-    .orderBy(asc(agreement.loanStartsAt));
+    .select({ id: arrangement.id, offeringId: arrangement.offeringId, startsAt: arrangement.loanStartsAt, endsAt: arrangement.loanEndsAt })
+    .from(arrangement)
+    .where(and(inArray(arrangement.offeringId, offeringIds), isNotNull(arrangement.loanStartsAt), isNull(arrangement.returnedAt)))
+    .orderBy(asc(arrangement.loanStartsAt));
 }
 
 /**
  * An earlier loan of this offering that should be back by now but isn't marked returned, starting
  * before `startsAt` (002 Edge Case "Earlier loan not back in time"). Shown calmly on the next loan.
  */
-export async function earlierLoanNotBack(offeringId: string, startsAt: Date, exceptAgreementId?: string | null) {
+export async function earlierLoanNotBack(offeringId: string, startsAt: Date, exceptArrangementId?: string | null) {
   const [row] = await db
-    .select({ endsAt: agreement.loanEndsAt })
-    .from(agreement)
+    .select({ endsAt: arrangement.loanEndsAt })
+    .from(arrangement)
     .where(
       and(
-        eq(agreement.offeringId, offeringId),
-        isNull(agreement.returnedAt),
-        lt(agreement.loanStartsAt, startsAt),
-        lte(agreement.loanEndsAt, new Date()),
-        exceptAgreementId ? ne(agreement.id, exceptAgreementId) : undefined
+        eq(arrangement.offeringId, offeringId),
+        isNull(arrangement.returnedAt),
+        lt(arrangement.loanStartsAt, startsAt),
+        lte(arrangement.loanEndsAt, new Date()),
+        exceptArrangementId ? ne(arrangement.id, exceptArrangementId) : undefined
       )
     )
-    .orderBy(asc(agreement.loanEndsAt))
+    .orderBy(asc(arrangement.loanEndsAt))
     .limit(1);
   return row?.endsAt ? { endsAt: row.endsAt.toISOString() } : null;
 }
 
 /** SQL condition: a lend offering is lent out now (a loan has started and isn't marked returned). */
-export const lentOutNow = sql<boolean>`exists (select 1 from agreement a where a.offering_id = ${offering.id}
+export const lentOutNow = sql<boolean>`exists (select 1 from arrangement a where a.offering_id = ${offering.id}
   and a.loan_starts_at <= now() and a.returned_at is null)`;
 
 /**
- * Adds photos, owner, inviter, accepted things, times, loans, and the viewer's own proposal to
- * offering rows (for API responses). Places are shown in full only to the owner and to members whose
- * proposal on the offering was accepted (002 FR-029).
+ * Adds photos, owner, inviter, accepted things, times, loans, and the viewer's own arrangement to
+ * offering rows (for API responses). Places are shown in full only to the owner and to members with
+ * an agreed arrangement on the offering (002 FR-029).
  */
 export async function describe(rows: OfferingRow[], viewerId: string) {
   if (rows.length === 0) return [];
@@ -283,9 +283,9 @@ export async function describe(rows: OfferingRow[], viewerId: string) {
       .orderBy(asc(serviceAvailability.weekday), asc(serviceAvailability.startTime)),
     unreturnedLoans(ids),
     db
-      .select({ id: proposal.id, offeringId: proposal.offeringId, status: proposal.status })
-      .from(proposal)
-      .where(and(inArray(proposal.offeringId, ids), eq(proposal.requesterId, viewerId), inArray(proposal.status, ['open', 'accepted']))),
+      .select({ id: arrangement.id, offeringId: arrangement.offeringId, status: arrangement.status })
+      .from(arrangement)
+      .where(and(inArray(arrangement.offeringId, ids), eq(arrangement.requesterId, viewerId))),
     answersFor(ids)
   ]);
   const owners = await db.select().from(member).where(inArray(member.id, [...new Set(rows.map((r) => r.ownerId))]));
@@ -296,7 +296,7 @@ export async function describe(rows: OfferingRow[], viewerId: string) {
   return rows.map((row) => {
     const owner = byId.get(row.ownerId)!;
     const inviter = owner.invitedById ? byId.get(owner.invitedById) : undefined;
-    const fullPlaces = row.ownerId === viewerId || mine.some((p) => p.offeringId === row.id && p.status === 'accepted');
+    const fullPlaces = row.ownerId === viewerId || mine.some((p) => p.offeringId === row.id && p.status === 'agreed');
     const myLoans = loans.filter((loan) => loan.offeringId === row.id);
     return {
       id: row.id,
@@ -328,7 +328,8 @@ export async function describe(rows: OfferingRow[], viewerId: string) {
         endsAt: loan.endsAt!.toISOString(),
         overdue: loan.endsAt! <= now
       })),
-      myOpenProposalId: mine.find((p) => p.offeringId === row.id && p.status === 'open')?.id ?? null,
+      // The one that isn't agreed (the database allows only one): open, or ended and can be asked again.
+      myArrangement: myArrangementOn(mine, row.id),
       closedReason: row.closedReason,
       createdAt: row.createdAt.toISOString(),
       owner: {
@@ -358,7 +359,7 @@ async function answersFor(offeringIds: string[]) {
 
 /**
  * What a single offering shows about requests: every open request it fulfils, the viewer's own open
- * requests it's linked to (for the proposal prefill), and the viewer's open requests of the matching
+ * requests it's linked to (for the ask form's prefill), and the viewer's open requests of the matching
  * kind it could still be linked to ("Link to my request", 003 FR-017a).
  */
 async function requestsAround(row: OfferingRow, viewerId: string) {
@@ -424,4 +425,10 @@ function adjustWhole(remaining: number | null, oldTotal: number | null, newTotal
   if (newTotal === null) return null;
   if (remaining === null || oldTotal === null) return newTotal;
   return Math.max(0, remaining + newTotal - oldTotal);
+}
+
+type NotAgreed = 'open' | 'declined' | 'withdrawn' | 'closed';
+function myArrangementOn(mine: { id: string; offeringId: string; status: string }[], offeringId: string) {
+  const found = mine.find((p) => p.offeringId === offeringId && p.status !== 'agreed');
+  return found ? { id: found.id, status: found.status as NotAgreed } : null;
 }

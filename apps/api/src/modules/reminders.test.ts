@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { db } from '../db/index.ts';
 import { eq } from 'drizzle-orm';
-import { agreement, notificationPreference } from '../db/schema/index.ts';
+import { arrangement, notificationPreference } from '../db/schema/index.ts';
 import { localToInstant } from '../lib/time.ts';
 import { testOutbox } from '../notify/email.ts';
 import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, signIn } from '../test/setup.ts';
@@ -15,11 +15,11 @@ async function loan(returnDue: string) {
   for (const memberId of [sam.id, alex.id]) await db.insert(notificationPreference).values({ memberId, type: 'reminder', email: true });
   const token = await signIn(sam);
   const drill = await createOffering(token, { type: 'lend', title: 'Drill' });
-  const { agreementId } = await agree(token, await signIn(alex), drill.id, completeDetails('lend'));
+  const { arrangementId } = await agree(token, await signIn(alex), drill.id, completeDetails('lend'));
   // Move the loan so it ends at noon on `returnDue`.
   const ends = localToInstant(returnDue, '12:00');
-  await db.update(agreement).set({ loanStartsAt: new Date(ends.getTime() - 86_400_000), loanEndsAt: ends }).where(eq(agreement.id, agreementId));
-  return { sam, alex, token, agreementId };
+  await db.update(arrangement).set({ loanStartsAt: new Date(ends.getTime() - 86_400_000), loanEndsAt: ends }).where(eq(arrangement.id, arrangementId));
+  return { sam, alex, token, arrangementId };
 }
 const reminders = () => testOutbox.filter((e) => e.subject === 'A reminder about the Drill');
 
@@ -32,8 +32,8 @@ describe('return reminders', () => {
   });
 
   it('sends nothing for returned loans or loans not yet due', async () => {
-    const { token, agreementId } = await loan('2020-01-01');
-    await api('POST', `/api/v1/agreements/${agreementId}/returned`, { token });
+    const { token, arrangementId } = await loan('2020-01-01');
+    await api('POST', `/api/v1/arrangements/${arrangementId}/returned`, { token });
     await loan('2999-01-01');
     await runReminders();
     expect(reminders()).toHaveLength(0);

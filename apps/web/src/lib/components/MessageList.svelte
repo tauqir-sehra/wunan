@@ -1,5 +1,5 @@
 <!--
-  The messages in a thread, oldest first, with the notes wunan writes when a proposal changes
+  The messages in a thread, oldest first, with the notes wunan writes when an arrangement changes
   (shown quietly, not as speech bubbles). With JavaScript, new messages arrive live
   (FR-018a): they are added without animation or sound, the page only follows them if the member
   is already at the bottom, and each one is announced politely to screen readers.
@@ -41,7 +41,7 @@
       added.push(message);
       if (message.author?.id !== meId)
         announcement = `New message from ${message.author?.displayName ?? 'wunan'}: ${describe(message)}`;
-      // A change to the proposal refreshes its details at the top of the page (002 FR-025).
+      // A change to the arrangement refreshes its details, stage and timeline on the page (002 FR-025).
       if (notes.has(message.kind)) void invalidateAll();
       await tick();
       // Follow new messages only if the member hasn't scrolled up to read earlier ones.
@@ -51,14 +51,18 @@
     return () => source.close();
   });
 
-  /** Notes wunan writes about a proposal or a request for help. */
+  /** Notes wunan writes about an arrangement or a request for help. */
   const notes = new Set<Message['kind']>([
     'system',
+    'asked',
     'detail_changed',
     'accepted',
     'declined',
     'withdrawn',
     'closed',
+    'returned',
+    'done',
+    'not_done',
     'messages_shared'
   ]);
 

@@ -56,12 +56,6 @@
           ? doneText.flag
           : null
   );
-  const askWords = {
-    lend: 'Ask to borrow',
-    gift: 'Ask for this',
-    trade: 'Offer a trade',
-    service: 'Ask for this service'
-  } as const;
   const names = $derived({
     lister: 'the person helping',
     requester: isAsker ? 'me' : request.asker.displayName
@@ -159,14 +153,14 @@
       any more.</InfoNote
     >
   {/if}
-  {#if request.myOtherOpenProposals?.length}
+  {#if request.myOtherOpenArrangements?.length}
     <section class="grid gap-1.5 rounded-xl bg-muted p-5" aria-labelledby="other-proposals-heading">
       <h2 id="other-proposals-heading" class="font-semibold">
-        You still have these proposals open:
+        You're still asking about these too:
       </h2>
       <ul class="list-disc pl-5">
-        {#each request.myOtherOpenProposals as other (other.id)}
-          <li><a href="/proposals/{other.id}">{other.offeringTitle}</a></li>
+        {#each request.myOtherOpenArrangements as other (other.id)}
+          <li><a href="/arrangements/{other.id}">{other.offeringTitle}</a></li>
         {/each}
       </ul>
       <p class="text-sm text-muted-foreground">
@@ -174,8 +168,8 @@
       </p>
     </section>
   {/if}
-  {#if isAsker && request.closedByAgreementId}
-    <p><a href="/agreements/{request.closedByAgreementId}">See the agreement</a></p>
+  {#if isAsker && request.closedByArrangementId}
+    <p><a href="/arrangements/{request.closedByArrangementId}">See the arrangement</a></p>
   {/if}
 
   <!-- Wide screens: the request, its offers and what you can do on the left, the messages on the right. -->
@@ -330,7 +324,7 @@
                     <Button
                       href="/offerings/{link.offering.id}/propose?request={request.id}"
                       variant="outline"
-                      size="sm">{askWords[link.offering.type]}</Button
+                      size="sm">I'll take it!</Button
                     >
                   {/if}
                   {#if link.canRemove}
@@ -341,7 +335,9 @@
                         size="sm"
                         >{link.offering.owner.id === data.member?.id
                           ? 'Withdraw this offer'
-                          : 'Not for my request'}</Button
+                          : isAsker
+                            ? "I'll decline"
+                            : 'Not for this request'}</Button
                       >
                     </form>
                   {/if}

@@ -26,7 +26,7 @@ it already is: details can only be changed while the status is `open`.
   the code and the words would say "proposal" for something that may have been agreed and returned
   a year ago. Constitution VI (readable code) argues for the honest name.
 
-## 2. Status, stage, and "Needs you" are worked out, not stored
+## 2. Status, stage, and "Waiting on you" are worked out, not stored
 
 **Decision**: Store only `status` (`open`, `agreed`, `declined`, `withdrawn`, `closed`) and facts
 (`agreed_at`, `loan_starts_at`, `loan_ends_at`, `returned_at`, `done_at`). The API works out each
@@ -40,7 +40,7 @@ member, whether it **needs them**, and returns both. The web app only shows them
   the owner of a loan past its end and not marked returned; or the conversation has a message
   written by the other member (kinds `text` and `call_accepted`) that I haven't read. Notes that
   wunan writes (`done`, `not_done`, `returned`, `accepted`, …) never count, so marking as done
-  can't put the arrangement under the other member's "Needs you". (Also not: an agreed gift not
+  can't put the arrangement under the other member's "Waiting on you". (Also not: an agreed gift not
   yet marked as done, FR-009a.)
 
 **Rationale**: This is how proposals already work (`proposalIssues` is computed, never stored), and
@@ -122,12 +122,12 @@ finishedNext }`: the first two in full, `finished` as the 20 most recently chang
 descending, which every change and message already moves on. `GET /me/summary` returns
 `arrangementsNeedingYou` in place of the two old counts, using the same "needs me" rule.
 
-**Rationale**: "Needs you" and "In progress" are bounded by what a member is actively doing; only
+**Rationale**: "Waiting on you" and "In progress" are bounded by what a member is actively doing; only
 "Finished" grows for ever, so only it is paged (FR-006). One rule for the list and the count keeps
 SC-006 true by construction. With the existing indexes plus one on `(requester_id, status)` and one
 on `(offering_id, status)`, 200 arrangements stay well inside SC-007.
 
-**Alternatives considered**: one flat paged list grouped by the web app (a "Needs you" item could be
+**Alternatives considered**: one flat paged list grouped by the web app (a "Waiting on you" item could be
 on page 3); three endpoints (three requests for one page).
 
 ## 8. What happens to the old pages, endpoints and words

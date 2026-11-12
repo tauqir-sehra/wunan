@@ -197,8 +197,8 @@
         <section id="actions" class="grid gap-4" aria-labelledby="manage-heading">
           <h2 id="manage-heading" class="text-xl font-semibold">Manage your offering</h2>
           <div class="flex flex-wrap gap-3">
-            {#if offering.openProposalCount}<Button href="/proposals?role=lister"
-                >Proposals ({offering.openProposalCount})</Button
+            {#if offering.openArrangementCount}<Button href="/arrangements?side=offered"
+                >Arrangements ({offering.openArrangementCount})</Button
               >{/if}
             {#if offering.status !== 'closed'}<Button
                 href="/offerings/{offering.id}/edit"
@@ -266,8 +266,11 @@
       {:else}
         <div id="actions" class="grid gap-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
-            {#if offering.myOpenProposalId}
-              <Button href="/proposals/{offering.myOpenProposalId}">See your proposal</Button>
+            {#if offering.myArrangement?.status === 'open'}
+              <Button href="/arrangements/{offering.myArrangement.id}">See your arrangement</Button>
+            {:else if offering.myArrangement && offering.status === 'available'}
+              <!-- Asking again continues the earlier arrangement, with its messages (004 FR-010a). -->
+              <Button href={proposeHref}>Ask again</Button>
             {:else if offering.status === 'available'}
               <Button href={proposeHref}>{askWords[offering.type]}</Button>
             {:else}
