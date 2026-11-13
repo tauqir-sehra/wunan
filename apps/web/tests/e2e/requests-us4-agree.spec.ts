@@ -48,11 +48,17 @@ test('the asker proposes from the request, the lister accepts, and the request c
   const proposalId = page.url().split('/arrangements/')[1]!.split('?')[0]!;
 
   // The handover and time weren't in the request, so Rana fills them in before Sam accepts.
-  await page.goto(`/arrangements/${proposalId}/edit`);
+  // Each in its own row on the arrangement page (006).
+  const details = page.locator('#details');
+  await page.goto(`/arrangements/${proposalId}?detail=how#details`);
   await page.waitForLoadState('networkidle');
-  await page.getByRole('radio', { name: 'Online' }).check();
-  await page.getByLabel('Time').fill('10:00');
-  await page.getByRole('button', { name: 'Save changes' }).click();
+  await details.getByRole('radio', { name: 'Online' }).check();
+  await details.getByRole('button', { name: 'Save' }).click();
+  await expect(details.getByRole('button', { name: 'Save' })).toHaveCount(0);
+  await details.getByRole('link', { name: 'Change when', exact: true }).click();
+  await details.getByLabel('Time').fill('10:00');
+  await details.getByRole('button', { name: 'Save' }).click();
+  await expect(details.getByRole('button', { name: 'Save' })).toHaveCount(0);
   await acceptArrangement(sam, proposalId);
 
   await page.goto(`/requests/${request.id}`);

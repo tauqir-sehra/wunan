@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/index.ts';
-import { arrangement, notificationPreference } from '../db/schema/index.ts';
+import { arrangement, notificationLog, notificationPreference } from '../db/schema/index.ts';
 import { closeQuietArrangements } from '../modules/arrangements.ts';
 import { testOutbox } from '../notify/email.ts';
 import { agree, api, completeDetails, createFounder, createInvitedMember, createOffering, futureDate, propose, signIn } from '../test/setup.ts';
@@ -102,6 +102,44 @@ describe('changing a proposal', () => {
     const made = await propose(robinToken, drill.id, { date: '2030-03-02' });
     const cleared = await change(robinToken, made.id, { date: null });
     expect(cleared.body.details).toMatchObject({ date: null, startsAt: null });
+  });
+
+  it('changes only the details sent, so one detail can be saved on its own (006 research §1)', async () => {
+    const { samToken, robinToken } = await setup();
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
+    const made = await propose(robinToken, drill.id, { handover: 'at_lister', loanLength: 2, loanLengthUnit: 'days' });
+
+    const when = await change(robinToken, made.id, { date: '2030-03-02', time: null });
+    expect(when.body.details).toMatchObject({ date: '2030-03-02', hasTime: false, handover: 'at_lister', loanLength: 2, loanLengthUnit: 'days' });
+    const length = await change(robinToken, made.id, { loanLength: null, loanLengthUnit: null });
+    expect(length.body.details).toMatchObject({ date: '2030-03-02', handover: 'at_lister', loanLength: null, loanLengthUnit: null });
+
+    const messages = await api('GET', `/api/v1/conversations/${made.conversationId}/messages`, { token: samToken });
+    const lines = messages.body.items.filter((m: { kind: string }) => m.kind === 'detail_changed').map((m: { body: string }) => m.body);
+    // Newest first; each line names only the detail that changed.
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toMatch(/how long/);
+    expect(lines[0]).not.toMatch(/pickup time/);
+    expect(lines[1]).toBe('Robin changed the pickup time to Saturday 2 March.');
+  });
+
+  it('several saves close together send the lister one notice, with a line in the messages for each (006 FR-004a)', async () => {
+    const { sam, samToken, robinToken } = await setup();
+    await allOn(sam.id);
+    const drill = await createOffering(samToken, { type: 'lend', title: 'Drill' });
+    const made = await propose(robinToken, drill.id);
+    // The notice about the new proposal is long past.
+    await db.delete(notificationLog).where(eq(notificationLog.memberId, sam.id));
+    testOutbox.length = 0;
+
+    await change(robinToken, made.id, { date: '2030-03-02' });
+    await change(robinToken, made.id, { handover: 'at_lister' });
+    await change(robinToken, made.id, { loanLength: 2, loanLengthUnit: 'days' });
+    await change(robinToken, made.id, { time: '10:00' });
+
+    expect(testOutbox.filter((m) => m.to === sam.email)).toHaveLength(1);
+    const messages = await api('GET', `/api/v1/conversations/${made.conversationId}/messages`, { token: samToken });
+    expect(messages.body.items.filter((m: { kind: string }) => m.kind === 'detail_changed')).toHaveLength(4);
   });
 
   it('keeps others out', async () => {

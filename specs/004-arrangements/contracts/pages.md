@@ -20,7 +20,7 @@ fallback; confirmations that open under a button scroll just into view (`reveal`
 | `/arrangements` | GET | member | Heading "Arrangements", one line under it ("Everything you're arranging with other members, from asking to the end."), Help. A `segmented` choice **All** / **I asked** / **On my offerings** (`?side=asked\|offered`; the current one has `aria-current`). Three groups in order, each shown only when it has something: **Waiting on you**, **In progress**, **Finished**. Cards in two columns on wide screens, whole card a link: offering title; my side in words ("You asked to borrow" / "Rosa asked for"); "With <name>"; the stage in words (see Stage words); "New activity" when unread; the latest message's first line. Finished shows 20 and a "Show more" button that adds the next 20 below (a plain link to `?group=finished&cursor=…` without JavaScript). Empty: "You're not arranging anything yet." with links to Offerings and "Request something". No filled button: the page's action is choosing an arrangement. |
 | `/arrangements/more` | GET (JSON, same-origin) | member | The next finished page for "Show more". |
 | `/arrangements/[id]` | `send`, `acceptCall`, `accept` (lister), `decline` (lister), `withdraw` (requester), `returned` (owner), `done`, `notDone` | requester, lister; helper read-only | See "The arrangement page". Its address never changes, including when it is accepted or asked again. |
-| `/arrangements/[id]/edit` | `default` | requester, while open | The details form, filled in (was `/proposals/[id]/edit`). "Save changes" returns to the arrangement. |
+| `/arrangements/[id]/edit` | — | — | **Removed in 006**: redirects to `/arrangements/[id]#details`; details are added and changed in their rows (see `specs/006-fill-details-in-place/contracts/pages.md`). |
 | `/arrangements/[id]/report` | `default` | requester or lister, while agreed | "Ask for help" (was `/agreements/[id]/report`). |
 | `/offerings/[id]/propose` | `default` | non-owner | Unchanged form. Sending it lands on `/arrangements/[id]` (new, or the reopened one). When the member's earlier arrangement ended, the heading says "Ask again" and a note says "This continues your earlier arrangement, with its messages." |
 
@@ -46,14 +46,15 @@ Then two columns on wide screens (`page-columns`), one on narrow with the messag
    ended stay in the list.
 3. **Details** (`ArrangementDetails.svelte`, from `ProposalDetails`): the rows as today, "Not
    decided yet" for empty ones while arranging; once agreed, headed "What was agreed", with the full
-   place and what is given in return, and no "Change details".
+   place and what is given in return. (Since 006, while arranging the requester adds or changes each
+   detail in its row.)
 4. **Still to settle** (while arranging, when there are issues), as today.
 5. **Actions** (`#decision`), exactly one filled:
 
    | Stage | I'm the requester | I'm the lister |
    |-------|-------------------|----------------|
-   | Being arranged, details missing | **Change details** (filled), Withdraw | Decline; Accept shown but can't be pressed, with why |
-   | Being arranged, nothing missing | Change details, Withdraw; "Waiting for <lister>." | **Accept** (filled), Decline |
+   | Being arranged, details missing | Withdraw; the rows say "Add …" (006: no filled button) | Decline; Accept shown but can't be pressed, with why |
+   | Being arranged, nothing missing | Withdraw; "Waiting for <lister>." | **Accept** (filled), Decline |
    | Agreed loan, not started or out | (none); Send is the filled button | **Mark returned** (filled) |
    | Agreed gift, trade, service | **Mark as done** (filled) | **Mark as done** (filled) |
    | Returned | (none) | (none) |

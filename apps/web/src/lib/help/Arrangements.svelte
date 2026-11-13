@@ -3,7 +3,8 @@
   On an offering you'd like, press the button for it: "Ask to borrow", "Ask for this", "Offer a
   trade" or "Ask for this service". That starts an <strong>arrangement</strong> between you and the
   person who listed it. You can fill in when, how and where, and how much or how long, or leave any
-  of it as "Not decided yet" and write a message instead. Only you can change these details, and
+  of it as "Not decided yet" and write a message instead. On the arrangement, press "Add" or
+  "Change" next to a detail to fill it in right there. Only you can change these details, and
   whatever they say is what you're asking for.
 </p>
 

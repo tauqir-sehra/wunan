@@ -35,7 +35,9 @@ test('a loan: arranging, agreed, returned, all on one page', async ({ browser })
   await expect(samPage.getByText(/^Asked · /)).toBeVisible();
   await expect(samPage.getByText('Agreed · not yet')).toBeVisible();
   await expect(samPage.getByText('Still to settle before it can be accepted')).toBeVisible();
-  await expect(filled(samPage)).toHaveText(['Change details']);
+  // No filled button while details are missing: the rows show what to add (006 FR-010).
+  await expect(filled(samPage)).toHaveCount(0);
+  await expect(samPage.getByRole('link', { name: 'Add when', exact: true })).toBeVisible();
   await expectAccessible(samPage, 'arrangement being arranged, requester');
   await samContext.close();
 

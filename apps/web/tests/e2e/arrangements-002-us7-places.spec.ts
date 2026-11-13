@@ -66,21 +66,26 @@ test('a proposal with a picked place can be changed, and problems are spelled ou
   };
   const made = await proposeOn(robin, drill.id, { handover: 'to_requester', place });
   await signInAs(page, robin);
-  await page.goto(`/arrangements/${made.id}/edit`);
+  await page.goto(`/arrangements/${made.id}`);
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('combobox', { name: /Where/ })).toHaveValue(
+  const details = page.locator('#details');
+  // The place opens in its row with what was picked (006).
+  await details.getByRole('link', { name: 'Change where', exact: true }).click();
+  await expect(details.getByRole('combobox', { name: /Where/ })).toHaveValue(
     '1 Mill Street, Riverside, Springfield'
   );
-  await page.getByLabel('Day').fill(daysAhead(4));
-  await page.getByRole('button', { name: 'Save changes' }).click();
+  await details.getByRole('link', { name: 'Cancel', exact: true }).click();
+  // Changing another detail keeps the place.
+  await details.getByRole('link', { name: 'Add when', exact: true }).click();
+  await details.getByLabel('Day').fill(daysAhead(4));
+  await details.getByRole('button', { name: 'Save' }).click();
+  await expect(details.getByRole('button', { name: 'Save' })).toHaveCount(0);
   await expect(page.getByText(/Robin changed the pickup time/)).toBeVisible();
+  await expect(details.getByText('1 Mill Street, Riverside, Springfield')).toBeVisible();
 
-  // A problem is named, not just "Some details need fixing."
-  await page.goto(`/arrangements/${made.id}/edit`);
-  await page.waitForLoadState('networkidle');
-  await page.getByLabel('For how long?: number').fill('3');
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(
-    page.getByRole('alert').getByText('For how long: Please choose hours, days, or weeks.')
-  ).toBeVisible();
+  // A problem is named beside the field, not just "Some details need fixing."
+  await details.getByRole('link', { name: 'Add for how long', exact: true }).click();
+  await details.getByLabel('For how long?: number').fill('3');
+  await details.getByRole('button', { name: 'Save' }).click();
+  await expect(details.getByText('Please choose hours, days, or weeks.')).toBeVisible();
 });

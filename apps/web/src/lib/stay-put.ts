@@ -11,7 +11,9 @@ export function stayPut(
 ): SubmitFunction {
   return () =>
     async ({ result, update }) => {
-      await update({ reset });
+      // `navigate: false`: the result applies to this page as it is, so an address like
+      // `?detail=when` isn't dropped by a navigation that would also scroll to the top.
+      await update({ reset, navigate: false });
       if (result.type === 'success') onSuccess?.();
     };
 }

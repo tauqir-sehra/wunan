@@ -174,3 +174,52 @@ test('accepting, marking done and not done, and marking returned keep the page w
   await page.goto(`/arrangements/${loan.id}`);
   await pressInPlace('Mark returned', 'Marked as returned. Those dates are free again.');
 });
+
+test('adding a detail in its row, saving and cancelling keep the page where it was (006)', async ({
+  page
+}) => {
+  test.slow();
+  const sam = createFounder('Sam');
+  const rana = await createInvitedMember(sam, 'Rana');
+  const drill = await createOfferingFor(sam, {
+    type: 'lend',
+    title: 'Drill',
+    description: 'A cordless drill.'
+  });
+  const made = await proposeOn(rana, drill.id, { handover: 'online' });
+  await signInAs(page, rana);
+  await page.goto(`/arrangements/${made.id}`);
+  await page.waitForLoadState('networkidle');
+  await page.setViewportSize({ width: 1024, height: 500 });
+
+  const details = page.locator('#details');
+  /** Where the details list sits on screen, and how far the page is scrolled. */
+  const where = async () => ({
+    top: (await details.boundingBox())!.y,
+    scroll: await scrollY(page)
+  });
+
+  const link = details.getByRole('link', { name: 'Add for how long', exact: true });
+  await link.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollBy(0, 40));
+  const before = await where();
+  expect(before.scroll).toBeGreaterThan(0);
+
+  await link.click();
+  await expect(details.getByLabel('For how long?: number')).toBeVisible();
+  expect(await where()).toEqual(before);
+
+  await details.getByRole('link', { name: 'Cancel', exact: true }).click();
+  await expect(link).toBeVisible();
+  expect(await where()).toEqual(before);
+
+  await link.click();
+  await details.getByLabel('For how long?: number').fill('2');
+  await details.getByLabel('For how long?: unit').selectOption('days');
+  await details.getByRole('button', { name: 'Save' }).click();
+  await expect(
+    details.getByRole('link', { name: 'Change for how long', exact: true })
+  ).toBeVisible();
+  // The stage line above can change with the details; the details themselves stay where they were.
+  expect((await where()).top).toBe(before.top);
+});

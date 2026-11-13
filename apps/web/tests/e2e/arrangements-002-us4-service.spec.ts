@@ -68,13 +68,19 @@ test('the requester is told what fits, fixes it, and the lister accepts', async 
   }
   await expectAccessible(page, 'service proposal with issues');
 
-  await page.getByRole('link', { name: 'Change details' }).click();
+  // Each detail is changed in its own row (006).
   await page.waitForLoadState('networkidle');
-  await page.getByLabel('Day').fill(next(2));
-  await page.getByLabel('How long each time?: number').fill('1');
-  await page.getByLabel('How many times?').fill('2');
-  await page.getByRole('radio', { name: 'Online' }).check();
-  await page.getByRole('button', { name: 'Save changes' }).click();
+  const details = page.locator('#details');
+  async function inRow(row: string, fill: () => Promise<void>) {
+    await details.getByRole('link', { name: new RegExp(`^(Add|Change) ${row}$`) }).click();
+    await fill();
+    await details.getByRole('button', { name: 'Save' }).click();
+    await expect(details.getByRole('button', { name: 'Save' })).toHaveCount(0);
+  }
+  await inRow('when', () => details.getByLabel('Day').fill(next(2)));
+  await inRow('each time', () => details.getByLabel('How long each time?: number').fill('1'));
+  await inRow('how many times', () => details.getByLabel('How many times?').fill('2'));
+  await inRow('how', () => details.getByRole('radio', { name: 'Online' }).check());
   await expect(
     page.getByText('Everything is filled in. Waiting for Jo to accept it.')
   ).toBeVisible();

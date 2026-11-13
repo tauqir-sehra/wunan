@@ -5,6 +5,8 @@
   stays on this page, keeps it where it was scrolled, and shows its result beside the button that
   was pressed (constitution V); without JavaScript each returns to the same part of the page.
   A helper from a request for help sees it read-only, with the messages only if they were shared.
+  The requester adds or changes details in their rows (006); while some are missing there's no filled
+  button for them, since the rows and "Still to settle" show what to do.
 -->
 <script lang="ts">
   import { enhance } from '$app/forms';
@@ -56,18 +58,20 @@
   // The one filled button (FR-017): the next thing this member can do at this stage.
   const primary = $derived.by(() => {
     if (me === 'helper') return null;
-    if (a.status === 'open')
-      return me === 'lister' ? (a.canAccept ? 'accept' : null) : a.issues.length ? 'edit' : null;
+    if (a.status === 'open') return me === 'lister' && a.canAccept ? 'accept' : null;
     if (a.status === 'agreed') {
       if (isLoan) return me === 'lister' && !a.agreed?.returnedAt ? 'returned' : null;
       return a.agreed?.doneAt ? null : 'done';
     }
     return a.canAskAgain ? 'askAgain' : null;
   });
-  // A problem with one of this page's actions; a problem sending a message shows by the message box.
+  // A problem with one of this page's actions; a problem sending a message shows by the message box,
+  // and one saving a detail shows in its row.
   const actionError = $derived.by(() => {
     const f = form as { error?: string; values?: Record<string, string> } | null;
-    return f?.error && f.values?.body === undefined ? f.error : null;
+    return f?.error && f.values?.body === undefined && f.values?.detail === undefined
+      ? f.error
+      : null;
   });
   const variant = (action: string) => (primary === action ? 'default' : 'outline');
   const action = $derived(me === 'lister' ? 'decline' : 'withdraw');
@@ -128,7 +132,7 @@
       </div>
 
       <Timeline steps={a.timeline} />
-      <ArrangementDetails arrangement={a} />
+      <ArrangementDetails arrangement={a} offering={data.offering} form={form as never} />
 
       {#if me !== 'helper'}
         <!-- Every action updates the page in place; its result shows here (constitution V). -->
@@ -161,9 +165,6 @@
               {#if !a.issues.length}<p class="w-full">
                   Everything is filled in. Waiting for {a.lister.displayName} to accept it.
                 </p>{/if}
-              <Button href="/arrangements/{a.id}/edit" variant={variant('edit')}
-                >Change details</Button
-              >
             {/if}
 
             {#if form?.confirm === action}

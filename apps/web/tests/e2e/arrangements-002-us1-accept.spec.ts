@@ -70,14 +70,24 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
   await expectAccessible(sam, 'proposal (lister)');
 
   // Robin fills in the details; Sam's open page shows the change without reloading.
-  await robin.getByRole('link', { name: 'Change details' }).click();
-  await robin.getByLabel('Day').fill(daysAhead(5));
-  await robin.getByLabel('Time').fill('10:00');
-  await robin.getByRole('radio', { name: 'Picked up from Sam' }).check();
-  await expect(robin.getByText(/at Sam's place \(Riverside, Springfield\)/)).toBeVisible();
-  await robin.getByLabel('For how long?: number').fill('3');
-  await robin.getByLabel('For how long?: unit').selectOption('days');
-  await robin.getByRole('button', { name: 'Save changes' }).click();
+  // Each detail is filled in in its own row (006).
+  await robin.waitForLoadState('networkidle');
+  const rows = robin.locator('#details');
+  await rows.getByRole('link', { name: 'Add when', exact: true }).click();
+  await rows.getByLabel('Day').fill(daysAhead(5));
+  await rows.getByLabel('Time').fill('10:00');
+  await rows.getByRole('button', { name: 'Save' }).click();
+  await expect(rows.getByRole('button', { name: 'Save' })).toHaveCount(0);
+  await rows.getByRole('link', { name: 'Add how', exact: true }).click();
+  await rows.getByRole('radio', { name: 'Picked up from Sam' }).check();
+  await rows.getByRole('button', { name: 'Save' }).click();
+  await expect(rows.getByText(/Riverside, Springfield/)).toBeVisible();
+  await expect(rows.getByText('Picked by Sam')).toBeVisible();
+  await rows.getByRole('link', { name: 'Add for how long', exact: true }).click();
+  await rows.getByLabel('For how long?: number').fill('3');
+  await rows.getByLabel('For how long?: unit').selectOption('days');
+  await rows.getByRole('button', { name: 'Save' }).click();
+  await expect(rows.getByRole('link', { name: 'Change for how long', exact: true })).toBeVisible();
   await expect(
     sam.getByRole('list', { name: 'Messages' }).getByText(/Robin changed the pickup time/)
   ).toBeVisible({ timeout: 4000 });
@@ -89,7 +99,7 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
   expect(sam.url().split('#')[0]).toBe(before.split('#')[0]);
   await expect(sam.locator('#stage').getByText(/Agreed for /)).toBeVisible();
   await expect(sam.getByRole('heading', { name: 'What was agreed' })).toBeVisible();
-  await expect(sam.getByRole('link', { name: 'Change details' })).toHaveCount(0);
+  await expect(sam.getByRole('link', { name: /^(Add|Change) / })).toHaveCount(0);
   await expect(sam.getByRole('button', { name: 'Mark returned' })).toBeVisible();
   // The same messages carry on, with am/pm times.
   const messages = sam.getByRole('list', { name: 'Messages' });
@@ -122,9 +132,10 @@ test('the lister is asked again when the details changed meanwhile', async ({ br
   const robinContext = await browser.newContext();
   const robinPage = await robinContext.newPage();
   await signInAs(robinPage, robin);
-  await robinPage.goto(`/arrangements/${made.id}/edit`);
-  await robinPage.getByLabel('How much would you like?').fill('3');
-  await robinPage.getByRole('button', { name: 'Save changes' }).click();
+  await robinPage.goto(`/arrangements/${made.id}?detail=amount#details`);
+  await robinPage.locator('#details').getByLabel('How much would you like?').fill('3');
+  await robinPage.locator('#details').getByRole('button', { name: 'Save' }).click();
+  await expect(robinPage.getByRole('link', { name: 'Change how much', exact: true })).toBeVisible();
   await robinContext.close();
 
   await samPage.getByRole('button', { name: 'Accept' }).click();

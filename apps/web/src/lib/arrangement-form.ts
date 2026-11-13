@@ -1,8 +1,59 @@
 // Turns proposal form fields (all text) into the API's proposal body (002 FR-011 to FR-015).
 // Every detail is optional. When making a proposal, empty boxes are left out; when changing one,
 // an emptied box clears that detail. The chosen accepted things arrive as JSON from ArrangementFields.
+// The requester changes one detail at a time on the arrangement page (006): `detailBody` sends only
+// that detail's keys, so the API leaves the others as they are.
 import type { Arrangement, OfferingType } from '@wunan/shared';
 import { placeValue } from './offering-form.ts';
+
+/** One detail row on the arrangement page, as named in its `?detail=` address (006 data-model.md). */
+export type DetailKey =
+  'when' | 'how' | 'where' | 'length' | 'amount' | 'return' | 'session' | 'sessions';
+
+/** The API keys each detail row saves (006 research §2). */
+export const detailKeys: Record<DetailKey, string[]> = {
+  when: ['date', 'time'],
+  how: ['handover'],
+  where: ['place'],
+  length: ['loanLength', 'loanLengthUnit'],
+  amount: ['amount'],
+  return: ['offers', 'ownOffer', 'ownOfferAmount', 'ownOfferUnit'],
+  session: ['sessionLength', 'sessionLengthUnit'],
+  sessions: ['sessions']
+};
+
+/**
+ * The rows the viewer can open, in the order the page lists them: only for the requester while
+ * it's open (`canEdit`), and "Where" only when the requester picks the place (not online, and not
+ * at the lister's own place).
+ */
+export function pressableDetails(arrangement: Arrangement): DetailKey[] {
+  if (!arrangement.canEdit) return [];
+  const d = arrangement.details;
+  const type = arrangement.offering.type;
+  const keys: DetailKey[] = ['when', 'how'];
+  if (d.handover !== 'online' && d.handover !== 'at_lister') keys.push('where');
+  if (type === 'lend') keys.push('length');
+  if ((type === 'gift' || type === 'trade') && (d.amount || arrangement.offering.unit))
+    keys.push('amount');
+  if (type === 'trade') keys.push('return');
+  if (type === 'service') keys.push('session', 'sessions');
+  return keys;
+}
+
+export const isDetailKey = (value: unknown): value is DetailKey =>
+  typeof value === 'string' && value in detailKeys;
+
+/** The body for saving one detail: only its keys, with an emptied field clearing it. */
+export function detailBody(detail: DetailKey, values: Record<string, string>, type: OfferingType) {
+  const all = arrangementBody(values, type, { forEdit: true });
+  const body: Record<string, unknown> = {};
+  for (const key of detailKeys[detail]) if (key in all) body[key] = all[key];
+  // Online, or at the lister's place, has no place of the requester's to keep.
+  if (detail === 'how' && (values.handover === 'online' || values.handover === 'at_lister'))
+    body.place = null;
+  return body;
+}
 
 const byType: Record<OfferingType, string[]> = {
   lend: ['loanLength', 'loanLengthUnit'],
