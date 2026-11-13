@@ -277,10 +277,22 @@ describe('leaving wunan', () => {
     expect(row!.email).not.toBe(sam.email);
     expect(row!.deletedAt).not.toBeNull();
     const profile = await api('GET', `/api/v1/members/${sam.id}`, { token: alexToken });
-    expect(profile.body).toMatchObject({ displayName: 'Sam (no longer a member)', bio: null, isFormerMember: true });
-    expect((await api('GET', `/api/v1/members/${alex.id}`, { token: alexToken })).body.invitedBy.displayName).toBe('Sam (no longer a member)');
-    expect((await api('GET', `/api/v1/members/${alex.id}/chain`, { token: alexToken })).body.chain.map((c: { displayName: string }) => c.displayName))
-      .toEqual(['Alex', 'Sam (no longer a member)', 'Fay']);
+    expect(profile.body).toMatchObject({
+      displayName: 'Sam (no longer a member)',
+      bio: null,
+      isFormerMember: true
+    });
+    expect(
+      (await api('GET', `/api/v1/members/${alex.id}`, { token: alexToken })).body.invitedBy
+        .displayName
+    ).toBe('Sam (no longer a member)');
+    const mine = (await api('GET', `/api/v1/members/${alex.id}`, { token: alexToken })).body
+      .connection;
+    expect([mine.top, ...mine.toYou].map((c: { displayName: string }) => c.displayName)).toEqual([
+      'Fay',
+      'Sam (no longer a member)',
+      'Alex'
+    ]);
 
     // Offerings and photos are gone; the loaned drill keeps only its title for Alex's agreement.
     expect((await api('GET', `/api/v1/offerings/${pump.id}`, { token: alexToken })).status).toBe(404);

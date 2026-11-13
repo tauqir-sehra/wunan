@@ -1,4 +1,4 @@
-// Members: creating accounts, profiles, the invite chain, private contact details, and passwords
+// Members: creating accounts, profiles, how two members are connected, private contact details, and passwords
 // (FR-001 to FR-005, FR-019). Profiles never include email or contact details.
 import { and, asc, eq, inArray, isNotNull, notExists, or, sql as rawSql } from 'drizzle-orm';
 import { auth } from '../auth.ts';
@@ -22,6 +22,7 @@ import {
 import { decryptOptional, encryptOptional } from '../lib/crypto.ts';
 import { ApiError, errors } from '../lib/errors.ts';
 import { checkRateLimit } from '../lib/rate-limit.ts';
+import { connectionOf } from './connection.ts';
 import { deletePhotoFiles } from './photos.ts';
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -49,9 +50,22 @@ export async function createAccount(details: NewAccount, tx: Tx | typeof db = db
   }
   const ctx = await auth.$context;
   const passwordHash = await ctx.password.hash(details.password);
+  // The invite line is the inviter's line plus this member (005); founders start their own.
+  const id = crypto.randomUUID();
+  let inviteLine: string[] = [id];
+  if (details.invitedById) {
+    const [inviter] = await tx
+      .select({ inviteLine: member.inviteLine })
+      .from(member)
+      .where(eq(member.id, details.invitedById));
+    if (!inviter) throw new Error('Inviter not found');
+    inviteLine = [...inviter.inviteLine, id];
+  }
   const [created] = await tx
     .insert(member)
     .values({
+      id,
+      inviteLine,
       email: details.email.trim().toLowerCase(),
       displayName: details.displayName.trim(),
       emailVerified: details.emailVerified ?? false,
@@ -79,19 +93,46 @@ const ref = (row: { id: string; displayName: string; deletedAt: Date | null }) =
   displayName: shownName(row)
 });
 
-export async function getProfile(memberId: string) {
-  const [row] = await db.select().from(member).where(eq(member.id, memberId));
+/**
+ * A member's profile, as seen by `viewerId`. One query reads everyone on the two invite lines (which
+ * include both members and the profile's inviter), so the connection costs no recursion (005).
+ */
+export async function getProfile(memberId: string, viewerId: string) {
+  const ends = db
+    .select({ id: rawSql<string>`unnest(${member.inviteLine})`.as('id') })
+    .from(member)
+    .where(inArray(member.id, [memberId, viewerId]));
+  const people = await db
+    .select({
+      id: member.id,
+      displayName: member.displayName,
+      deletedAt: member.deletedAt,
+      isFounder: member.isFounder,
+      emailVerified: member.emailVerified,
+      inviteLine: member.inviteLine,
+      bio: member.bio,
+      createdAt: member.createdAt
+    })
+    .from(member)
+    .where(inArray(member.id, ends));
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const row = byId.get(memberId);
+  const viewer = byId.get(viewerId);
   // Unconfirmed sign-ups are not members yet, so they have no profile.
-  if (!row || !row.emailVerified) throw errors.notFound('That member');
+  if (!row || !row.emailVerified || !viewer) throw errors.notFound('That member');
 
-  const inviter = row.invitedById
-    ? (await db.select().from(member).where(eq(member.id, row.invitedById)))[0]
-    : undefined;
   const invitees = await db
     .select({ id: member.id, displayName: member.displayName, deletedAt: member.deletedAt })
     .from(member)
     .where(and(eq(member.invitedById, row.id), eq(member.emailVerified, true)))
     .orderBy(asc(member.createdAt));
+
+  const person = (id: string) => {
+    const p = byId.get(id)!;
+    return { ...ref(p), isFounder: p.isFounder, isFormerMember: p.deletedAt !== null };
+  };
+  const inviterId = row.inviteLine.at(-2);
+  const connection = connectionOf(viewer.inviteLine, row.inviteLine);
 
   return {
     id: row.id,
@@ -100,29 +141,14 @@ export async function getProfile(memberId: string) {
     joinedAt: row.createdAt.toISOString(),
     isFounder: row.isFounder,
     isFormerMember: row.deletedAt !== null,
-    invitedBy: inviter ? ref(inviter) : null,
-    invitees: invitees.map(ref)
-  };
-}
-
-/** The invite chain from this member up to a founding member (FR-004). */
-export async function getChain(memberId: string) {
-  const rows = await db.execute<{ id: string; display_name: string; deleted_at: string | null; is_founder: boolean; depth: number }>(rawSql`
-    with recursive chain as (
-      select id, display_name, deleted_at, is_founder, invited_by_id, 0 as depth
-        from member where id = ${memberId} and email_verified
-      union all
-      select m.id, m.display_name, m.deleted_at, m.is_founder, m.invited_by_id, chain.depth + 1
-        from member m join chain on m.id = chain.invited_by_id
-       where chain.depth < 1000
-    )
-    select id, display_name, deleted_at, is_founder, depth from chain order by depth`);
-  if (rows.length === 0) throw errors.notFound('That member');
-  return {
-    chain: rows.map((row) => ({
-      ...ref({ id: row.id, displayName: row.display_name, deletedAt: row.deleted_at ? new Date(row.deleted_at) : null }),
-      isFounder: row.is_founder
-    }))
+    invitedBy: inviterId ? ref(byId.get(inviterId)!) : null,
+    invitees: invitees.map(ref),
+    connection: {
+      kind: connection.kind,
+      top: connection.topId ? person(connection.topId) : null,
+      toYou: connection.toYouIds.map(person),
+      toThem: connection.toThemIds.map(person)
+    }
   };
 }
 

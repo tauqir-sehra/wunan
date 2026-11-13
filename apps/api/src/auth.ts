@@ -46,6 +46,8 @@ export const auth = betterAuth({
     additionalFields: {
       bio: { type: 'string', required: false, input: false },
       invitedById: { type: 'string', required: false, input: false },
+      // Written only by createAccount (sign-up through Better Auth is off); never returned.
+      inviteLine: { type: 'string[]', required: true, input: false, returned: false },
       isFounder: { type: 'boolean', required: false, defaultValue: false, input: false },
       sharePhone: { type: 'string', required: false, input: false, returned: false },
       shareEmail: { type: 'string', required: false, input: false, returned: false },

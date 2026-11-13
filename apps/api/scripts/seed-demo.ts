@@ -101,18 +101,22 @@ const DEMO_PASSWORD = 'demo password 123';
 const passwordHash = await ctx.password.hash(DEMO_PASSWORD);
 
 // Founders first, then each member invited by someone who joined before them.
-const members: (typeof member.$inferInsert & { id: string })[] = [];
+const members: (typeof member.$inferInsert & { id: string; inviteLine: string[] })[] = [];
 for (let i = 0; i < MEMBERS; i += 1) {
   const named = i === 0 ? { email: 'demo.founder@example.org', displayName: 'Fay (founder)' }
     : i === 1 ? { email: 'demo.member@example.org', displayName: 'Sam' }
     : { email: `member-${i}@demo.invalid`, displayName: `${pick(firstNames)} ${pick(lastInitials)}.` };
   const isFounder = i < 3;
+  const id = crypto.randomUUID();
+  const inviter = isFounder ? null : members[Math.floor(random() * i)]!;
   members.push({
-    id: crypto.randomUUID(),
+    id,
     ...named,
     emailVerified: true,
     isFounder,
-    invitedById: isFounder ? null : members[Math.floor(random() * i)]!.id,
+    invitedById: inviter?.id ?? null,
+    // The inviter's line plus this member (005); the inviter is always already in `members`.
+    inviteLine: inviter ? [...inviter.inviteLine, id] : [id],
     bio: pick(bios),
     createdAt: new Date(Date.now() - (MEMBERS - i) * (365 * DAY / MEMBERS))
   });

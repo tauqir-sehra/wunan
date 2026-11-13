@@ -276,7 +276,7 @@ a notification and can see the agreement record and open a three-way conversatio
   can be cancelled before use.
 - **FR-003**: Every member profile MUST show the member's display name, who invited them (linked),
   join date, and the members they invited; this is visible to all members.
-- **FR-004**: Members MUST be able to follow the invite chain upward from any profile.
+- **FR-004**: Members MUST be able to follow the invite chain upward from any profile. (Since 005, through the profile's "Invited by" link and the names in "How you're connected"; the separate chain page is gone.)
 - **FR-005**: Community content (offerings, profiles, messages) MUST be visible only to signed-in members.
 - **FR-006**: Each wunan installation MUST serve exactly one community; all members, offerings, and
   conversations belong to that community. Other communities run their own separate installation.

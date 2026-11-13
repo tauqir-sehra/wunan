@@ -39,6 +39,26 @@ export const MyInvitation = z.object({
 });
 export type MyInvitation = z.infer<typeof MyInvitation>;
 
+/** Someone on an invite line, as profiles already show them (005 FR-011). */
+export const ConnectionPerson = memberRef.extend({
+  isFounder: z.boolean(),
+  isFormerMember: z.boolean()
+});
+export type ConnectionPerson = z.infer<typeof ConnectionPerson>;
+
+/**
+ * How the viewer and a profile's member are connected through invitations (005): `top` is the
+ * person both lines trace back to (or one of the two, or a founder on your own profile), and the
+ * two lists run from just below `top` down to the viewer and to the member.
+ */
+export const Connection = z.object({
+  kind: z.enum(['self', 'shared', 'theyAreAbove', 'youAreAbove', 'separate']),
+  top: ConnectionPerson.nullable(),
+  toYou: z.array(ConnectionPerson),
+  toThem: z.array(ConnectionPerson)
+});
+export type Connection = z.infer<typeof Connection>;
+
 export const MemberProfile = z.object({
   id: z.string(),
   displayName: z.string(),
@@ -47,13 +67,10 @@ export const MemberProfile = z.object({
   isFounder: z.boolean(),
   isFormerMember: z.boolean(),
   invitedBy: memberRef.nullable(),
-  invitees: z.array(memberRef)
+  invitees: z.array(memberRef),
+  connection: Connection
 });
 export type MemberProfile = z.infer<typeof MemberProfile>;
-
-export const ChainLink = memberRef.extend({ isFounder: z.boolean() });
-export const MemberChain = z.object({ chain: z.array(ChainLink) });
-export type MemberChain = z.infer<typeof MemberChain>;
 
 export const Me = z.object({
   id: z.string(),

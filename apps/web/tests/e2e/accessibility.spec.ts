@@ -77,7 +77,6 @@ async function pagesOfACommunity() {
       `/arrangements/${agreement.id}/report`,
       '/invitations',
       `/members/${samId}`,
-      `/members/${samId}/chain`,
       '/settings',
       '/settings/notifications',
       '/settings/export',

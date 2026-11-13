@@ -47,17 +47,15 @@ test('a member invites someone, who joins and shows the inviter on their profile
   await alex.locator('summary', { hasText: 'Alex' }).click(); // The account menu, under the member's name.
   await alex.getByRole('link', { name: 'Your profile' }).click();
   await expect(alex.getByRole('heading', { name: 'Alex', level: 1 })).toBeVisible();
-  await expect(alex.getByRole('link', { name: 'Sam' })).toBeVisible();
+  await expect(alex.getByRole('article').getByRole('link', { name: 'Sam' })).toBeVisible();
   await expectAccessible(alex, 'profile');
-  await alex.getByRole('link', { name: 'Sam' }).click();
+  await alex.getByRole('article').getByRole('link', { name: 'Sam' }).click();
   await expect(alex.getByText('Founding member').first()).toBeVisible();
   await alex.goBack();
-  await alex.getByRole('link', { name: 'See the full invite chain' }).click();
-  await expect(alex.getByRole('main').getByRole('listitem')).toHaveText([
-    /Alex/,
-    /Sam.*founding member/
-  ]);
-  await expectAccessible(alex, 'chain');
+  // Alex's own profile shows their invite line (005); there is no separate chain page.
+  await expect(
+    alex.getByRole('region', { name: 'Your invite line' }).getByText('Sam invited you.')
+  ).toBeVisible();
 
   // The used link no longer works.
   await alexContext.clearCookies();

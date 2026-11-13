@@ -1,4 +1,4 @@
-// A member's profile: who invited them and who they invited (FR-003).
+// A member's profile: who invited them, who they invited, and how you're connected (FR-003; 005).
 import { apiFor } from '#lib/api.ts';
 import { loadOr404, memberLoad } from '#lib/load.ts';
 import type { MemberProfile } from '@wunan/shared';

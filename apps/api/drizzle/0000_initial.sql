@@ -42,6 +42,7 @@ CREATE TABLE "member" (
 	"image" text,
 	"bio" text,
 	"invited_by_id" uuid,
+	"invite_line" uuid[] NOT NULL,
 	"is_founder" boolean DEFAULT false NOT NULL,
 	"share_phone" text,
 	"share_email" text,
@@ -51,7 +52,11 @@ CREATE TABLE "member" (
 	CONSTRAINT "member_email_unique" UNIQUE("email"),
 	CONSTRAINT "member_display_name_length" CHECK (char_length("member"."display_name") between 1 and 60),
 	CONSTRAINT "member_bio_length" CHECK ("member"."bio" is null or char_length("member"."bio") <= 500),
-	CONSTRAINT "member_inviter_or_founder" CHECK ("member"."is_founder" or "member"."invited_by_id" is not null)
+	CONSTRAINT "member_inviter_or_founder" CHECK ("member"."is_founder" or "member"."invited_by_id" is not null),
+	CONSTRAINT "member_invite_line_ends_with_self" CHECK ("member"."invite_line"[cardinality("member"."invite_line")] = "member"."id"),
+	CONSTRAINT "member_invite_line_matches_inviter" CHECK (("member"."is_founder" and "member"."invited_by_id" is null and cardinality("member"."invite_line") = 1)
+        or ("member"."invited_by_id" is not null and cardinality("member"."invite_line") >= 2
+            and "member"."invite_line"[cardinality("member"."invite_line") - 1] = "member"."invited_by_id"))
 );
 --> statement-breakpoint
 CREATE TABLE "rate_limit" (

@@ -236,3 +236,11 @@ grouped list, helpers' read-only view, and the export (004 tasks T031, T054).
 
 - Same 4 moderate `npm audit` advisories as before (esbuild inside drizzle-kit, development server
   only).
+
+## 005 How you're connected (2026-11-12)
+
+| Area               | Review                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| What is shown      | `GET /members/{id}` gains `connection`: people on the caller's and the member's invite lines, each only `id`, display name (with "(no longer a member)"), and founder and left flags. That's what the removed chain page already showed members; no email, contact details or bio. The route stays members-only, and unconfirmed sign-ups still get `404`.                                  |
+| Stored invite line | `member.invite_line` restates who invited whom, which `invited_by_id` already records. It's written only by `createAccount` from the inviter's row in the same transaction, never from request input, and isn't settable or returned through Better Auth (`input: false`, `returned: false`; sign-up through Better Auth is off). Two database checks keep it in step with `invited_by_id`. |
+| Removed            | `GET /members/{id}/chain` and the `/members/[id]/chain` page; the recursive chain query is gone.                                                                                                                                                                                                                                                                                            |

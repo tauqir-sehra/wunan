@@ -1,5 +1,5 @@
 {
-  "id": "227e5b37-8ba9-435e-a983-12967276fede",
+  "id": "f338ab38-4b58-42f0-a98f-18c290a85a90",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -176,6 +176,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "invite_line": {
+          "name": "invite_line",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true
+        },
         "is_founder": {
           "name": "is_founder",
           "type": "boolean",
@@ -271,6 +277,14 @@
         "member_inviter_or_founder": {
           "name": "member_inviter_or_founder",
           "value": "\"member\".\"is_founder\" or \"member\".\"invited_by_id\" is not null"
+        },
+        "member_invite_line_ends_with_self": {
+          "name": "member_invite_line_ends_with_self",
+          "value": "\"member\".\"invite_line\"[cardinality(\"member\".\"invite_line\")] = \"member\".\"id\""
+        },
+        "member_invite_line_matches_inviter": {
+          "name": "member_invite_line_matches_inviter",
+          "value": "(\"member\".\"is_founder\" and \"member\".\"invited_by_id\" is null and cardinality(\"member\".\"invite_line\") = 1)\n        or (\"member\".\"invited_by_id\" is not null and cardinality(\"member\".\"invite_line\") >= 2\n            and \"member\".\"invite_line\"[cardinality(\"member\".\"invite_line\") - 1] = \"member\".\"invited_by_id\")"
         }
       },
       "isRLSEnabled": false

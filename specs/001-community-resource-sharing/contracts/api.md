@@ -46,8 +46,7 @@ every endpoint, including these, fails the same way (e.g., Better Auth's `EMAIL_
 | `POST /invitations` | member | Creates an invitation; returns `{ id, link, expiresAt }`. The raw link is returned only here. |
 | `GET /me/invitations` | member | My invitations and statuses. |
 | `POST /invitations/{id}/cancel` | inviter | Cancels an unused invitation. |
-| `GET /members/{id}` | member | `{ id, displayName, bio, joinedAt, isFounder, invitedBy: {id, displayName} \| null, invitees: [...], isFormerMember }`. Never includes email or contact details. |
-| `GET /members/{id}/chain` | member | Ordered list from this member up to a founder. |
+| `GET /members/{id}` | member | `{ id, displayName, bio, joinedAt, isFounder, invitedBy: {id, displayName} \| null, invitees: [...], isFormerMember, connection }`. `connection` is how the caller is connected to them ([005](../../005-shared-invite-path/contracts/api.md), which also removed `GET /members/{id}/chain`). Never includes email or contact details. |
 | `GET /me`, `PATCH /me` | member | My profile (`displayName`, `bio`). |
 | `GET /me/contact`, `PUT /me/contact` | member | My private `sharePhone`, `shareEmail`. |
 | `POST /me/password` | member | `{ currentPassword, newPassword }`. |

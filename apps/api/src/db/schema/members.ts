@@ -30,6 +30,9 @@ export const member = pgTable(
     image: text(), // Required by Better Auth's schema; wunan does not use member photos.
     bio: text(),
     invitedById: uuid().references((): AnyPgColumn => member.id),
+    // Everyone from this member's founding member down to this member, in order (005). Written once
+    // on joining and never updated: nobody's inviter ever changes, and members who leave keep their row.
+    inviteLine: uuid().array().notNull(),
     isFounder: boolean().notNull().default(false),
     // Private contact details, stored encrypted (lib/crypto.ts). Revealed only by contact sharing.
     sharePhone: text(),
@@ -42,6 +45,17 @@ export const member = pgTable(
     check('member_bio_length', sql`${t.bio} is null or char_length(${t.bio}) <= 500`),
     // Everyone except founders was invited by someone (FR-001).
     check('member_inviter_or_founder', sql`${t.isFounder} or ${t.invitedById} is not null`),
+    // The invite line ends with this member, and the person before them is their inviter (005).
+    check(
+      'member_invite_line_ends_with_self',
+      sql`${t.inviteLine}[cardinality(${t.inviteLine})] = ${t.id}`
+    ),
+    check(
+      'member_invite_line_matches_inviter',
+      sql`(${t.isFounder} and ${t.invitedById} is null and cardinality(${t.inviteLine}) = 1)
+        or (${t.invitedById} is not null and cardinality(${t.inviteLine}) >= 2
+            and ${t.inviteLine}[cardinality(${t.inviteLine}) - 1] = ${t.invitedById})`
+    ),
     index('member_invited_by_idx').on(t.invitedById)
   ]
 );

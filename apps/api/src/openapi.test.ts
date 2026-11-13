@@ -4,9 +4,17 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { api } from './test/setup.ts';
 
-// 003 adds to 002's contract, and 004 replaces its proposal and agreement endpoints, so all three are read.
-const contract = ['002-listing-proposals', '003-member-requests', '004-arrangements']
-  .map((feature) => readFileSync(new URL(`../../../specs/${feature}/contracts/api.md`, import.meta.url), 'utf8'))
+// 003 adds to 002's contract, 004 replaces its proposal and agreement endpoints, and 005 changes the
+// member profile, so all four are read.
+const contract = [
+  '002-listing-proposals',
+  '003-member-requests',
+  '004-arrangements',
+  '005-shared-invite-path'
+]
+  .map((feature) =>
+    readFileSync(new URL(`../../../specs/${feature}/contracts/api.md`, import.meta.url), 'utf8')
+  )
   .join('\n');
 
 /**
