@@ -123,3 +123,20 @@
 2. US2, then remove the old page.
 3. US3 and US4.
 4. Old words, polish, walk through the quickstart.
+
+## Phase 9: Convergence
+
+- [X] T025 When saving a detail on an arrangement that ended meanwhile, say so in plain words beside the field ("This has ended, so it can no longer be changed."), keep what was typed visible, and show the arrangement as it is now, instead of the generic "Only the person who asked …" message at `#decision`, in `apps/web/src/routes/arrangements/[id]/+page.server.ts` (`detail` action) and `apps/web/src/lib/components/ArrangementDetails.svelte`; add a browser check (requester has a field open, lister declines, requester saves) to `apps/web/tests/e2e/arrangements-details-in-place.spec.ts` per spec Edge Cases "Someone else changed the arrangement meanwhile" (partial)
+- [X] T026 Make "How much" pressable only when its field can show (the offering has an amount left), so "Add how much" never opens an empty form, in `apps/web/src/lib/arrangement-form.ts` `pressableDetails` (the arrangement needs to know whether the offering has an amount; reuse what the page already loads, or add it to the arrangement's `offering` in `packages/shared/src/schemas/arrangements.ts` and the API) per data-model.md "`amount` … the offering has an amount" (partial)
+- [X] T027 Add the browser checks T019 named but that weren't written: a helper from a request for help sees no "Add …"/"Change …" links, and posting `?/detail` as the lister is refused with a plain message, in `apps/web/tests/e2e/arrangements-details-in-place.spec.ts` per FR-009 (partial)
+
+## Phase 10: Convergence
+
+- [X] T028 With JavaScript on, when a live update shows the arrangement ended while the requester has a field open, keep the field's typed values visible (greyed out, as in T025) with the plain "has ended" message instead of closing it and losing them, in `apps/web/src/lib/components/ArrangementDetails.svelte`; add a JavaScript-on browser check (field open, lister declines, typed value still shown and disabled) to `apps/web/tests/e2e/arrangements-details-in-place.spec.ts` per spec Edge Cases "Someone else changed the arrangement meanwhile" (partial)
+- [X] T029 Add an `expectAccessible` scan of the "wasn't saved" state (message plus disabled field) to `apps/web/tests/e2e/arrangements-details-in-place.spec.ts` per SC-004 and AGENTS.md "axe scan for new states" (missing)
+- [X] T030 Show the "How much" row only when it can be pressed or has a value (same rule as `pressableDetails`: an amount, or an amount issue), so the requester never sees a "Not decided yet" row with no "Add" link, in `apps/web/src/lib/components/ArrangementDetails.svelte` per FR-001 (partial)
+- [X] T031 Run Prettier on `apps/web/src/lib/components/ArrangementDetails.svelte` (the refused `ArrangementFields` line is over the line length) per Constitution "readable code" (partial)
+
+## Phase 11: Convergence
+
+- [X] T032 Clear the kept typing (`draft`) when its field closes (saved or cancelled) and when another field opens, so an arrangement that ends later never shows old, already-saved values as "This wasn't saved", in `apps/web/src/lib/components/ArrangementDetails.svelte`; extend the JavaScript-on "ending it while a field is open" check in `apps/web/tests/e2e/arrangements-details-in-place.spec.ts` (save a value, reopen the field without typing, lister declines: no "wasn't saved" message) per spec Edge Cases "Someone else changed the arrangement meanwhile" and FR-002 plain words (partial)

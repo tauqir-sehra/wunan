@@ -211,3 +211,119 @@ test('nothing to press once agreed', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'What was agreed' })).toBeVisible();
   await expect(page.getByRole('link', { name: /^(Add|Change) / })).toHaveCount(0);
 });
+
+test('saving after it ended says so beside the field and keeps what was typed (006)', async ({
+  browser
+}) => {
+  test.slow();
+  const { fay, sam, url } = await loan();
+  // Without JavaScript, so Sam's page doesn't update itself when Fay declines (with it, the page
+  // shows the change as it happens).
+  const samContext = await browser.newContext({ javaScriptEnabled: false });
+  const page = await samContext.newPage();
+  await signInAs(page, sam);
+  await page.goto(`${url}?detail=length#details`);
+  await details(page).getByLabel('For how long?: number').fill('4');
+
+  // Meanwhile Fay declines it.
+  const fayContext = await browser.newContext();
+  const fayPage = await fayContext.newPage();
+  await signInAs(fayPage, fay);
+  await fayPage.goto(url);
+  await fayPage.waitForLoadState('networkidle');
+  await fayPage.getByRole('button', { name: 'Decline' }).click();
+  await fayPage.getByRole('button', { name: 'Yes, decline it' }).click();
+  await expect(fayPage.getByText('You declined this.')).toBeVisible();
+  await fayContext.close();
+
+  await details(page).getByRole('button', { name: 'Save' }).click();
+  await expect(details(page).getByText(/has ended, so it can no longer be changed/)).toBeVisible();
+  await expect(details(page).getByLabel('For how long?: number')).toHaveValue('4');
+  await expect(details(page).getByLabel('For how long?: number')).toBeDisabled();
+  await expect(details(page).getByRole('button', { name: 'Save' })).toHaveCount(0);
+  await expect(page.locator('#stage')).toContainText('Ended');
+  await samContext.close();
+});
+
+test('with JavaScript, ending it while a field is open keeps what was typed (006)', async ({
+  page,
+  browser
+}) => {
+  test.slow();
+  const { fay, sam, url } = await loan();
+  await signInAs(page, sam);
+  await page.goto(`${url}?detail=length#details`);
+  await page.waitForLoadState('networkidle');
+  await details(page).getByLabel('For how long?: number').fill('4');
+
+  const fayContext = await browser.newContext();
+  const fayPage = await fayContext.newPage();
+  await signInAs(fayPage, fay);
+  await fayPage.goto(url);
+  await fayPage.waitForLoadState('networkidle');
+  await fayPage.getByRole('button', { name: 'Decline' }).click();
+  await fayPage.getByRole('button', { name: 'Yes, decline it' }).click();
+  await expect(fayPage.getByText('You declined this.')).toBeVisible();
+  await fayContext.close();
+
+  // Sam's page updates by itself: the field stays, greyed out, with why.
+  await expect(details(page).getByText(/has ended, so it can no longer be changed/)).toBeVisible({
+    timeout: 6000
+  });
+  await expect(details(page).getByLabel('For how long?: number')).toHaveValue('4');
+  await expect(details(page).getByLabel('For how long?: number')).toBeDisabled();
+  await expect(details(page).getByRole('button', { name: 'Save' })).toHaveCount(0);
+  await expectAccessible(page, "a detail that wasn't saved");
+});
+
+test('a value already saved is never shown as not saved when it ends later (006)', async ({
+  page,
+  browser
+}) => {
+  test.slow();
+  const { fay, sam, url } = await loan();
+  await signInAs(page, sam);
+  await page.goto(url);
+  await page.waitForLoadState('networkidle');
+  await page.getByRole('link', { name: 'Add for how long', exact: true }).click();
+  await details(page).getByLabel('For how long?: number').fill('3');
+  await details(page).getByLabel('For how long?: unit').selectOption('days');
+  await details(page).getByRole('button', { name: 'Save' }).click();
+  await expect(details(page).getByRole('button', { name: 'Save' })).toHaveCount(0);
+  // Opened again, nothing typed.
+  await page.getByRole('link', { name: 'Change for how long', exact: true }).click();
+  await expect(details(page).getByLabel('For how long?: number')).toHaveValue('3');
+
+  const fayContext = await browser.newContext();
+  const fayPage = await fayContext.newPage();
+  await signInAs(fayPage, fay);
+  await fayPage.goto(url);
+  await fayPage.waitForLoadState('networkidle');
+  await fayPage.getByRole('button', { name: 'Decline' }).click();
+  await fayPage.getByRole('button', { name: 'Yes, decline it' }).click();
+  await expect(fayPage.getByText('You declined this.')).toBeVisible();
+  await fayContext.close();
+
+  await expect(page.locator('#stage')).toContainText('Ended', { timeout: 6000 });
+  await expect(details(page).getByText(/wasn't saved/)).toHaveCount(0);
+  await expect(details(page).getByLabel('For how long?: number')).toHaveCount(0);
+});
+
+test("the lister can't save a detail, even by posting the form (006 FR-009)", async ({ page }) => {
+  const { fay, url } = await loan();
+  await signInAs(page, fay);
+  await page.goto(url);
+  const status = await page.evaluate(async (action) => {
+    const body = new FormData();
+    body.set('detail', 'when');
+    body.set('date', '2030-01-01');
+    const response = await fetch(action, {
+      method: 'POST',
+      body,
+      headers: { 'x-sveltekit-action': 'true' }
+    });
+    return (await response.json()) as { type: string; data: string };
+  }, `${url}?/detail`);
+  expect(status.type).toBe('failure');
+  expect(status.data).toContain('Only the person who asked can change this');
+});

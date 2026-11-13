@@ -5,7 +5,8 @@
   the place in full and, for a loan, when it's due back (004 FR-015).
   The requester adds or changes each detail in its own row (006): the row's "Add when" / "Change
   when" link opens just that field there (`?detail=when`, which also works without JavaScript),
-  and saving keeps the page where it was. A place at the lister's says who picked it.
+  and saving keeps the page where it was. A place at the lister's says who picked it. If it ends
+  while a field is open, what was typed stays, greyed out, with why it wasn't saved.
 -->
 <script lang="ts">
   import { page } from '$app/state';
@@ -114,7 +115,9 @@
         value: d.loanLength && d.loanLengthUnit ? duration(d.loanLength, d.loanLengthUnit) : notYet
       });
     if (type === 'gift' || type === 'trade')
-      if (d.amount || proposal.offering.unit)
+      // Only when there's an amount, or one is asked for: the same rule as pressableDetails, so
+      // the requester never sees an empty row they can't fill in.
+      if (d.amount || proposal.issues.some((i) => i.field === 'amount'))
         list.push({
           key: 'amount',
           label: 'How much',
@@ -155,7 +158,42 @@
     const asked = page.url.searchParams.get('detail') ?? form?.values?.detail;
     return isDetailKey(asked) && canOpen(asked) ? asked : null;
   });
+  // A save that came back after the arrangement ended (or someone else changed it so this row no
+  // longer applies): the row keeps what was typed, greyed out, with why it wasn't saved.
+  const refused = $derived.by((): DetailKey | null => {
+    const tried = form?.values?.detail;
+    return form?.error && isDetailKey(tried) && !canOpen(tried) ? tried : null;
+  });
+  // What's typed in the open field, kept so that if the page updates by itself to show the
+  // arrangement ended meanwhile, the typing isn't lost (it's shown greyed out, as above).
+  let draft = $state<{
+    key: DetailKey;
+    values: Record<string, string>;
+    offering: Offering;
+  } | null>(null);
+  const ended = $derived.by((): DetailKey | null =>
+    draft && !arrangement.canEdit && !refused && page.url.searchParams.get('detail') === draft.key
+      ? draft.key
+      : null
+  );
+  // Once its field closes (saved or cancelled) or another opens, the kept typing is dropped, so an
+  // arrangement ending later never shows old values as not saved. Ending keeps the address, so
+  // the typing stays for that.
+  $effect(() => {
+    const asked = page.url.searchParams.get('detail');
+    if (draft && asked !== draft.key) draft = null;
+  });
   const fieldOffering = $derived(offering ?? form?.offering ?? null);
+
+  /** Keeps a copy of the open field's values as they're typed. */
+  function keepDraft(key: DetailKey, event: Event) {
+    const formElement = event.currentTarget as HTMLFormElement;
+    if (!fieldOffering) return;
+    const values: Record<string, string> = {};
+    for (const [name, value] of new FormData(formElement))
+      if (typeof value === 'string') values[name] = value;
+    draft = { key, values, offering: fieldOffering };
+  }
   const fieldValues = $derived(
     form?.values?.detail === open && form?.values ? form.values : detailValues(arrangement)
   );
@@ -214,7 +252,9 @@
           action="?/detail#details"
           class="grid w-full gap-3"
           use:focusFirst
-          use:enhance={stayPut(closeField(row.key), { reset: false })}
+          use:enhance={stayPut(closeField(row.key), { reset: false, refreshAll: true })}
+          oninput={(event) => keepDraft(row.key as DetailKey, event)}
+          onchange={(event) => keepDraft(row.key as DetailKey, event)}
         >
           <input type="hidden" name="detail" value={row.key} />
           <ArrangementFields
@@ -233,6 +273,26 @@
             <a href={addressFor(null, `detail-${row.key}`)} data-sveltekit-reset="false">Cancel</a>
           </div>
         </form>
+      {:else if refused === row.key && fieldOffering && form?.values}
+        <div class="grid w-full gap-2">
+          <p class="text-sm font-medium" role="status">{form.error} This wasn't saved.</p>
+          <fieldset disabled class="grid w-full gap-3 opacity-80">
+            <ArrangementFields
+              offering={fieldOffering}
+              values={form.values}
+              only={refused ?? undefined}
+            />
+          </fieldset>
+        </div>
+      {:else if ended === row.key && draft}
+        <div class="grid w-full gap-2">
+          <p class="text-sm font-medium" role="status">
+            This has ended, so it can no longer be changed. This wasn't saved.
+          </p>
+          <fieldset disabled class="grid w-full gap-3 opacity-80">
+            <ArrangementFields offering={draft.offering} values={draft.values} only={draft.key} />
+          </fieldset>
+        </div>
       {:else if canOpen(row.key)}
         <a
           id="detail-{row.key}"

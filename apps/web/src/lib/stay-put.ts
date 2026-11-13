@@ -4,16 +4,20 @@
 // section's `#anchor` so the reloaded page comes back to where the member was.
 import type { SubmitFunction } from '$app/forms';
 
-/** `reset: false` keeps what the form shows (for settings forms, whose saved values are what's shown). */
+/**
+ * `reset: false` keeps what the form shows (for settings forms, whose saved values are what's
+ * shown). `refreshAll: true` also refreshes the page's data after a problem, for when the problem
+ * is that something changed meanwhile.
+ */
 export function stayPut(
   onSuccess?: () => void,
-  { reset = true }: { reset?: boolean } = {}
+  { reset = true, refreshAll }: { reset?: boolean; refreshAll?: boolean } = {}
 ): SubmitFunction {
   return () =>
     async ({ result, update }) => {
       // `navigate: false`: the result applies to this page as it is, so an address like
       // `?detail=when` isn't dropped by a navigation that would also scroll to the top.
-      await update({ reset, navigate: false });
+      await update({ reset, navigate: false, ...(refreshAll ? { refreshAll } : {}) });
       if (result.type === 'success') onSuccess?.();
     };
 }

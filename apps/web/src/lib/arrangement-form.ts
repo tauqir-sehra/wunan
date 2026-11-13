@@ -34,7 +34,12 @@ export function pressableDetails(arrangement: Arrangement): DetailKey[] {
   const keys: DetailKey[] = ['when', 'how'];
   if (d.handover !== 'online' && d.handover !== 'at_lister') keys.push('where');
   if (type === 'lend') keys.push('length');
-  if ((type === 'gift' || type === 'trade') && (d.amount || arrangement.offering.unit))
+  // "How much" has a field only when the offering has an amount: then there's an amount, or an
+  // issue asking for one.
+  if (
+    (type === 'gift' || type === 'trade') &&
+    (d.amount || arrangement.issues.some((i) => i.field === 'amount'))
+  )
     keys.push('amount');
   if (type === 'trade') keys.push('return');
   if (type === 'service') keys.push('session', 'sessions');

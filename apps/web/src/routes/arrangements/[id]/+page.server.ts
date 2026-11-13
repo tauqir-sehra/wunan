@@ -39,8 +39,9 @@ export const actions: Actions = {
   detail: formAction(async ({ event, form, api }) => {
     const arrangement = await api.get<Arrangement>(path(event.params.id));
     const detail = form.get('detail');
-    if (!isDetailKey(detail) || !pressableDetails(arrangement).includes(detail))
+    if (!isDetailKey(detail) || arrangement.myRole !== 'requester')
       return fail(403, { error: 'Only the person who asked can change this, while it is open.' });
+    // If it ended meanwhile, the API says so; the answer keeps what was typed (006 edge cases).
     const values = formValues(form);
     try {
       await api.patch(path(event.params.id), detailBody(detail, values, arrangement.offering.type));

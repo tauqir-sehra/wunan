@@ -80,6 +80,8 @@ test("the borrower's inviter helps in a shared conversation; escalation ends wit
   await expect(
     robinPage.getByRole('button', { name: /Mark returned|Mark as done|Withdraw|Decline/ })
   ).toHaveCount(0);
+  // Nor can they add or change a detail (006 FR-009).
+  await expect(robinPage.getByRole('link', { name: /^(Add|Change) / })).toHaveCount(0);
   await expectAccessible(robinPage, 'arrangement as a helper');
   await robinContext.close();
 
