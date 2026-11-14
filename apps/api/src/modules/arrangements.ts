@@ -788,6 +788,34 @@ export async function countNeedingMe(memberId: string) {
   return (await summarise(rows, memberId)).filter((s) => s.needsMe).length;
 }
 
+/**
+ * For Home (007): my arrangements waiting on me (the same rule as "Waiting on you"), oldest activity
+ * first, and agreed loans not returned that are due back before `dueBefore` (or late) and not
+ * already waiting on me, soonest first. One query and one `summarise`, as for the header count.
+ */
+export async function homeArrangements(memberId: string, dueBefore: Date) {
+  const rows = await db
+    .select({ arrangement, offering, unread: unreadFromOther(memberId) })
+    .from(arrangement)
+    .innerJoin(offering, eq(offering.id, arrangement.offeringId))
+    .where(and(mineCondition(memberId), or(sql`not ${finished}`, unreadFromOther(memberId))))
+    .orderBy(asc(arrangement.lastActivityAt), asc(arrangement.id));
+  const summaries = await summarise(rows, memberId);
+  const waiting = summaries.filter((s) => s.needsMe);
+  const dueBack = summaries
+    .filter((s) => !s.needsMe && s.status === 'agreed' && s.loanEndsAt && !s.returnedAt && new Date(s.loanEndsAt) < dueBefore)
+    .sort((a, b) => a.loanEndsAt!.localeCompare(b.loanEndsAt!))
+    .map((s) => ({
+      arrangementId: s.id,
+      myRole: s.myRole,
+      otherMember: s.otherMember,
+      offering: { id: s.offering.id, title: s.offering.title },
+      loanEndsAt: s.loanEndsAt!,
+      overdue: s.overdue
+    }));
+  return { waiting, dueBack };
+}
+
 const mineCondition = (memberId: string, side?: 'asked' | 'offered') =>
   side === 'asked' ? eq(arrangement.requesterId, memberId) : side === 'offered' ? eq(offering.ownerId, memberId) : or(eq(arrangement.requesterId, memberId), eq(offering.ownerId, memberId));
 

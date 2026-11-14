@@ -408,6 +408,7 @@ CREATE TABLE "request_link" (
 	"request_id" uuid NOT NULL,
 	"offering_id" uuid NOT NULL,
 	"linked_by_id" uuid,
+	"home_pressed_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "request_link_once" UNIQUE("request_id","offering_id")
 );
@@ -432,6 +433,7 @@ CREATE TABLE "flag" (
 	"flagged_by_id" uuid NOT NULL,
 	"request" text NOT NULL,
 	"seen_at" timestamp with time zone,
+	"home_pressed_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "flag_one_subject" CHECK (num_nonnulls("flag"."offering_id", "flag"."request_id", "flag"."public_message_id") = 1),
 	CONSTRAINT "flag_request_length" CHECK (char_length("flag"."request") between 1 and 500)

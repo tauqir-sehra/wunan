@@ -4,6 +4,8 @@ import { createRoute, z } from '@hono/zod-openapi';
 import {
   ChangePassword,
   ContactDetails,
+  Home,
+  HomePressed,
   DeleteAccount,
   Me,
   NewPushSubscription,
@@ -21,6 +23,7 @@ import { countNeedingMe } from '../modules/arrangements.ts';
 import { createRouter } from '../app-router.ts';
 import { requireMember } from '../lib/require-member.ts';
 import { buildExport } from '../modules/export.ts';
+import { homeFor, markPressed } from '../modules/home.ts';
 import * as members from '../modules/members.ts';
 import * as settings from '../modules/settings.ts';
 
@@ -113,6 +116,32 @@ meRoutes.openapi(
       },
       200
     );
+  }
+);
+
+meRoutes.openapi(
+  createRoute({
+    method: 'get',
+    path: '/me/home',
+    summary: 'Home (007): what needs me now: arrangements waiting on me, loans due back, new offers on my requests, requests to change my things',
+    security,
+    responses: ok(Home, 'What needs me, each group oldest first')
+  }),
+  async (c) => c.json(await homeFor(c.get('member').id), 200)
+);
+
+meRoutes.openapi(
+  createRoute({
+    method: 'post',
+    path: '/me/home/pressed',
+    summary: 'Say a Home line about offers or requests to change something was pressed, so it goes until something new comes',
+    security,
+    request: { body: body(HomePressed) },
+    responses: { 204: { description: 'Recorded' }, 404: { description: 'Not my request or thing' } }
+  }),
+  async (c) => {
+    await markPressed(c.get('member').id, c.req.valid('json'));
+    return c.body(null, 204);
   }
 );
 

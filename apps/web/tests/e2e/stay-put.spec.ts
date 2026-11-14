@@ -8,6 +8,7 @@ import {
   createInvitedMember,
   createOfferingFor,
   createRequestFor,
+  flagOfferingFor,
   linkOfferingFor,
   proposeOn
 } from './helpers/members.ts';
@@ -222,4 +223,28 @@ test('adding a detail in its row, saving and cancelling keep the page where it w
   ).toBeVisible();
   // The stage line above can change with the details; the details themselves stay where they were.
   expect((await where()).top).toBe(before.top);
+});
+
+test('"See all" on Home keeps the page where it was (007)', async ({ page }) => {
+  test.slow();
+  const fay = createFounder('Fay');
+  const sam = await createInvitedMember(fay, 'Sam');
+  for (let i = 1; i <= 7; i++) {
+    const thing = await createOfferingFor(fay, { type: 'lend', title: `Thing ${i}` });
+    await flagOfferingFor(sam, thing.id, 'Please add a photo.');
+  }
+  await signInAs(page, fay);
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await page.setViewportSize({ width: 1024, height: 400 });
+
+  const heading = page.getByRole('heading', { name: 'Asked to change' });
+  const seeAll = page.getByRole('link', { name: 'See all 7' });
+  await seeAll.scrollIntoViewIfNeeded();
+  const before = { top: (await heading.boundingBox())!.y, scroll: await scrollY(page) };
+  expect(before.scroll).toBeGreaterThan(0);
+
+  await seeAll.click();
+  await expect(page.getByRole('link', { name: /^Thing 7\s*Someone/ })).toBeVisible();
+  expect({ top: (await heading.boundingBox())!.y, scroll: await scrollY(page) }).toEqual(before);
 });

@@ -22,6 +22,11 @@ export function instantToLocal(instant: Date) {
   };
 }
 
+/** The start of the community's day `plusDays` after the day of `instant` (midnight there). */
+export function startOfLocalDay(instant: Date, plusDays = 0) {
+  return new Date(instant.getFullYear(), instant.getMonth(), instant.getDate() + plusDays);
+}
+
 /** ISO weekday (1 = Monday … 7 = Sunday) in the community's time zone. */
 export const localWeekday = (instant: Date) => ((instant.getDay() + 6) % 7) + 1;
 

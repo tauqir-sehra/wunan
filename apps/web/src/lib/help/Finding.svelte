@@ -1,7 +1,7 @@
 <h2>Searching</h2>
 <p>
-  Go to <a href="/offerings">Find</a> and type what you're looking for, like "ladder" or "rice". Different
-  forms of a word are found too, so "apples" also finds "apple".
+  Go to <a href="/offerings">Offerings</a> and type what you're looking for, like "ladder" or "rice".
+  Different forms of a word are found too, so "apples" also finds "apple".
 </p>
 <p>
   You can narrow the results by kind (Lend, Gift, Trade, Service) and by area. "Clear filters" shows

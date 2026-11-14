@@ -2,6 +2,7 @@
 import type { Component } from 'svelte';
 import AskingForHelp from './AskingForHelp.svelte';
 import Finding from './Finding.svelte';
+import Home from './Home.svelte';
 import Joining from './Joining.svelte';
 import Offering from './Offering.svelte';
 import Notifications from './Notifications.svelte';
@@ -12,6 +13,12 @@ import YourData from './YourData.svelte';
 export type HelpTopic = { slug: string; title: string; summary: string; content: Component };
 
 export const helpTopics: HelpTopic[] = [
+  {
+    slug: 'home',
+    title: 'Home',
+    summary: 'What Home lists, and when lines go away.',
+    content: Home
+  },
   {
     slug: 'joining',
     title: 'Joining and invitations',

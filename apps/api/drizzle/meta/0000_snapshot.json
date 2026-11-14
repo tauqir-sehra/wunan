@@ -1,5 +1,5 @@
 {
-  "id": "f338ab38-4b58-42f0-a98f-18c290a85a90",
+  "id": "b863a483-a0ff-4c58-b0c2-2e699aeb4098",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -3142,6 +3142,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "home_pressed_at": {
+          "name": "home_pressed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -3430,6 +3436,12 @@
         },
         "seen_at": {
           "name": "seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "home_pressed_at": {
+          "name": "home_pressed_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

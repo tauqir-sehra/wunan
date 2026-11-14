@@ -3,8 +3,12 @@
 import type {
   Arrangement,
   ArrangementStage,
+  ArrangementSummary,
+  AskedToChange,
+  DueBack,
   Handover,
   Offering,
+  OffersOnRequest,
   OfferingType,
   PlaceView,
   RequestKind,
@@ -386,4 +390,66 @@ export function agreedSentence(
       return `${owner} provided ${times} ${times === 1 ? 'session' : 'sessions'} of ${title} for ${other}.`;
     }
   }
+}
+
+/** "Thursday 20 November" (with the year only when it isn't this year), for Home's due-back lines. */
+export function dueDay(iso: string, now = new Date()): string {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
+  const date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+  return `${weekday} ${date}${d.getFullYear() === now.getFullYear() ? '' : ` ${d.getFullYear()}`}`;
+}
+
+/**
+ * One Home line (007): the thing's name, then a few short pieces in quieter text (who, and what's
+ * needed or when), and whether there's a new message.
+ */
+export type HomeLineWords = { title: string; detail: string[]; newMessage?: boolean };
+
+/** An arrangement waiting on me, in the Arrangements list's words: "You asked Fay", "Needs details: when". */
+export function homeArrangementLine(a: ArrangementSummary, myName: string): HomeLineWords {
+  const other = a.otherMember.displayName;
+  const stage = stageWords({ ...a, listerName: a.myRole === 'requester' ? other : myName });
+  return {
+    title: a.offering.title,
+    detail: [a.myRole === 'requester' ? `You asked ${other}` : `${other} asked you`, stage],
+    newMessage: a.unread
+  };
+}
+
+/** A loan due back: "From Fay", "Due back Thursday 20 November"; for the lender "Lent to Sam". */
+export function dueBackLine(d: DueBack, now = new Date()): HomeLineWords {
+  const other = d.otherMember.displayName;
+  return {
+    title: d.offering.title,
+    detail: [
+      d.myRole === 'lister' ? `Lent to ${other}` : `From ${other}`,
+      `${d.overdue ? 'Was due back' : 'Due back'} ${dueDay(d.loanEndsAt, now)}`
+    ]
+  };
+}
+
+/** New offers on my request: "Sam offered Camping tent", or "3 new offers", "From Sam, Ana and others". */
+export function offersLine(o: OffersOnRequest): HomeLineWords {
+  const names = o.helpers.map((h) => h.displayName);
+  if (o.count === 1)
+    return {
+      title: o.request.title,
+      detail: [`${names[0] ?? 'Someone'} offered ${o.firstOffering.title}`]
+    };
+  const from =
+    names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and others`;
+  return { title: o.request.title, detail: [`${o.count} new offers`, `From ${from}`] };
+}
+
+/** Requests to change one of my things: "Someone asked you to change something". */
+export function askedToChangeLine(a: AskedToChange): HomeLineWords {
+  return {
+    title: a.title,
+    detail: [
+      a.count === 1
+        ? 'Someone asked you to change something'
+        : `${a.count} requests to change something`
+    ]
+  };
 }

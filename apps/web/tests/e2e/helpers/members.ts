@@ -275,3 +275,15 @@ export async function linkOfferingFor(member: TestMember, requestId: string, off
     throw new Error(`Could not link: ${response.status} ${await response.text()}`);
   return (await response.json()) as { id: string };
 }
+
+/** `member` asks the owner to change something about an offering (a flag), through the API. */
+export async function flagOfferingFor(member: TestMember, offeringId: string, request: string) {
+  const token = await signIn(member);
+  const response = await fetch(`${API_URL}/api/v1/offerings/${offeringId}/flags`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...origin },
+    body: JSON.stringify({ request })
+  });
+  if (response.status !== 204)
+    throw new Error(`Could not flag: ${response.status} ${await response.text()}`);
+}

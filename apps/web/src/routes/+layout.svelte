@@ -3,9 +3,9 @@
   is marked with aria-current and a filled pill behind it, never colour alone and never a change
   of weight or size (constitution IV, V). On wide screens the header stays in view. On phones the
   links fold into a "Menu" disclosure; on wide screens your profile, settings, help and signing out
-  sit under your name. Both work without JavaScript. "Request something" and "Offer something" are
-  always in view, as outlined buttons so each page's own main action stays the one filled button
-  (constitution II).
+  sit under your name. Both work without JavaScript. "Home" (007) comes first, and the wunan name
+  leads there too. "Request something" and "Offer something" are always in view, as outlined
+  buttons so each page's own main action stays the one filled button (constitution II).
 -->
 <script lang="ts">
   import '../app.css';
@@ -25,6 +25,7 @@
 
   type NavLink = { href: string; label: string; count?: number; countText?: string };
   const main = $derived<NavLink[]>([
+    { href: '/', label: 'Home' },
     {
       href: '/offerings',
       label: 'Offerings',
@@ -52,7 +53,9 @@
   ]);
 
   const isCurrent = (href: string) =>
-    href === '/offerings' ? page.url.pathname === '/offerings' : page.url.pathname.startsWith(href);
+    href === '/' || href === '/offerings'
+      ? page.url.pathname === href
+      : page.url.pathname.startsWith(href);
   // The menus close once a link in them has been followed. Not on first load: a menu opened
   // before the page finished loading stays open.
   let menu: HTMLDetailsElement | undefined = $state();
@@ -78,7 +81,7 @@
 <header class="relative border-b bg-card lg:sticky lg:top-0 lg:z-30">
   <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
     <a
-      href="/offerings"
+      href="/"
       class="mr-3 inline-flex min-h-11 items-center gap-2 text-lg font-semibold tracking-tight text-foreground no-underline"
     >
       <svg viewBox="0 0 32 32" class="size-7" aria-hidden="true">

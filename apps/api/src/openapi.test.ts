@@ -4,13 +4,14 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { api } from './test/setup.ts';
 
-// 003 adds to 002's contract, 004 replaces its proposal and agreement endpoints, and 005 changes the
-// member profile, so all four are read.
+// 003 adds to 002's contract, 004 replaces its proposal and agreement endpoints, 005 changes the
+// member profile, and 007 adds Home, so all five are read.
 const contract = [
   '002-listing-proposals',
   '003-member-requests',
   '004-arrangements',
-  '005-shared-invite-path'
+  '005-shared-invite-path',
+  '007-home-needs-you'
 ]
   .map((feature) =>
     readFileSync(new URL(`../../../specs/${feature}/contracts/api.md`, import.meta.url), 'utf8')

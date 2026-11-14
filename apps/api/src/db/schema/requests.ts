@@ -129,6 +129,8 @@ export const requestLink = pgTable(
       .references(() => offering.id, { onDelete: 'cascade' }),
     /** The helper, or the asker linking an offering they found. */
     linkedById: uuid().references(() => member.id, { onDelete: 'set null' }),
+    /** When the asker pressed the Home line covering this; null: still listed (007). */
+    homePressedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow()
   },
   (t) => [

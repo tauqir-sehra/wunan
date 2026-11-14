@@ -20,7 +20,9 @@ test('search finds word forms, filters narrow it down, and clearing filters is o
   const alex = await createInvitedMember(founder, 'Alex');
   await signInAs(page, alex);
 
-  // Members land on Find, with every kind ticked.
+  // Members land on Home (007); Offerings is one press away, with every kind ticked.
+  await expect(page).toHaveURL(/\/$/);
+  await page.getByRole('link', { name: 'Offerings', exact: true }).first().click();
   await expect(page).toHaveURL(/\/offerings/);
   for (const kind of ['Lend', 'Gift', 'Trade', 'Service'])
     await expect(page.getByRole('checkbox', { name: kind })).toBeChecked();

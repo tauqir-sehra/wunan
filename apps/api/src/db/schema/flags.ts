@@ -21,6 +21,8 @@ export const flag = pgTable(
     request: text().notNull(),
     /** When the recipient (owner, asker, or author) saw it. */
     seenAt: timestamp({ withTimezone: true }),
+    /** When the recipient pressed the Home line covering this; null: still listed (007). Independent of `seenAt`. */
+    homePressedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow()
   },
   (t) => [
