@@ -20,8 +20,9 @@
 
 <h2>Making an offering</h2>
 <p>
-  Press <a href="/offerings/new">Offer something</a> at the top of any page. Choose the kind, give it a
-  short title, and add anything else that helps, like how to pick it up. Only the title is needed.
+  Press "New" at the top of any page, then <a href="/offerings/new">Offer something</a>. Choose the
+  kind, give it a short title, and add anything else that helps, like how to pick it up. Only the
+  title is needed.
 </p>
 <p>
   You can tick how the handover can happen, like "Picked up from me" or "Online". The area is
@@ -34,8 +35,8 @@
 
 <h2>Changing an offering</h2>
 <p>
-  On <a href="/offerings?mine=true">My offerings</a> you can change an offering, pause it for a while, or remove
-  it. A removed offering can be put back later.
+  On <a href="/offerings?mine=true">My offerings</a> you can change an offering, pause it for a while,
+  or remove it. A removed offering can be put back later.
 </p>
 <p>
   Other members can raise a conflict about your offering, for example to ask you to update it. Only
@@ -46,8 +47,8 @@
 <p>
   If someone has asked for something you have, open their request on the
   <a href="/requests">Requests</a> page and press "I can help with this". Choose "Make a new
-  offering", and the offering form starts filled in from their request. Or choose one of your offerings
-  and "Offer this". Your offering then says it fulfils their request, and it stays up like
+  offering", and the offering form starts filled in from their request. Or choose one of your
+  offerings and "Offer this". Your offering then says it fulfils their request, and it stays up like
   any other offering. See <a href="/help/requests">Asking for things</a>.
 </p>
 

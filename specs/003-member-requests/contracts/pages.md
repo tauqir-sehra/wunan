@@ -11,7 +11,7 @@ plainly when it's off; every other new page and action works without JavaScript.
 
 | Route | Actions | Access | Behaviour |
 |-------|---------|--------|-----------|
-| (header) | — | member | Main links: **Offerings** (with a count of unseen issues raised about my offerings), **Requests** (with a count of unseen issues raised about my requests), Proposals, Agreements ("Invite someone" moved to the menu under your name, so the header fits the page width); counts are in words for screen readers. The current link is shown by its background only, never bolder text, so nothing shifts (constitution V). Two outlined buttons: **Request something** → `/requests/new` and **Offer something** → `/offerings/new` (replaces "Share a new offering"); "Request" and "Offer" on narrow screens. Both are outlined so each page's own primary action stays the only filled one. |
+| (header) | — | member | Main links: **Offerings** (with a count of unseen issues raised about my offerings), **Requests** (with a count of unseen issues raised about my requests), Proposals, Agreements ("Invite someone" moved to the menu under your name, so the header fits the page width); counts are in words for screen readers. The current link is shown by its background only, never bolder text, so nothing shifts (constitution V). One outlined **New** button (a disclosure that works without JavaScript) on every screen size, opening **Request something** → `/requests/new` and **Offer something** → `/offerings/new` (replaces "Share a new offering"). Opening it closes the header's other menus. It is outlined so each page's own primary action stays the only filled one. |
 
 ## Requests
 

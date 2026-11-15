@@ -501,8 +501,10 @@ an account and check its open requests are closed.
   says).
 - Requests have no photos in this feature.
 - A request may have any number of linked offerings; an offering may answer more than one request.
-- The header has two outlined buttons, **Request something** and **Offer something** ("Offer
-  something" replaces "Share a new offering"), so each page keeps one filled primary action.
+- The header has one outlined **New** button that opens **Request something** and **Offer
+  something** ("Offer something" replaces "Share a new offering"), so each page keeps one filled
+  primary action. (It was two buttons at first; one "New" on every screen size is neater and the
+  same everywhere.)
   "Request something" is also the primary action on the Requests page.
 - Public threads have no reactions, likes, or counts beyond the number of messages (constitution I).
 - Reopening a closed request keeps its links; offerings linked before it closed stay shown.

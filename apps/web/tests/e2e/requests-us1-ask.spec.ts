@@ -10,8 +10,11 @@ test('a member requests something with only a title, then edits, closes, and reo
   const rana = createFounder('Rana');
   await signInAs(page, rana);
 
-  // Both header buttons are outlined, so each page keeps one filled main button.
+  // The header's "New" button is outlined, so each page keeps one filled main button. It opens
+  // Request something and Offer something.
   const header = page.getByRole('banner');
+  await page.waitForLoadState('networkidle');
+  await header.getByText('New', { exact: true }).click();
   await expect(header.getByRole('link', { name: 'Request something' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Offer something' })).toBeVisible();
 

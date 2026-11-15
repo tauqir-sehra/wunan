@@ -109,6 +109,39 @@ test('every page fits a 320 px wide screen and passes the accessibility scan', a
   }
 });
 
+test('on phones the header is one row, with Request and Offer under "New"', async ({ page }) => {
+  const sam = createFounder('Sam');
+  await page.setViewportSize({ width: 320, height: 640 });
+  await signInAs(page, sam);
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  const header = page.getByRole('banner');
+  const home = header.getByRole('link', { name: 'wunan' });
+  const newButton = header.getByText('New', { exact: true });
+  const menuButton = header.getByText('Menu', { exact: true });
+
+  // One row: the name, "New" and "Menu" sit side by side.
+  const rowOf = async (l: typeof home) => Math.round((await l.boundingBox())!.y);
+  expect(await rowOf(newButton)).toBeLessThan((await rowOf(home)) + 20);
+  expect(await rowOf(menuButton)).toBeLessThan((await rowOf(home)) + 20);
+  await expect(header.getByRole('link', { name: 'Request something' })).toBeHidden();
+
+  await newButton.click();
+  await expect(header.getByRole('link', { name: 'Request something' })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Offer something' })).toBeVisible();
+  await expectAccessible(page, 'phone header with "New" open');
+
+  // Opening "Menu" closes "New", so the two never overlap.
+  await menuButton.click();
+  await expect(header.getByRole('link', { name: 'Request something' })).toBeHidden();
+  await newButton.click();
+  await expect(header.getByRole('link', { name: 'Arrangements' })).toBeHidden();
+
+  await header.getByRole('link', { name: 'Request something' }).click();
+  await expect(page).toHaveURL(/\/requests\/new$/);
+  await expect(header.getByRole('link', { name: 'Request something' })).toBeHidden();
+});
+
 test('pages work at 200% zoom', async ({ page }) => {
   test.setTimeout(120_000);
   const { sam, paths } = await pagesOfACommunity();
@@ -164,19 +197,19 @@ test('the keyboard reaches everything, with a visible focus ring', async ({ page
     expect(focused.ring, `"${focused.text}" has no visible focus ring`).toBe(true);
     seen.add(focused.text);
   }
-  for (const label of [
-    'Offerings',
-    'Requests',
-    'Arrangements',
-    'Request\u00a0something',
-    'Offer\u00a0something',
-    'Sam'
-  ]) {
+  for (const label of ['Offerings', 'Requests', 'Arrangements', 'New', 'Sam']) {
     expect(
       [...seen].some((text) => text.startsWith(label)),
       `${label} reachable by keyboard (reached: ${[...seen].join(' | ')})`
     ).toBe(true);
   }
+  // "New" opens from the keyboard, and its links can be followed with Tab and Enter.
+  await page.locator('summary', { hasText: 'New' }).focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Tab');
+  await expect(
+    page.getByRole('banner').getByRole('link', { name: 'Request something' })
+  ).toBeFocused();
   // The account menu opens from the keyboard too.
   await page.locator('summary', { hasText: 'Sam' }).focus();
   await page.keyboard.press('Enter');

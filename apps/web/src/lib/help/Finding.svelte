@@ -20,7 +20,8 @@
 
 <h2>When nobody has it</h2>
 <p>
-  Press "Request something" at the top of any page to ask for it. Requests are on their own
+  Press "New" at the top of any page, then "Request something", to ask for it. Requests are on their
+  own
   <a href="/requests">Requests</a> page, not in Find. See
   <a href="/help/requests">Asking for things</a>.
 </p>
