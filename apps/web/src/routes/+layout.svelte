@@ -134,102 +134,109 @@
         </ul>
       </nav>
 
-      <!-- One "New" button on every screen, opening Request or Offer (works without JavaScript). -->
-      <details class="relative ml-auto" bind:this={newMenu} ontoggle={() => closeOthers(newMenu)}>
-        <summary
-          class="{buttonVariants({
-            variant: 'primaryOutline',
-            size: 'action'
-          })} list-none px-3 sm:px-4 [&::-webkit-details-marker]:hidden"
-        >
-          <PlusIcon class="size-5" aria-hidden="true" />
-          New
-        </summary>
-        <ul class="absolute right-0 z-40 mt-2 grid min-w-60 gap-0.5 surface p-1.5">
-          <li>
-            <a
-              href="/requests/new"
-              class="inline-flex min-h-11 w-full items-center gap-2 rounded-lg px-3.5 text-foreground no-underline hover:bg-accent"
-              ><ArrowDownLeftIcon class="size-5" aria-hidden="true" />Request something</a
-            >
-          </li>
-          <li>
-            <a
-              href="/offerings/new"
-              class="inline-flex min-h-11 w-full items-center gap-2 rounded-lg px-3.5 text-foreground no-underline hover:bg-accent"
-              ><ArrowUpRightIcon class="size-5" aria-hidden="true" />Offer something</a
-            >
-          </li>
-        </ul>
-      </details>
+      <!-- The buttons on the right. Their menus all drop down the same way, lined up with the right
+           edge under the buttons, so they look alike on every screen and stay on screen on phones. -->
+      <div class="relative ml-auto flex items-center gap-2 sm:gap-3">
+        <!-- One "New" button on every screen, opening Request or Offer (works without JavaScript). -->
+        <details bind:this={newMenu} ontoggle={() => closeOthers(newMenu)}>
+          <summary
+            class="{buttonVariants({
+              variant: 'primaryOutline',
+              size: 'action'
+            })} list-none px-3 sm:px-4 [&::-webkit-details-marker]:hidden"
+          >
+            <PlusIcon class="size-5" aria-hidden="true" />
+            New
+          </summary>
+          <ul
+            class="absolute right-0 z-40 mt-2 grid max-h-[calc(100dvh-5rem)] w-64 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto surface p-1.5"
+          >
+            <li>
+              <a
+                href="/requests/new"
+                class="inline-flex min-h-11 w-full items-center gap-2 rounded-lg px-3.5 text-foreground no-underline hover:bg-accent"
+                ><ArrowDownLeftIcon class="size-5" aria-hidden="true" />Request something</a
+              >
+            </li>
+            <li>
+              <a
+                href="/offerings/new"
+                class="inline-flex min-h-11 w-full items-center gap-2 rounded-lg px-3.5 text-foreground no-underline hover:bg-accent"
+                ><ArrowUpRightIcon class="size-5" aria-hidden="true" />Offer something</a
+              >
+            </li>
+          </ul>
+        </details>
 
-      <!-- Narrower screens: everything under "Menu" (works without JavaScript). -->
-      <details class="lg:hidden" bind:this={menu} ontoggle={() => closeOthers(menu)}>
-        <summary
-          class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-input px-3 font-medium sm:px-4 [&::-webkit-details-marker]:hidden"
+        <!-- Narrower screens: everything under "Menu" (works without JavaScript). -->
+        <details class="lg:hidden" bind:this={menu} ontoggle={() => closeOthers(menu)}>
+          <summary
+            class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-input px-3 font-medium sm:px-4 [&::-webkit-details-marker]:hidden"
+          >
+            <MenuIcon class="size-5" aria-hidden="true" />
+            Menu
+            {#if main.some((l) => l.count)}<span
+                class="size-2 rounded-full bg-primary"
+                aria-hidden="true"
+              ></span>{/if}
+          </summary>
+          <nav aria-label="Main">
+            <ul
+              class="absolute right-0 z-40 mt-2 grid max-h-[calc(100dvh-5rem)] w-64 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto surface p-1.5"
+            >
+              {#each main as link (link.href)}<li>
+                  {@render navLink(link, 'w-full rounded-lg')}
+                </li>{/each}
+              <li class="border-t pt-0.5"></li>
+              {#each account as link (link.href)}<li>
+                  {@render navLink(link, 'w-full rounded-lg')}
+                </li>{/each}
+              <li>
+                <a
+                  href="/sign-out"
+                  class="inline-flex min-h-11 w-full items-center rounded-lg px-3.5 text-muted-foreground no-underline hover:bg-accent"
+                  >Sign out</a
+                >
+              </li>
+              <li class="border-t pt-1"><ThemePicker bind:theme /></li>
+            </ul>
+          </nav>
+        </details>
+
+        <details
+          class="hidden lg:block"
+          bind:this={accountMenu}
+          ontoggle={() => closeOthers(accountMenu)}
         >
-          <MenuIcon class="size-5" aria-hidden="true" />
-          Menu
-          {#if main.some((l) => l.count)}<span
-              class="size-2 rounded-full bg-primary"
+          <summary
+            class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full py-1 pr-3 pl-1.5 whitespace-nowrap hover:bg-accent [&::-webkit-details-marker]:hidden"
+          >
+            <!-- The initial is drawn by CSS, so the menu's own text is just the name. -->
+            <span
+              class="inline-flex size-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground before:content-[attr(data-initial)]"
+              data-initial={data.member.displayName.slice(0, 1).toUpperCase()}
               aria-hidden="true"
-            ></span>{/if}
-        </summary>
-        <nav
-          aria-label="Main"
-          class="absolute inset-x-0 z-40 mt-2 border-b bg-card px-4 pb-4 shadow-soft"
-        >
-          <ul class="grid gap-0.5">
-            {#each main as link (link.href)}<li>
-                {@render navLink(link, 'w-full rounded-lg')}
-              </li>{/each}
-            <li class="mt-1 border-t pt-1"></li>
+            ></span>
+            {data.member.displayName}
+            <ChevronDownIcon class="size-4" aria-hidden="true" />
+          </summary>
+          <ul
+            class="absolute right-0 z-40 mt-2 grid max-h-[calc(100dvh-5rem)] w-64 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto surface p-1.5"
+          >
             {#each account as link (link.href)}<li>
                 {@render navLink(link, 'w-full rounded-lg')}
               </li>{/each}
-            <li>
+            <li class="border-t pt-0.5">
               <a
                 href="/sign-out"
                 class="inline-flex min-h-11 w-full items-center rounded-lg px-3.5 text-muted-foreground no-underline hover:bg-accent"
                 >Sign out</a
               >
             </li>
-            <li class="mt-1 border-t pt-1"><ThemePicker bind:theme /></li>
+            <li class="border-t pt-1"><ThemePicker bind:theme /></li>
           </ul>
-        </nav>
-      </details>
-
-      <details
-        class="relative hidden lg:block"
-        bind:this={accountMenu}
-        ontoggle={() => closeOthers(accountMenu)}
-      >
-        <summary
-          class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full py-1 pr-3 pl-1.5 whitespace-nowrap hover:bg-accent [&::-webkit-details-marker]:hidden"
-        >
-          <!-- The initial is drawn by CSS, so the menu's own text is just the name. -->
-          <span
-            class="inline-flex size-8 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-foreground before:content-[attr(data-initial)]"
-            data-initial={data.member.displayName.slice(0, 1).toUpperCase()}
-            aria-hidden="true"
-          ></span>
-          {data.member.displayName}
-          <ChevronDownIcon class="size-4" aria-hidden="true" />
-        </summary>
-        <ul class="absolute right-0 z-40 mt-2 grid min-w-60 gap-0.5 surface p-1.5">
-          {#each account as link (link.href)}<li>
-              {@render navLink(link, 'w-full rounded-lg')}
-            </li>{/each}
-          <li class="border-t pt-0.5">
-            <a
-              href="/sign-out"
-              class="inline-flex min-h-11 w-full items-center rounded-lg px-3.5 text-muted-foreground no-underline hover:bg-accent"
-              >Sign out</a
-            >
-          </li>
-          <li class="border-t pt-1"><ThemePicker bind:theme /></li>
-        </ul>
-      </details>
+        </details>
+      </div>
     {/if}
   </div>
 </header>
