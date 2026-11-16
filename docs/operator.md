@@ -34,7 +34,12 @@ Data lives in Docker volumes: `database` (PostgreSQL), `photos` (offering photos
    git clone <repository URL> wunan && cd wunan
    cp .env.example .env
    chmod 600 .env
+   cp compose.example.yaml compose.yaml
    ```
+
+   `compose.yaml` is yours: git ignores it, so you can change it (ports, extra services) and
+   updates never overwrite it. Compare it with `compose.example.yaml` after an update in case
+   something new was added.
 
 2. Fill in `.env`. Every setting is described in the file; these are the ones you must change:
 
@@ -52,13 +57,15 @@ Data lives in Docker volumes: `database` (PostgreSQL), `photos` (offering photos
    `DATABASE_URL`, `API_INTERNAL_URL`, `API_PORT` and `PHOTOS_DIR` are for development only;
    `compose.yaml` sets them for you.
 
-3. Start wunan:
+3. Start wunan with the images published for the latest version:
 
    ```bash
-   docker compose up -d --build
+   docker compose pull
+   docker compose up -d
    ```
 
-   The first build takes a few minutes. The API sets up the database by itself. Check that
+   Or build the images on the server from your checkout (a few minutes), for example if you've
+   changed the code: `docker compose up -d --build`. The API sets up the database by itself. Check that
    everything is running (all four services should be `running`, the API `healthy`):
 
    ```bash
@@ -167,14 +174,52 @@ secure connection if the server shouldn't hold it.)
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
-The API applies any database changes when it starts. Back up before updating. Read the release
-notes for anything that needs doing by hand.
+(Or `docker compose up -d --build` to build from your checkout.) The API applies any database
+changes when it starts. Back up before updating. Read the release notes for anything that needs
+doing by hand.
 
 For maintainers, the routine for checking and updating dependencies is in
 [CONTRIBUTING.md](../CONTRIBUTING.md#dependencies).
+
+## Automatic deploys
+
+`.github/workflows/ci.yml` checks and tests every push and pull request. On `main`, once
+everything passes, it builds the API and web images and pushes them to the GitHub Container
+Registry as `ghcr.io/<owner>/<repo>-api` and `-web`, tagged with the commit and `latest`. If
+you run your own copy (a fork), it can also deploy each new version to your server:
+
+1. **Let the server pull the images.** In GitHub, open each package (your profile → Packages)
+   and set it to public, or sign the server in once with a token that can read packages:
+   `docker login ghcr.io -u <github user>`. For a fork, set `WUNAN_IMAGE=ghcr.io/<owner>/<repo>`
+   in `.env`.
+2. **Make a deploy key.** On your own computer: `ssh-keygen -t ed25519 -f wunan-deploy -N ''`.
+   Add `wunan-deploy.pub` to `~/.ssh/authorized_keys` of a server user that can run `docker`
+   (in the `docker` group) and owns the wunan folder.
+3. **Add the settings in GitHub** (repository → Settings → Secrets and variables → Actions):
+
+   | Kind | Name | What to put |
+   |------|------|-------------|
+   | Variable | `DEPLOY_HOST` | The server's address. Deploys only run when this is set. |
+   | Variable | `DEPLOY_USER` | The user from step 2. |
+   | Variable | `DEPLOY_DIR` | The wunan folder, if not `/opt/stacks/wunan`. |
+   | Variable | `IMAGE_PLATFORMS` | `linux/arm64` for an ARM server; otherwise leave it out. |
+   | Secret | `DEPLOY_SSH_KEY` | The contents of `wunan-deploy` (the private key). |
+   | Secret | `DEPLOY_KNOWN_HOSTS` | The output of `ssh-keyscan <server address>`. |
+
+4. **Optional: keep SSH off the internet with Tailscale.** Put the server on your tailnet, make
+   an OAuth client in Tailscale with the `tag:ci` tag, add it as the secrets
+   `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`, set the variable `USE_TAILSCALE` to `true`, and
+   use the server's tailnet name as `DEPLOY_HOST`. Then close port 22 in your firewall.
+
+Each deploy checks out that commit on the server (so the folder is on a detached commit, not a
+branch), pulls that commit's images, and restarts what changed. Your `compose.yaml` and `.env`
+are left alone. To roll back, open an older run in GitHub's Actions tab and re-run its Deploy
+job. Until the next deploy, restarting by hand (or from a tool such as Dockge) uses `latest`;
+set `WUNAN_TAG=<commit>` in `.env` to hold a rolled-back version.
 
 ## Logs
 

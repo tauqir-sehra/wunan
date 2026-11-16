@@ -1,0 +1,152 @@
+# CI and deploys. Every push and pull request runs the checks, the API tests and the browser
+# tests. On main, once they pass, the API and web images are built and pushed to GHCR, then
+# deployed to the server over SSH (only when the DEPLOY_HOST variable is set). See
+# docs/operator.md, "Automatic deploys".
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request replaces the older run; runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Checks and API tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: wunan, POSTGRES_PASSWORD: wunan, POSTGRES_DB: wunan }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U wunan" --health-interval 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      # The development settings work as they are: database and mail on localhost.
+      - run: cp .env.example .env
+      - name: Create the test database
+        run: docker exec -i ${{ job.services.postgres.id }} psql -U wunan < docker/create-test-db.sql
+      - run: npm run check
+      - run: npm test
+
+  e2e:
+    name: Browser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_USER: wunan, POSTGRES_PASSWORD: wunan, POSTGRES_DB: wunan }
+        ports: ['5432:5432']
+        options: --health-cmd "pg_isready -U wunan" --health-interval 2s --health-retries 30
+      mailpit:
+        image: axllent/mailpit:latest
+        ports: ['1025:1025', '8025:8025']
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version-file: .nvmrc, cache: npm }
+      - run: npm ci
+      - run: cp .env.example .env
+      - name: Create the test database
+        run: docker exec -i ${{ job.services.postgres.id }} psql -U wunan < docker/create-test-db.sql
+      - name: Install the browser
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Keep traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-traces, path: apps/web/test-results, retention-days: 7 }
+
+  images:
+    name: Build and push images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions: { contents: read, packages: write }
+    strategy:
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Registry names must be lower case.
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-${{ matrix.app }}" >> "$GITHUB_ENV"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          # Set the IMAGE_PLATFORMS variable to linux/arm64 for an ARM server.
+          platforms: ${{ vars.IMAGE_PLATFORMS || 'linux/amd64' }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    name: Deploy
+    if: vars.DEPLOY_HOST != ''
+    needs: images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    # One deploy at a time, in order; a deploy is never cancelled halfway.
+    concurrency: { group: deploy, cancel-in-progress: false }
+    steps:
+      # Optional: reach the server over Tailscale, so SSH needn't be open to the internet.
+      - name: Join the tailnet
+        if: vars.USE_TAILSCALE == 'true'
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      # Pulls this commit's images and restarts what changed. The server keeps its own
+      # compose.yaml and .env; `git pull` only updates files such as the Caddyfile.
+      # To roll back, re-run this job from an older run: it deploys that run's commit.
+      - name: Deploy this commit
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ vars.DEPLOY_DIR || '/opt/stacks/wunan' }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy "$DEPLOY_USER@$DEPLOY_HOST" bash -se <<EOF
+          set -euo pipefail
+          cd '$DEPLOY_DIR'
+          git fetch --quiet
+          git checkout --quiet --detach ${{ github.sha }}
+          export WUNAN_TAG=${{ github.sha }}
+          docker compose pull api web
+          docker compose up -d --remove-orphans
+          docker image prune -f
+          EOF

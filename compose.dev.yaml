@@ -1,5 +1,5 @@
 # Local development services only: PostgreSQL (dev + test databases) and Mailpit (catches email).
-# The API and web app run on your machine with `npm run dev`. Not for production; see compose.yaml.
+# The API and web app run on your machine with `npm run dev`. Not for production; see compose.example.yaml.
 services:
   postgres:
     image: postgres:17

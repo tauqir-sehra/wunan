@@ -1,6 +1,12 @@
-# wunan for self-hosting: `docker compose up -d --build` (see docs/operator.md).
-# Settings come from `.env` next to this file. Only Caddy is reachable from outside; the API and
-# the database are on the internal network only.
+# wunan for self-hosting (see docs/operator.md). Copy to `compose.yaml` (which git ignores) and
+# change your copy as needed. Settings come from `.env` next to it. Only Caddy is reachable from
+# outside; the API and the database are on the internal network only.
+#
+# The API and web app use the images CI publishes for each commit on main:
+#   docker compose pull && docker compose up -d
+# or build them from this checkout instead:
+#   docker compose up -d --build
+# WUNAN_IMAGE picks another registry or fork; WUNAN_TAG picks a commit (default: latest main).
 name: wunan
 
 services:
@@ -19,6 +25,7 @@ services:
       retries: 30
 
   api:
+    image: ${WUNAN_IMAGE:-ghcr.io/tauqir-sehra/wunan}-api:${WUNAN_TAG:-latest}
     build: { context: ., dockerfile: apps/api/Dockerfile }
     restart: unless-stopped
     environment:
@@ -50,6 +57,7 @@ services:
     # No `ports:` on purpose: only Caddy and the web app reach the API.
 
   web:
+    image: ${WUNAN_IMAGE:-ghcr.io/tauqir-sehra/wunan}-web:${WUNAN_TAG:-latest}
     build: { context: ., dockerfile: apps/web/Dockerfile }
     restart: unless-stopped
     environment:
