@@ -21,6 +21,7 @@ async function createOffering(
   await page.getByRole('radio', { name: new RegExp(`^${kind}`) }).check();
   await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByText('Step 2 of 4')).toBeVisible();
+  await page.waitForLoadState('networkidle'); // Some details (adding rows) need JavaScript.
   if (check) await expectAccessible(page, 'new offering: details');
   await page.getByLabel('Title').fill(title);
   await details(page);

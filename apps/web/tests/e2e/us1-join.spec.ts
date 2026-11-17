@@ -42,6 +42,7 @@ test('a member invites someone, who joins and shows the inviter on their profile
   await expectAccessible(alex, 'finish joining');
   await alex.getByRole('button', { name: 'Finish joining' }).click();
   await expect(alex.getByText("Welcome to wunan. You're now a member.")).toBeVisible();
+  await alex.waitForLoadState('networkidle');
 
   // Alex's profile shows who invited them; the founder's shows "Founding member".
   await alex.locator('summary', { hasText: 'Alex' }).click(); // The account menu, under the member's name.
@@ -49,9 +50,12 @@ test('a member invites someone, who joins and shows the inviter on their profile
   await expect(alex.getByRole('heading', { name: 'Alex', level: 1 })).toBeVisible();
   await expect(alex.getByRole('article').getByRole('link', { name: 'Sam' })).toBeVisible();
   await expectAccessible(alex, 'profile');
+  await alex.waitForLoadState('networkidle');
   await alex.getByRole('article').getByRole('link', { name: 'Sam' }).click();
   await expect(alex.getByText('Founding member').first()).toBeVisible();
+  await alex.waitForLoadState('networkidle');
   await alex.goBack();
+  await expect(alex.getByRole('heading', { name: 'Alex', level: 1 })).toBeVisible();
   // Alex's own profile shows their invite line (005); there is no separate chain page.
   await expect(
     alex.getByRole('region', { name: 'Your invite line' }).getByText('Sam invited you.')

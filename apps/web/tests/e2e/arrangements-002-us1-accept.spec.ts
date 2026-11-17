@@ -92,6 +92,7 @@ test('a member proposes with nothing decided, fills it in, and the lister accept
     sam.getByRole('list', { name: 'Messages' }).getByText(/Robin changed the pickup time/)
   ).toBeVisible({ timeout: 4000 });
   await sam.reload();
+  await sam.waitForLoadState('networkidle'); // Accept stays on the page only once JavaScript runs.
   const before = sam.url();
   await sam.getByRole('button', { name: 'Accept' }).click();
   // Accepting stays on the same page: it's now agreed, with the details fixed (004 FR-010, FR-016).
